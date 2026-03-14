@@ -1,0 +1,36 @@
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=20000']
+      - id: check-merge-conflict
+
+  # Dart formatting
+  - repo: local
+    hooks:
+      - id: dart-format
+        name: dart format + auto stage
+        entry: bash -c 'dart format --line-length=120 lib/ && CHANGED=$(git diff --name-only -- "*.dart"); [ -n "$CHANGED" ] && echo "$CHANGED" | xargs git add || true'
+        language: system
+        files: \.dart$
+        pass_filenames: false
+
+      - id: check-file-size
+        name: Check file size (max 600 lines)
+        entry: python scripts/check_line_limits.py
+        language: python
+        types: [text]
+        files: \.dart$
+        exclude: >
+            (?x)^(
+                .*\.g\.dart$|
+                .*\.freezed\.dart$|
+                .*/generated/.*|
+                .*/l10n/.*
+            )$

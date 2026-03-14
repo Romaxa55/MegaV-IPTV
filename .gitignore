@@ -1,0 +1,60 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/chrome-debug-profile/
+.idea/
+*.iml
+.cursor/terminals/
+
+# Flutter / Dart
+**/build/
+**/.dart_tool/
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock
+**/l10n/generated/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android / APKs
+apk/
+*.apk
+*.aab
+**/android/app/build/
+**/android/app/release/
+**/android/app/debug/
+**/android/key.properties
+**/*.keystore
+**/*.jks
+
+# iOS / Certificates & Provisioning Profiles
+certs/
+*.mobileprovision
+*.p12
+*.p8
+*.cer
+*.certSigningRequest
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.podspec
+
+# Backend / Python (if needed)
+**/__pycache__/
+backend/.env
+backend/venv/
+backend/.venv/
+backend/.coverage
+backend/uploads/
+
+# Backups and Secrets
+backend/secrets_backup/
+*.env
+
+# Misc
+*.log
+*.swp
+*.swo
+*~

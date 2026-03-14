@@ -1,0 +1,20 @@
+---
+description: Use AppColors and Theme constants for consistent styling
+globs: lib/**/*.dart
+alwaysApply: false
+---
+
+# Flutter Theme Colors and Styling
+
+Приложение должно быть оформлено единообразно (рекомендуется темная тема по умолчанию, так как это стандарт для IPTV плееров на телевизорах/планшетах).
+
+## Основные правила:
+- Всегда используйте константы цветов из централизованного файла (например, `core/theme/app_colors.dart` или `AppTheme`).
+- **Запрещено:** хардкодить цвета (например, `color: Color(0xFF123456)` или `Colors.black87` по всему коду).
+- **Фон (Backgrounds):** Используйте темы для Scaffold или `AppColors.background`. Для карточек каналов - `AppColors.surface` или `AppColors.card`.
+- **Текст (Text):** Используйте `Theme.of(context).textTheme`, расширяя его нужными цветами через `AppColors.textPrimary`, `AppColors.textSecondary`.
+
+## Фокус (Focus) для Android TV
+IPTV часто запускается на приставках/телевизорах. Обязательно учитывайте состояние фокуса (`FocusNode`, `onFocusChange`, `MaterialState.focused`).
+- При фокусе карточка канала должна визуально выделяться (например, менять `border` или `elevation`, увеличивать `scale`).
+- Используйте `InkWell` или кастомные Focus-виджеты с явной индикацией `AppColors.focusBorder` (например, яркий желтый, белый или синий цвет рамки).
