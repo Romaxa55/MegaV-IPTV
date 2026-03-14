@@ -33,6 +33,7 @@ func main() {
 	var (
 		debug        = flag.Bool("debug", cfg.Debug, "Enable debug logging")
 		migrations   = flag.String("migrations", "", "Path to migrations directory")
+		migrateOnly  = flag.Bool("migrate-only", false, "Run migrations and exit")
 		sourceURL    = flag.String("source", "", "Single M3U source URL to parse")
 		fastCheck    = flag.Bool("fast-check", true, "Enable ffprobe fast check")
 		checkWorkers = flag.Int("check-workers", 50, "Number of fast-check worker goroutines")
@@ -78,6 +79,11 @@ func main() {
 		if err := repo.RunMigrations(*migrations); err != nil {
 			logger.WithError(err).Fatal("Failed to run migrations")
 		}
+	}
+
+	if *migrateOnly {
+		logger.Info("Migrations complete, exiting (--migrate-only)")
+		return
 	}
 
 	m3uService := services.NewM3UService(logger)

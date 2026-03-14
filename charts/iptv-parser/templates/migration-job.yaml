@@ -25,7 +25,7 @@ spec:
         - name: migration
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           command: ["./bin/m3u-parser"]
-          args: ["-migrations", "/app/migrations"]
+          args: ["-migrations", "/app/migrations", "-migrate-only"]
           env:
             {{- include "iptv-parser.dbEnv" . | nindent 12 }}
           resources:
