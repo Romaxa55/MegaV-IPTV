@@ -38,14 +38,14 @@ func (s *ThumbnailService) GenerateThumbnail(ctx context.Context, channelID, str
 
 	cmd := exec.CommandContext(ctx, s.ffmpegBin,
 		"-y",
+		"-timeout", fmt.Sprintf("%d", s.timeout.Microseconds()),
+		"-analyzeduration", "2000000",
+		"-probesize", "1048576",
 		"-i", streamURL,
-		"-ss", "2",
+		"-ss", "1",
 		"-frames:v", "1",
 		"-vf", "scale=640:-1",
-		"-q:v", "5",
-		"-timeout", fmt.Sprintf("%d", s.timeout.Microseconds()),
-		"-analyzeduration", "3000000",
-		"-probesize", "2097152",
+		"-q:v", "6",
 		outputPath,
 	)
 

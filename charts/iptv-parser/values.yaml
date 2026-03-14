@@ -86,13 +86,13 @@ channelChecker:
 # --- Thumbnail Worker Deployment (on-demand, queue mode) ---
 thumbnailWorker:
   enabled: true
-  replicas: 2
-  workers: 25
+  replicas: 3
+  workers: 50
   outputDir: "/app/thumbnails"
   resources:
     requests:
-      cpu: 500m
-      memory: 256Mi
+      cpu: 1000m
+      memory: 512Mi
     limits:
       cpu: 4000m
       memory: 2Gi

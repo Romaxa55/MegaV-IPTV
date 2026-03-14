@@ -375,8 +375,8 @@ func (h *Handler) enrichChannelThumbnails(c *gin.Context, channels []*repositori
 		if h.thumbService.ThumbnailExists(ch.ID) {
 			url := h.buildThumbnailURL(c, ch.ID)
 			ch.ThumbnailURL = &url
-		} else {
-			h.enqueueThumbnail(ch.ID)
+		} else if ch.WorkingCount > 0 {
+			h.enqueueThumbnailPriority(ch.ID)
 		}
 	}
 }
@@ -390,12 +390,20 @@ func (h *Handler) enrichNowPlayingThumbnails(c *gin.Context, items []*repositori
 			url := h.buildThumbnailURL(c, item.ChannelID)
 			item.ThumbnailURL = &url
 		} else {
-			h.enqueueThumbnail(item.ChannelID)
+			h.enqueueThumbnailPriority(item.ChannelID)
 		}
 	}
 }
 
 func (h *Handler) enqueueThumbnail(channelID string) bool {
+	return h.enqueueThumbnailWithPriority(channelID, 0)
+}
+
+func (h *Handler) enqueueThumbnailPriority(channelID string) bool {
+	return h.enqueueThumbnailWithPriority(channelID, 1)
+}
+
+func (h *Handler) enqueueThumbnailWithPriority(channelID string, priority int) bool {
 	if h.redisClient == nil || h.thumbQueue == nil {
 		return false
 	}
@@ -418,6 +426,7 @@ func (h *Handler) enqueueThumbnail(channelID string) bool {
 		ChannelID: channelID,
 		URL:       streamURL,
 		Timestamp: time.Now(),
+		Priority:  priority,
 	}
 	if err := h.thumbQueue.EnqueueThumbnail(ctx, item); err != nil {
 		h.logger.WithError(err).Warnf("Failed to enqueue thumbnail for %s", channelID)
