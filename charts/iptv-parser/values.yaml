@@ -39,7 +39,7 @@ apiService:
 # --- M3U Parser CronJob ---
 m3uParser:
   enabled: true
-  schedule: "0 */1 * * *"
+  schedule: "0 1,9,17 * * *"
   batchSize: 1000
   fastCheck: "true"
   fastCheckWorkers: 500
@@ -57,7 +57,7 @@ m3uParser:
 # --- EPG Parser CronJob ---
 epgParser:
   enabled: true
-  schedule: "30 */6 * * *"
+  schedule: "0 5,17 * * *"
   batchSize: 500
   debug: false
   resources:
@@ -71,7 +71,7 @@ epgParser:
 # --- Stream Checker CronJob ---
 channelChecker:
   enabled: true
-  schedule: "*/15 * * * *"
+  schedule: "30 */3 * * *"
   workers: 500
   batch: 5000
   debug: false
@@ -100,7 +100,7 @@ thumbnailWorker:
 # --- GitHub Crawler CronJob ---
 githubCrawler:
   enabled: true
-  schedule: "0 */12 * * *"
+  schedule: "10 3,15 * * *"
   minStars: 0
   maxAgeDays: 7
   minChannels: 5
@@ -118,7 +118,7 @@ githubCrawler:
 # --- Channel Enricher CronJob ---
 channelEnricher:
   enabled: true
-  schedule: "0 */6 * * *"
+  schedule: "0 7 * * *"
   resources:
     requests:
       cpu: 100m
