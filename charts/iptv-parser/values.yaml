@@ -96,6 +96,36 @@ thumbnailWorker:
       cpu: 500m
       memory: 512Mi
 
+# --- GitHub Crawler CronJob ---
+githubCrawler:
+  enabled: true
+  schedule: "0 */12 * * *"
+  minStars: 0
+  maxAgeDays: 7
+  minChannels: 5
+  debug: false
+  githubTokenSecret: "github-crawler-token"
+  githubTokenKey: "token"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Channel Enricher CronJob ---
+channelEnricher:
+  enabled: true
+  schedule: "0 */6 * * *"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
 # --- Ingress ---
 ingress:
   enabled: true

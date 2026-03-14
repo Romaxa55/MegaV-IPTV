@@ -17,6 +17,8 @@ RUN GOMAXPROCS=$(nproc) && \
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o epg-parser cmd/epg-parser/main.go & \
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o channel-checker cmd/channel-checker/main.go & \
     CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o thumbnail-worker cmd/thumbnail-worker/main.go & \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o github-crawler cmd/github-crawler/main.go & \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o channel-enricher cmd/channel-enricher/main.go & \
     wait
 
 # ===== FINAL STAGE =====
@@ -34,6 +36,8 @@ COPY --from=builder /app/m3u-parser ./bin/
 COPY --from=builder /app/epg-parser ./bin/
 COPY --from=builder /app/channel-checker ./bin/
 COPY --from=builder /app/thumbnail-worker ./bin/
+COPY --from=builder /app/github-crawler ./bin/
+COPY --from=builder /app/channel-enricher ./bin/
 COPY migrations/ ./migrations/
 
 RUN chown -R iptv:iptv /app && \

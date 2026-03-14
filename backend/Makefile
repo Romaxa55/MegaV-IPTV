@@ -6,7 +6,7 @@ GOTEST=$(GOCMD) test
 GOMOD=$(GOCMD) mod
 
 # Build all binaries for Linux
-build: build-api-server build-m3u-parser build-epg-parser build-channel-checker build-thumbnail-worker
+build: build-api-server build-m3u-parser build-epg-parser build-channel-checker build-thumbnail-worker build-github-crawler build-channel-enricher
 
 build-api-server:
 	@echo "Building api-server..."
@@ -28,6 +28,14 @@ build-thumbnail-worker:
 	@echo "Building thumbnail-worker..."
 	CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bin/thumbnail-worker ./cmd/thumbnail-worker
 
+build-github-crawler:
+	@echo "Building github-crawler..."
+	CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bin/github-crawler ./cmd/github-crawler
+
+build-channel-enricher:
+	@echo "Building channel-enricher..."
+	CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bin/channel-enricher ./cmd/channel-enricher
+
 # Build for local testing (Mac)
 build-local:
 	@echo "Building all for local..."
@@ -36,6 +44,8 @@ build-local:
 	go build -o bin/epg-parser-mac ./cmd/epg-parser
 	go build -o bin/channel-checker-mac ./cmd/channel-checker
 	go build -o bin/thumbnail-worker-mac ./cmd/thumbnail-worker
+	go build -o bin/github-crawler-mac ./cmd/github-crawler
+	go build -o bin/channel-enricher-mac ./cmd/channel-enricher
 
 test:
 	$(GOTEST) -v ./...
@@ -67,3 +77,9 @@ run-epg:
 
 run-checker:
 	go run ./cmd/channel-checker -debug -workers 10 -batch 100
+
+run-crawler:
+	go run ./cmd/github-crawler -debug -min-stars 0 -max-age-days 7 -min-channels 5
+
+run-enricher:
+	go run ./cmd/channel-enricher

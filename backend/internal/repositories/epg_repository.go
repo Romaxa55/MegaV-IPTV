@@ -62,8 +62,8 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO iptv_epg_programs (channel_id, title, description, category, icon, start_time, end_time, lang)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO iptv_epg_programs (channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT DO NOTHING`)
 	if err != nil {
 		return 0, err
@@ -72,7 +72,7 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 
 	count := 0
 	for _, p := range programs {
-		if _, err := stmt.Exec(p.ChannelID, p.Title, p.Description, p.Category,
+		if _, err := stmt.Exec(p.ChannelID, p.ReferenceChannelID, p.Title, p.Description, p.Category,
 			p.Icon, p.StartTime, p.EndTime, p.Lang); err != nil {
 			r.logger.Warnf("Failed to insert EPG program for %s: %v", p.ChannelID, err)
 			continue
@@ -84,6 +84,38 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 		return 0, err
 	}
 	return count, nil
+}
+
+// GetProgramsForStream returns EPG programs for a stream, applying timeshift offset if needed.
+func (r *IPTVRepository) GetProgramsForStream(referenceChannelID string, timeshiftHours int, limit int) ([]*models.EpgProgram, error) {
+	now := time.Now()
+	offset := time.Duration(timeshiftHours) * time.Hour
+
+	rows, err := r.db.Query(`
+		SELECT id, channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang
+		FROM iptv_epg_programs
+		WHERE reference_channel_id = $1
+		  AND end_time + ($2 || ' hours')::interval > $3
+		ORDER BY start_time ASC
+		LIMIT $4`,
+		referenceChannelID, timeshiftHours, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var programs []*models.EpgProgram
+	for rows.Next() {
+		p := &models.EpgProgram{}
+		if err := rows.Scan(&p.ID, &p.ChannelID, &p.ReferenceChannelID, &p.Title,
+			&p.Description, &p.Category, &p.Icon, &p.StartTime, &p.EndTime, &p.Lang); err != nil {
+			return nil, err
+		}
+		p.StartTime = p.StartTime.Add(offset)
+		p.EndTime = p.EndTime.Add(offset)
+		programs = append(programs, p)
+	}
+	return programs, nil
 }
 
 func (r *IPTVRepository) DeleteOldEpgPrograms() (int64, error) {

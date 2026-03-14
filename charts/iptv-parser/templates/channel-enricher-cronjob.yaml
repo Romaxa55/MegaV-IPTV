@@ -1,0 +1,37 @@
+{{- if .Values.channelEnricher.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-channel-enricher
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+    app.kubernetes.io/component: channel-enricher
+spec:
+  schedule: {{ .Values.channelEnricher.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "iptv-parser.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: channel-enricher
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          containers:
+            - name: channel-enricher
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              command: ["./bin/channel-enricher"]
+              env:
+                {{- include "iptv-parser.databaseEnv" . | nindent 16 }}
+              resources:
+                {{- toYaml .Values.channelEnricher.resources | nindent 16 }}
+      backoffLimit: 2
+{{- end }}

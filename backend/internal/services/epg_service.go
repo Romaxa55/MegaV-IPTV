@@ -132,11 +132,14 @@ func (s *EPGService) Parse(reader io.Reader) (*EPGData, error) {
 			continue
 		}
 
+		refChannelID, _, _ := ParseTvgIDFeed(prog.Channel)
+
 		p := &models.EpgProgram{
-			ChannelID: prog.Channel,
-			Title:     title,
-			StartTime: start,
-			EndTime:   end,
+			ChannelID:          prog.Channel,
+			ReferenceChannelID: &refChannelID,
+			Title:              title,
+			StartTime:          start,
+			EndTime:            end,
 		}
 
 		if len(prog.Desc) > 0 && prog.Desc[0].Value != "" {
@@ -280,10 +283,57 @@ func parseXMLTVTime(s string) (time.Time, error) {
 
 func GetDefaultEPGSources() []string {
 	return []string{
-		"https://iptv-org.github.io/epg/guides/ru/tv.yandex.ru.epg.xml.gz",
-		"https://iptv-org.github.io/epg/guides/us/tvguide.com.epg.xml.gz",
-		"https://iptv-org.github.io/epg/guides/uk/sky.com.epg.xml.gz",
-		"https://iptv-org.github.io/epg/guides/de/hd-plus.de.epg.xml.gz",
-		"https://iptv-org.github.io/epg/guides/fr/programme-tv.net.epg.xml.gz",
+		"https://iptv-org.github.io/epg/guides/ru.xml",
+		"https://iptv-org.github.io/epg/guides/us.xml",
+		"https://iptv-org.github.io/epg/guides/uk.xml",
+		"https://iptv-org.github.io/epg/guides/de.xml",
+		"https://iptv-org.github.io/epg/guides/fr.xml",
 	}
+}
+
+// BuildEPGSourcesForCountries generates EPG source URLs based on countries
+// that have streams in our database. Uses community XMLTV aggregators.
+func BuildEPGSourcesForCountries(countries []string) []string {
+	communityEPG := map[string][]string{
+		"RU": {
+			"https://epg.iptvx.one/EPG/epg.xml.gz",
+			"https://raw.githubusercontent.com/dp247/Freeview-EPG/master/epg.xml",
+		},
+		"US": {
+			"https://i.mjh.nz/PlutoTV/us.xml.gz",
+			"https://i.mjh.nz/SamsungTVPlus/us.xml.gz",
+		},
+		"UK": {
+			"https://i.mjh.nz/PlutoTV/uk.xml.gz",
+			"https://raw.githubusercontent.com/dp247/Freeview-EPG/master/epg.xml",
+		},
+		"DE": {
+			"https://i.mjh.nz/PlutoTV/de.xml.gz",
+		},
+		"FR": {
+			"https://i.mjh.nz/PlutoTV/fr.xml.gz",
+		},
+		"BR": {
+			"https://i.mjh.nz/PlutoTV/br.xml.gz",
+		},
+		"IN": {
+			"https://i.mjh.nz/SamsungTVPlus/in.xml.gz",
+		},
+	}
+
+	seen := make(map[string]bool)
+	var urls []string
+
+	for _, country := range countries {
+		if sources, ok := communityEPG[country]; ok {
+			for _, u := range sources {
+				if !seen[u] {
+					seen[u] = true
+					urls = append(urls, u)
+				}
+			}
+		}
+	}
+
+	return urls
 }

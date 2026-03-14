@@ -9,13 +9,19 @@ import (
 func (r *IPTVRepository) UpsertSource(src *models.Source) (int, error) {
 	var id int
 	err := r.db.QueryRow(`
-		INSERT INTO iptv_sources (url, name, source_type, status, created_at)
-		VALUES ($1, $2, $3, $4, NOW())
+		INSERT INTO iptv_sources (url, name, source_type, status, github_repo, github_stars, last_commit_at, file_path, raw_url, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
 		ON CONFLICT (url) DO UPDATE SET
 			name = COALESCE(EXCLUDED.name, iptv_sources.name),
-			status = EXCLUDED.status
+			status = EXCLUDED.status,
+			github_repo = COALESCE(EXCLUDED.github_repo, iptv_sources.github_repo),
+			github_stars = GREATEST(EXCLUDED.github_stars, iptv_sources.github_stars),
+			last_commit_at = COALESCE(EXCLUDED.last_commit_at, iptv_sources.last_commit_at),
+			file_path = COALESCE(EXCLUDED.file_path, iptv_sources.file_path),
+			raw_url = COALESCE(EXCLUDED.raw_url, iptv_sources.raw_url)
 		RETURNING id`,
-		src.URL, src.Name, src.SourceType, src.Status).Scan(&id)
+		src.URL, src.Name, src.SourceType, src.Status,
+		src.GitHubRepo, src.GitHubStars, src.LastCommitAt, src.FilePath, src.RawURL).Scan(&id)
 	return id, err
 }
 
