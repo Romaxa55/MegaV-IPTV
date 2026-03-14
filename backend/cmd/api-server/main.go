@@ -16,7 +16,9 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/romaxa55/iptv-parser/internal/api"
 	"github.com/romaxa55/iptv-parser/internal/config"
+	"github.com/romaxa55/iptv-parser/internal/queue"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
+	"github.com/romaxa55/iptv-parser/internal/services"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,9 +29,10 @@ func main() {
 	}
 
 	var (
-		port        = flag.String("port", "8080", "API server port")
-		debug       = flag.Bool("debug", cfg.Debug, "Enable debug logging")
-		enableCache = flag.Bool("cache", true, "Enable Redis caching")
+		port         = flag.String("port", "8080", "API server port")
+		debug        = flag.Bool("debug", cfg.Debug, "Enable debug logging")
+		enableCache  = flag.Bool("cache", true, "Enable Redis caching")
+		thumbnailDir = flag.String("thumbnail-dir", "/app/thumbnails", "Thumbnail storage directory")
 	)
 	flag.Parse()
 
@@ -51,46 +54,64 @@ func main() {
 	defer repo.Close()
 
 	var cacheMiddleware *api.CacheMiddleware
+	var redisClient *redis.Client
+	var thumbQueue *queue.RedisQueue
 
-	if *enableCache {
-		redisHost := os.Getenv("REDIS_HOST")
-		redisPort := os.Getenv("REDIS_PORT")
-		redisDB := os.Getenv("REDIS_DB")
-		redisPassword := os.Getenv("REDIS_PASSWORD")
+	redisHost := os.Getenv("REDIS_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	redisDB := os.Getenv("REDIS_DB")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
 
-		if redisHost == "" {
-			redisHost = "localhost"
+	if redisHost == "" {
+		redisHost = "localhost"
+	}
+	if redisPort == "" {
+		redisPort = "6379"
+	}
+
+	db := 0
+	if redisDB != "" {
+		if n, err := strconv.Atoi(redisDB); err == nil {
+			db = n
 		}
-		if redisPort == "" {
-			redisPort = "6379"
-		}
+	}
 
-		db := 0
-		if redisDB != "" {
-			if n, err := strconv.Atoi(redisDB); err == nil {
-				db = n
-			}
-		}
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
+		Password: redisPassword,
+		DB:       db,
+	})
 
-		redisClient := redis.NewClient(&redis.Options{
-			Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
-			Password: redisPassword,
-			DB:       db,
-		})
-
+	{
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := redisClient.Ping(ctx).Err(); err != nil {
-			logger.WithError(err).Warn("Redis connection failed, running without cache")
-			*enableCache = false
+			logger.WithError(err).Warn("Redis connection failed, running without cache/thumbnails")
+			redisClient = nil
 		} else {
-			logger.Info("Connected to Redis cache")
-			cacheMiddleware = api.NewCacheMiddleware(redisClient, logger)
+			logger.Info("Connected to Redis")
+			if *enableCache {
+				cacheMiddleware = api.NewCacheMiddleware(redisClient, logger)
+			}
+			tq, err := queue.NewRedisQueue(cfg.RedisURL, logger)
+			if err != nil {
+				logger.WithError(err).Warn("Failed to create Redis queue for thumbnails")
+			} else {
+				thumbQueue = tq
+			}
 		}
 	}
 
-	handler := api.NewHandler(repo, logger)
+	thumbService := services.NewThumbnailService(logger, cfg.FFmpegBin, *thumbnailDir, 15*time.Second)
+
+	handler := api.NewHandler(api.HandlerOpts{
+		Repo:         repo,
+		Logger:       logger,
+		ThumbService: thumbService,
+		RedisClient:  redisClient,
+		ThumbQueue:   thumbQueue,
+	})
 
 	router := gin.New()
 	router.Use(gin.Logger())
@@ -114,6 +135,7 @@ func main() {
 		apiGroup.GET("/channels/:id", handler.GetChannel)
 		apiGroup.GET("/channels/:id/streams", handler.GetChannelStreams)
 		apiGroup.GET("/channels/:id/epg", handler.GetChannelEPG)
+		apiGroup.GET("/channels/:id/thumbnail", handler.GetChannelThumbnail)
 		apiGroup.GET("/countries", handler.GetCountries)
 		apiGroup.GET("/categories", handler.GetCategories)
 		apiGroup.GET("/health", handler.HealthCheck)
@@ -122,12 +144,13 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": "IPTV API Server",
-			"version": "2.0.0",
+			"version": "2.1.0",
 			"endpoints": gin.H{
 				"channels":   "/api/channels?country=US&category=news&search=CNN&limit=50&offset=0",
 				"channel":    "/api/channels/:id",
 				"streams":    "/api/channels/:id/streams",
 				"epg":        "/api/channels/:id/epg?timeshift=0&limit=20",
+				"thumbnail":  "/api/channels/:id/thumbnail",
 				"featured":   "/api/channels/featured?limit=10",
 				"countries":  "/api/countries",
 				"categories": "/api/categories",

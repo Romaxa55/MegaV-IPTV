@@ -1,21 +1,47 @@
 package api
 
 import (
+	"context"
 	"net/http"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"github.com/romaxa55/iptv-parser/internal/queue"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
+	"github.com/romaxa55/iptv-parser/internal/services"
 	"github.com/sirupsen/logrus"
 )
 
+const thumbnailStaleDuration = 6 * time.Hour
+const thumbnailGeneratingTTL = 60 * time.Second
+
 type Handler struct {
-	repo   *repositories.IPTVRepository
-	logger *logrus.Logger
+	repo         *repositories.IPTVRepository
+	logger       *logrus.Logger
+	thumbService *services.ThumbnailService
+	redisClient  *redis.Client
+	thumbQueue   *queue.RedisQueue
 }
 
-func NewHandler(repo *repositories.IPTVRepository, logger *logrus.Logger) *Handler {
-	return &Handler{repo: repo, logger: logger}
+type HandlerOpts struct {
+	Repo         *repositories.IPTVRepository
+	Logger       *logrus.Logger
+	ThumbService *services.ThumbnailService
+	RedisClient  *redis.Client
+	ThumbQueue   *queue.RedisQueue
+}
+
+func NewHandler(opts HandlerOpts) *Handler {
+	return &Handler{
+		repo:         opts.Repo,
+		logger:       opts.Logger,
+		thumbService: opts.ThumbService,
+		redisClient:  opts.RedisClient,
+		thumbQueue:   opts.ThumbQueue,
+	}
 }
 
 func (h *Handler) GetChannels(c *gin.Context) {
@@ -182,4 +208,62 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 		"service": "iptv-api",
 		"stats":   stats,
 	})
+}
+
+func (h *Handler) GetChannelThumbnail(c *gin.Context) {
+	id := c.Param("id")
+
+	if h.thumbService != nil {
+		thumbPath := h.thumbService.GetThumbnailPath(id)
+		info, err := os.Stat(thumbPath)
+		if err == nil && info.Size() > 0 {
+			age := time.Since(info.ModTime())
+			if age > thumbnailStaleDuration {
+				h.enqueueThumbnail(id)
+			}
+			c.Header("Cache-Control", "public, max-age=300")
+			c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
+			c.File(thumbPath)
+			return
+		}
+	}
+
+	h.enqueueThumbnail(id)
+
+	logoURL, err := h.repo.GetChannelLogoURL(id)
+	if err == nil && logoURL != "" {
+		c.Redirect(http.StatusTemporaryRedirect, logoURL)
+		return
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "thumbnail not available yet"})
+}
+
+func (h *Handler) enqueueThumbnail(channelID string) {
+	if h.redisClient == nil || h.thumbQueue == nil {
+		return
+	}
+
+	ctx := context.Background()
+	genKey := "iptv:thumb:generating:" + channelID
+	set, err := h.redisClient.SetNX(ctx, genKey, "1", thumbnailGeneratingTTL).Result()
+	if err != nil || !set {
+		return
+	}
+
+	streamURL, err := h.repo.GetBestStreamURL(channelID)
+	if err != nil || streamURL == "" {
+		h.redisClient.Del(ctx, genKey)
+		return
+	}
+
+	item := &queue.ThumbnailItem{
+		ChannelID: channelID,
+		URL:       streamURL,
+		Timestamp: time.Now(),
+	}
+	if err := h.thumbQueue.EnqueueThumbnail(ctx, item); err != nil {
+		h.logger.WithError(err).Warnf("Failed to enqueue thumbnail for %s", channelID)
+		h.redisClient.Del(ctx, genKey)
+	}
 }

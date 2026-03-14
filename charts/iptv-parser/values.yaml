@@ -83,22 +83,19 @@ channelChecker:
       cpu: 4000m
       memory: 4Gi
 
-# --- Thumbnail Worker Deployment ---
+# --- Thumbnail Worker Deployment (on-demand, queue mode) ---
 thumbnailWorker:
   enabled: true
-  replicas: 1
-  workers: 50
+  replicas: 2
+  workers: 25
   outputDir: "/app/thumbnails"
-  mode: "batch"
-  batchSchedule: "*/15 * * * *"
-  batchSize: 1000
   resources:
     requests:
       cpu: 500m
       memory: 256Mi
     limits:
-      cpu: 2000m
-      memory: 1Gi
+      cpu: 4000m
+      memory: 2Gi
 
 # --- GitHub Crawler CronJob ---
 githubCrawler:
@@ -149,10 +146,10 @@ serviceAccount:
   create: true
   name: ""
 
-# --- Thumbnail PVC ---
+# --- Thumbnail PVC (shared between API and thumbnail workers) ---
 thumbnailStorage:
   enabled: true
   size: 5Gi
   storageClass: longhorn
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany

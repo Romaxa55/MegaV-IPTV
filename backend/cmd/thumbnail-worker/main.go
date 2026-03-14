@@ -25,10 +25,8 @@ func main() {
 
 	var (
 		debug     = flag.Bool("debug", cfg.Debug, "Enable debug logging")
-		workers   = flag.Int("workers", 10, "Number of concurrent thumbnail workers")
+		workers   = flag.Int("workers", 25, "Number of concurrent thumbnail workers")
 		outputDir = flag.String("output", "/app/thumbnails", "Thumbnail output directory")
-		mode      = flag.String("mode", "queue", "Mode: queue (long-running) or batch (one-shot)")
-		batch     = flag.Int("batch", 200, "Batch size for batch mode")
 	)
 	flag.Parse()
 
@@ -38,7 +36,7 @@ func main() {
 		logger.SetLevel(logrus.DebugLevel)
 	}
 
-	logger.Info("IPTV Thumbnail Worker starting")
+	logger.Info("IPTV Thumbnail Worker starting (queue mode)")
 
 	repo, err := repositories.NewIPTVRepository(cfg.DatabaseURL, logger)
 	if err != nil {
@@ -46,18 +44,13 @@ func main() {
 	}
 	defer repo.Close()
 
-	thumbService := services.NewThumbnailService(logger, cfg.FFmpegBin, *outputDir, 15*time.Second)
-
-	if *mode == "batch" {
-		runBatchStreams(repo, thumbService, logger, *batch, *workers)
-		return
-	}
-
 	redisQueue, err := queue.NewRedisQueue(cfg.RedisURL, logger)
 	if err != nil {
 		logger.WithError(err).Fatal("Failed to connect to Redis queue")
 	}
 	defer redisQueue.Close()
+
+	thumbService := services.NewThumbnailService(logger, cfg.FFmpegBin, *outputDir, 15*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -78,6 +71,9 @@ func main() {
 
 				item, err := redisQueue.DequeueThumbnail(ctx, 5*time.Second)
 				if err != nil {
+					if ctx.Err() != nil {
+						return
+					}
 					logger.WithError(err).Warn("Failed to dequeue thumbnail item")
 					continue
 				}
@@ -85,9 +81,10 @@ func main() {
 					continue
 				}
 
-				path, err := thumbService.GenerateThumbnail(ctx, item.ChannelID, item.URL)
+				_, err = thumbService.GenerateThumbnail(ctx, item.ChannelID, item.URL)
 				if err != nil {
-					logger.WithError(err).Debugf("Failed to generate thumbnail for %s", item.ChannelID)
+					logger.Debugf("Failed thumbnail for %s: %v", item.ChannelID, err)
+					clearGeneratingFlag(redisQueue, item.ChannelID)
 					continue
 				}
 
@@ -95,11 +92,15 @@ func main() {
 				if err := repo.UpdateChannelThumbnail(item.ChannelID, thumbnailURL); err != nil {
 					logger.WithError(err).Warnf("Failed to update thumbnail URL for %s", item.ChannelID)
 				} else {
-					logger.Debugf("Generated thumbnail for %s: %s", item.ChannelID, path)
+					logger.Debugf("Generated thumbnail for %s", item.ChannelID)
 				}
+
+				clearGeneratingFlag(redisQueue, item.ChannelID)
 			}
 		}(i)
 	}
+
+	logger.Infof("Thumbnail worker running with %d workers, waiting for jobs...", *workers)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -111,45 +112,8 @@ func main() {
 	logger.Info("Thumbnail worker stopped")
 }
 
-func runBatchStreams(repo *repositories.IPTVRepository, thumbService *services.ThumbnailService, logger *logrus.Logger, batchSize, workers int) {
-	streams, err := repo.GetWorkingStreamsForThumbnail(batchSize)
-	if err != nil {
-		logger.WithError(err).Fatal("Failed to get streams for thumbnails")
-	}
-
-	if len(streams) == 0 {
-		logger.Info("No streams need thumbnail updates")
-		return
-	}
-
-	logger.Infof("Generating thumbnails for %d streams with %d workers", len(streams), workers)
-
-	ctx := context.Background()
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, workers)
-
-	for _, s := range streams {
-		if s.ChannelID == nil {
-			continue
-		}
-		wg.Add(1)
-		sem <- struct{}{}
-
-		go func(channelID, streamURL string) {
-			defer wg.Done()
-			defer func() { <-sem }()
-
-			_, err := thumbService.GenerateThumbnail(ctx, channelID, streamURL)
-			if err != nil {
-				logger.Debugf("Failed thumbnail for %s: %v", channelID, err)
-				return
-			}
-
-			thumbnailURL := fmt.Sprintf("/api/channels/%s/thumbnail", channelID)
-			repo.UpdateChannelThumbnail(channelID, thumbnailURL)
-		}(*s.ChannelID, s.URL)
-	}
-
-	wg.Wait()
-	logger.Info("Batch thumbnail generation complete")
+func clearGeneratingFlag(rq *queue.RedisQueue, channelID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	rq.GetClient().Del(ctx, "iptv:thumb:generating:"+channelID)
 }

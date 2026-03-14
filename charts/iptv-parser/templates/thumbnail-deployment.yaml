@@ -1,22 +1,22 @@
-{{- if .Values.apiService.enabled }}
+{{- if .Values.thumbnailWorker.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "iptv-parser.fullname" . }}-api
+  name: {{ include "iptv-parser.fullname" . }}-thumbnail
   labels:
     {{- include "iptv-parser.labels" . | nindent 4 }}
-    app.kubernetes.io/component: api
+    app.kubernetes.io/component: thumbnail
 spec:
-  replicas: {{ .Values.apiService.replicas }}
+  replicas: {{ .Values.thumbnailWorker.replicas }}
   selector:
     matchLabels:
       {{- include "iptv-parser.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: api
+      app.kubernetes.io/component: thumbnail
   template:
     metadata:
       labels:
         {{- include "iptv-parser.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: api
+        app.kubernetes.io/component: thumbnail
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -24,40 +24,24 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
       containers:
-        - name: api
+        - name: thumbnail-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["./bin/api-server"]
+          command: ["./bin/thumbnail-worker"]
           args:
-            - "-port"
-            - "{{ .Values.apiService.port }}"
-            - "-cache={{ .Values.apiService.cache }}"
-            - "-thumbnail-dir"
+            - "-workers"
+            - "{{ .Values.thumbnailWorker.workers }}"
+            - "-output"
             - "{{ .Values.thumbnailWorker.outputDir }}"
-          ports:
-            - containerPort: {{ .Values.apiService.port }}
-              protocol: TCP
           env:
             {{- include "iptv-parser.dbEnv" . | nindent 12 }}
             {{- include "iptv-parser.redisEnv" . | nindent 12 }}
-          livenessProbe:
-            httpGet:
-              path: /api/health
-              port: {{ .Values.apiService.port }}
-            initialDelaySeconds: 10
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /api/health
-              port: {{ .Values.apiService.port }}
-            initialDelaySeconds: 5
-            periodSeconds: 10
           {{- if .Values.thumbnailStorage.enabled }}
           volumeMounts:
             - name: thumbnails
               mountPath: {{ .Values.thumbnailWorker.outputDir }}
           {{- end }}
           resources:
-            {{- toYaml .Values.apiService.resources | nindent 12 }}
+            {{- toYaml .Values.thumbnailWorker.resources | nindent 12 }}
       {{- if .Values.thumbnailStorage.enabled }}
       volumes:
         - name: thumbnails

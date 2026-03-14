@@ -297,6 +297,31 @@ type Stats struct {
 	ChannelsWithEPG int `json:"channelsWithEpg"`
 }
 
+func (r *IPTVRepository) GetChannelLogoURL(channelID string) (string, error) {
+	var logo sql.NullString
+	err := r.db.QueryRow(`SELECT logo_url FROM iptv_reference_channels WHERE id = $1`, channelID).Scan(&logo)
+	if err != nil {
+		return "", err
+	}
+	if logo.Valid {
+		return logo.String, nil
+	}
+	return "", nil
+}
+
+func (r *IPTVRepository) GetBestStreamURL(channelID string) (string, error) {
+	var url string
+	err := r.db.QueryRow(`
+		SELECT url FROM iptv_streams
+		WHERE channel_id = $1 AND is_working = true
+		ORDER BY uptime_pct DESC, response_time_ms ASC NULLS LAST
+		LIMIT 1`, channelID).Scan(&url)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return url, err
+}
+
 func init() {
 	_ = pq.StringArray{}
 }
