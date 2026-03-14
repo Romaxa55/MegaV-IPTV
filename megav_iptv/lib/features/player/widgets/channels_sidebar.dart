@@ -29,6 +29,12 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
   late final Animation<Offset> _slideAnimation;
   String? _selectedGroup;
 
+  final _channels = <Channel>[];
+  final _scrollController = ScrollController();
+  bool _loading = false;
+  bool _hasMore = true;
+  static const _pageSize = 30;
+
   @override
   void initState() {
     super.initState();
@@ -38,21 +44,87 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _slideController.forward();
+    _scrollController.addListener(_onScroll);
+    _loadChannels(reset: true);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.offset >= _scrollController.position.maxScrollExtent - 200.h) {
+      _loadChannels();
+    }
+  }
+
+  Future<void> _loadChannels({bool reset = false}) async {
+    if (_loading) return;
+    if (!reset && !_hasMore) return;
+    _loading = true;
+
+    if (reset) {
+      _channels.clear();
+      _hasMore = true;
+    }
+
+    final repo = ref.read(playlistRepositoryProvider);
+    final group = _selectedGroup;
+
+    List<Channel> batch;
+    if (group != null) {
+      batch = await repo.getChannelsByGroup(group, limit: _pageSize, offset: _channels.length);
+    } else {
+      batch = await repo.getChannelsByGroup(_channels.isEmpty ? '' : '', limit: _pageSize, offset: _channels.length);
+      // For "all" mode, use search or sequential loading
+      batch = await _loadAllChannelsBatch(_channels.length);
+    }
+
+    if (mounted) {
+      setState(() {
+        _channels.addAll(batch);
+        _hasMore = batch.length == _pageSize;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<List<Channel>> _loadAllChannelsBatch(int offset) async {
+    final repo = ref.read(playlistRepositoryProvider);
+    final db = repo.database;
+    final dbInst = await db.database;
+    final rows = await dbInst.query('channels', limit: _pageSize, offset: offset, orderBy: 'id ASC');
+    return rows
+        .map(
+          (r) => Channel(
+            name: r['name'] as String,
+            url: r['url'] as String,
+            logoUrl: r['logo_url'] as String?,
+            groupTitle: r['group_title'] as String?,
+            tvgId: r['tvg_id'] as String?,
+            tvgName: r['tvg_name'] as String?,
+            language: r['language'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  void _switchGroup(String? group) {
+    setState(() => _selectedGroup = group);
+    _loadChannels(reset: true);
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
   }
 
   @override
   void dispose() {
     _slideController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final channelsAsync = ref.watch(channelsProvider);
-    final groups = ref.watch(channelsByGroupProvider);
-    final groupNames = groups.keys.toList();
-
-    final displayChannels = _selectedGroup != null ? groups[_selectedGroup] ?? [] : channelsAsync.value ?? [];
+    final groupsAsync = ref.watch(groupsProvider);
+    final groupNames = groupsAsync.value?.map((g) => g.name).toList() ?? [];
 
     return SlideTransition(
       position: _slideAnimation,
@@ -69,7 +141,7 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
                 children: [
                   _buildHeader(),
                   _buildCategoryChips(groupNames),
-                  Expanded(child: _buildChannelList(displayChannels)),
+                  Expanded(child: _buildChannelList()),
                 ],
               ),
             ),
@@ -118,26 +190,30 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
         itemBuilder: (context, index) {
           if (index == 0) {
             final isActive = _selectedGroup == null;
-            return _Chip(label: 'Все', isActive: isActive, onTap: () => setState(() => _selectedGroup = null));
+            return _Chip(label: 'Все', isActive: isActive, onTap: () => _switchGroup(null));
           }
           final name = groupNames[index - 1];
           final isActive = _selectedGroup == name;
-          return _Chip(
-            label: name,
-            isActive: isActive,
-            onTap: () => setState(() => _selectedGroup = isActive ? null : name),
-          );
+          return _Chip(label: name, isActive: isActive, onTap: () => _switchGroup(isActive ? null : name));
         },
       ),
     );
   }
 
-  Widget _buildChannelList(List<Channel> channels) {
+  Widget _buildChannelList() {
     return ListView.builder(
+      controller: _scrollController,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-      itemCount: channels.length,
+      itemCount: _channels.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        final ch = channels[index];
+        if (index >= _channels.length) {
+          return Padding(
+            padding: EdgeInsets.all(16.w),
+            child: const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+          );
+        }
+
+        final ch = _channels[index];
         final isCurrent = ch.url == widget.currentChannel.url;
 
         return GestureDetector(

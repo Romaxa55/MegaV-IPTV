@@ -198,7 +198,7 @@ class SettingsScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               ref.read(playlistUrlProvider.notifier).state = controller.text.trim();
-              ref.invalidate(channelsProvider);
+              ref.invalidate(playlistLoadProvider);
               Navigator.pop(context);
             },
             child: const Text('Save'),

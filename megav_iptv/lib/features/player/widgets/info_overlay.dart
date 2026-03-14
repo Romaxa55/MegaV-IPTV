@@ -111,7 +111,7 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
     child: Icon(Icons.tv, size: 28.sp, color: Colors.white.withValues(alpha: 0.2)),
   );
 
-  Widget _buildInfo(Channel ch, String? tvgId) {
+  Widget _buildInfo(Channel ch, String epgLookupKey) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -148,53 +148,52 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
           ],
         ),
         SizedBox(height: 12.h),
-        if (tvgId != null && tvgId.isNotEmpty)
-          Consumer(
-            builder: (context, ref, _) {
-              final nowAsync = ref.watch(currentProgramProvider(tvgId));
-              final nextAsync = ref.watch(nextProgramProvider(tvgId));
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  nowAsync.when(
-                    loading: () => const SizedBox.shrink(),
-                    error: (e, st) => const SizedBox.shrink(),
-                    data: (prog) {
-                      if (prog == null) return const SizedBox.shrink();
-                      return Row(
-                        children: [
-                          Icon(Icons.access_time, size: 12.sp, color: AppColors.primaryLight),
-                          SizedBox(width: 6.w),
-                          Text(
-                            'Сейчас: ${prog.title}',
-                            style: TextStyle(fontSize: 12.sp, color: AppColors.primaryLight),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  SizedBox(height: 4.h),
-                  nextAsync.when(
-                    loading: () => const SizedBox.shrink(),
-                    error: (e, st) => const SizedBox.shrink(),
-                    data: (prog) {
-                      if (prog == null) return const SizedBox.shrink();
-                      return Row(
-                        children: [
-                          Icon(Icons.access_time, size: 12.sp, color: Colors.white.withValues(alpha: 0.2)),
-                          SizedBox(width: 6.w),
-                          Text(
-                            'Далее: ${prog.title}',
-                            style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.2)),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
+        Consumer(
+          builder: (context, ref, _) {
+            final nowAsync = ref.watch(currentProgramProvider(epgLookupKey));
+            final nextAsync = ref.watch(nextProgramProvider(epgLookupKey));
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                nowAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (prog) {
+                    if (prog == null) return const SizedBox.shrink();
+                    return Row(
+                      children: [
+                        Icon(Icons.access_time, size: 12.sp, color: AppColors.primaryLight),
+                        SizedBox(width: 6.w),
+                        Text(
+                          'Сейчас: ${prog.title}',
+                          style: TextStyle(fontSize: 12.sp, color: AppColors.primaryLight),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: 4.h),
+                nextAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (prog) {
+                    if (prog == null) return const SizedBox.shrink();
+                    return Row(
+                      children: [
+                        Icon(Icons.access_time, size: 12.sp, color: Colors.white.withValues(alpha: 0.2)),
+                        SizedBox(width: 6.w),
+                        Text(
+                          'Далее: ${prog.title}',
+                          style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.2)),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }

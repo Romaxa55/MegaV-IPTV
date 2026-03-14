@@ -38,9 +38,9 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
     ref.read(playlistUrlProvider.notifier).state = url;
 
     try {
-      await ref.read(channelsProvider.future);
+      final repo = ref.read(playlistRepositoryProvider);
+      await repo.loadPlaylist(url, force: true);
       if (mounted) {
-        // Trigger EPG loading in background (non-blocking)
         ref.read(epgRefreshProvider);
         context.go('/home');
       }

@@ -57,16 +57,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     if (config.usesMedia3) {
       _openedViaMedia3 = true;
-      final channels = ref.read(filteredChannelsProvider);
-      final index = ref.read(currentChannelIndexProvider);
-      channels.whenData((list) {
-        _playerManager.media3Engine?.openChannel(
-          context: context,
-          channel: channel,
-          playlist: list,
-          initialIndex: index >= 0 ? index : 0,
-        );
-      });
+      _playerManager.media3Engine?.openChannel(
+        context: context,
+        channel: channel,
+        playlist: [channel],
+        initialIndex: 0,
+      );
     } else {
       _openedViaMedia3 = false;
       await _playerManager.playChannel(channel.url, channelId: channel.tvgId ?? channel.name);
@@ -99,26 +95,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _resetHideTimer();
   }
 
-  void _quickSwitch(int delta) {
-    final channels = ref.read(filteredChannelsProvider);
+  void _quickSwitch(int delta) async {
     final currentIndex = ref.read(currentChannelIndexProvider);
+    final repo = ref.read(playlistRepositoryProvider);
+    final total = await repo.getTotalChannelCount();
+    if (total == 0) return;
 
-    channels.whenData((list) {
-      if (list.isEmpty) return;
-      final idx = currentIndex.clamp(0, list.length - 1);
-      final nextIdx = (idx + delta).clamp(0, list.length - 1);
-      if (nextIdx == idx) return;
+    final nextIdx = (currentIndex + delta).clamp(0, total - 1);
+    if (nextIdx == currentIndex) return;
 
-      final next = list[nextIdx];
-      setState(() => _switchPreview = next);
+    final next = await repo.getChannelByIndex(nextIdx);
+    if (next == null) return;
 
-      _switchTimer?.cancel();
-      _switchTimer = Timer(const Duration(milliseconds: 1500), () async {
-        ref.read(currentChannelIndexProvider.notifier).state = nextIdx;
-        ref.read(currentChannelProvider.notifier).state = next;
-        await _openChannel(next);
-        if (mounted) setState(() => _switchPreview = null);
-      });
+    setState(() => _switchPreview = next);
+
+    _switchTimer?.cancel();
+    _switchTimer = Timer(const Duration(milliseconds: 1500), () async {
+      ref.read(currentChannelIndexProvider.notifier).state = nextIdx;
+      ref.read(currentChannelProvider.notifier).state = next;
+      await _openChannel(next);
+      if (mounted) setState(() => _switchPreview = null);
     });
   }
 
@@ -265,11 +261,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  void _selectChannel(Channel ch) {
-    final channels = ref.read(channelsProvider).value ?? [];
-    final idx = channels.indexOf(ch);
+  void _selectChannel(Channel ch) async {
+    final repo = ref.read(playlistRepositoryProvider);
+    final idx = await repo.getGlobalIndex(ch);
     ref.read(currentChannelProvider.notifier).state = ch;
-    ref.read(currentChannelIndexProvider.notifier).state = idx >= 0 ? idx : 0;
+    ref.read(currentChannelIndexProvider.notifier).state = idx;
     _openChannel(ch);
     setState(() => _overlay = PlayerOverlayMode.none);
   }

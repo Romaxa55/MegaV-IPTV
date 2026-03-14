@@ -35,23 +35,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openChannel(Channel channel, int indexInGroup) {
-    final allChannels = ref.read(channelsProvider).value ?? [];
-    final globalIndex = allChannels.indexOf(channel);
     ref.read(currentChannelProvider.notifier).state = channel;
-    ref.read(currentChannelIndexProvider.notifier).state = globalIndex >= 0 ? globalIndex : 0;
+    ref.read(currentChannelIndexProvider.notifier).state = indexInGroup;
     context.push('/player');
   }
 
   @override
   Widget build(BuildContext context) {
-    final channelsAsync = ref.watch(channelsProvider);
-    final featured = ref.watch(featuredChannelsProvider);
-    final groups = ref.watch(channelsByGroupProvider);
-    final groupNames = groups.keys.toList();
+    final playlistAsync = ref.watch(playlistLoadProvider);
+    final groupsAsync = ref.watch(groupsProvider);
+    final featuredAsync = ref.watch(featuredChannelsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: channelsAsync.when(
+      body: playlistAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (error, stack) => Center(
           child: Column(
@@ -64,41 +61,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: TextStyle(fontSize: 14.sp, color: AppColors.error),
               ),
               SizedBox(height: 16.h),
-              ElevatedButton(onPressed: () => ref.invalidate(channelsProvider), child: const Text('Retry')),
+              ElevatedButton(onPressed: () => ref.invalidate(playlistLoadProvider), child: const Text('Retry')),
             ],
           ),
         ),
-        data: (_) => KeyboardListener(
-          focusNode: _focusNode,
-          onKeyEvent: (event) => _handleKeyEvent(event, groupNames, groups),
-          child: Column(
-            children: [
-              HeroSection(featuredChannels: featured, onPlay: (ch) => _openChannel(ch, 0)),
-              Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.only(bottom: 32.h),
-                  itemCount: groupNames.length,
-                  itemBuilder: (context, rowIdx) {
-                    final name = groupNames[rowIdx];
-                    final channels = groups[name]!;
-                    return ContentRow(
-                      title: name,
-                      channels: channels,
-                      isFocusedRow: _focusedRow == rowIdx,
-                      focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
-                      onChannelTap: _openChannel,
-                    );
-                  },
+        data: (_) {
+          final featured = featuredAsync.value ?? [];
+          final groups = groupsAsync.value ?? [];
+
+          return KeyboardListener(
+            focusNode: _focusNode,
+            onKeyEvent: (event) => _handleKeyEvent(event, groups),
+            child: Column(
+              children: [
+                HeroSection(featuredChannels: featured, onPlay: (ch) => _openChannel(ch, 0)),
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(bottom: 32.h),
+                    itemCount: groups.length,
+                    itemBuilder: (context, rowIdx) {
+                      final group = groups[rowIdx];
+                      return _LazyContentRow(
+                        groupName: group.name,
+                        channelCount: group.count,
+                        isFocusedRow: _focusedRow == rowIdx,
+                        focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
+                        onChannelTap: _openChannel,
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  void _handleKeyEvent(KeyEvent event, List<String> groupNames, Map<String, List<Channel>> groups) {
+  void _handleKeyEvent(KeyEvent event, List<({String name, int count})> groups) {
     if (event is! KeyDownEvent) return;
 
     setState(() {
@@ -113,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (_focusedRow == -1) {
             _focusedRow = 0;
             _focusedCol = 0;
-          } else if (_focusedRow < groupNames.length - 1) {
+          } else if (_focusedRow < groups.length - 1) {
             _focusedRow++;
           }
         case LogicalKeyboardKey.arrowLeft:
@@ -121,23 +122,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _focusedCol = (_focusedCol - 1).clamp(0, 999);
           }
         case LogicalKeyboardKey.arrowRight:
-          if (_focusedRow >= 0) {
-            final name = groupNames[_focusedRow];
-            final maxCol = (groups[name]?.length ?? 1) - 1;
+          if (_focusedRow >= 0 && _focusedRow < groups.length) {
+            final maxCol = (groups[_focusedRow].count) - 1;
             _focusedCol = (_focusedCol + 1).clamp(0, maxCol);
           }
         case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
-          if (_focusedRow >= 0) {
-            final name = groupNames[_focusedRow];
-            final channels = groups[name]!;
-            final col = _focusedCol.clamp(0, channels.length - 1);
-            _openChannel(channels[col], col);
-          } else if (ref.read(featuredChannelsProvider).isNotEmpty) {
-            _openChannel(ref.read(featuredChannelsProvider).first, 0);
-          }
+          // Handled by ContentRow tap
+          break;
         default:
           break;
       }
     });
+  }
+}
+
+/// A ContentRow that lazily loads its channels from DB.
+class _LazyContentRow extends ConsumerStatefulWidget {
+  final String groupName;
+  final int channelCount;
+  final bool isFocusedRow;
+  final int focusedCol;
+  final void Function(Channel channel, int index) onChannelTap;
+
+  const _LazyContentRow({
+    required this.groupName,
+    required this.channelCount,
+    this.isFocusedRow = false,
+    this.focusedCol = -1,
+    required this.onChannelTap,
+  });
+
+  @override
+  ConsumerState<_LazyContentRow> createState() => _LazyContentRowState();
+}
+
+class _LazyContentRowState extends ConsumerState<_LazyContentRow> {
+  static const _pageSize = 20;
+  final List<Channel> _channels = [];
+  bool _loading = false;
+  bool _hasMore = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMore();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || !_hasMore) return;
+    _loading = true;
+
+    final repo = ref.read(playlistRepositoryProvider);
+    final batch = await repo.getChannelsByGroup(widget.groupName, limit: _pageSize, offset: _channels.length);
+
+    if (mounted) {
+      setState(() {
+        _channels.addAll(batch);
+        _hasMore = batch.length == _pageSize;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentRow(
+      title: widget.groupName,
+      channels: _channels,
+      totalCount: widget.channelCount,
+      isFocusedRow: widget.isFocusedRow,
+      focusedCol: widget.focusedCol,
+      onChannelTap: widget.onChannelTap,
+      onLoadMore: _hasMore ? _loadMore : null,
+    );
   }
 }

@@ -15,6 +15,8 @@ class EpgRepository {
   Timer? _refreshTimer;
   bool _isRefreshing = false;
 
+  EpgDatabase get database => _db;
+
   String sourceUrl = 'https://iptvx.one/epg/epg.xml.gz';
   static const _refreshInterval = Duration(hours: 6);
 
@@ -82,6 +84,11 @@ class EpgRepository {
         onChannels: (channels) async {
           await _db.upsertChannels(channels);
           debugPrint('EPG: Inserted ${channels.length} channels');
+        },
+        onNameMappings: (mappings) async {
+          await _db.insertNameMappings(mappings);
+          final totalNames = mappings.values.fold<int>(0, (s, l) => s + l.length);
+          debugPrint('EPG: Inserted $totalNames name mappings for ${mappings.length} channels');
         },
         onProgramBatch: (batch) async {
           await _db.insertProgramsBatch(batch);

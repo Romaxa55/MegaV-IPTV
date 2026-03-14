@@ -13,6 +13,9 @@ typedef OnProgramBatch = Future<void> Function(List<EpgProgram> batch);
 /// Callback that receives all parsed channels (called once after all channels parsed).
 typedef OnChannelsParsed = Future<void> Function(List<EpgChannel> channels);
 
+/// Callback that receives channel ID -> all display names mapping.
+typedef OnNameMappings = Future<void> Function(Map<String, List<String>> mappings);
+
 /// Fully streaming EPG parser with bounded memory.
 ///
 /// Pipeline: File → gzip.decoder → utf8.decoder → element splitter → parse → DB
@@ -29,6 +32,7 @@ Future<({int channels, int programs})> parseXmltvFromFile(
   String filePath, {
   required OnChannelsParsed onChannels,
   required OnProgramBatch onProgramBatch,
+  OnNameMappings? onNameMappings,
   int batchSize = 1000,
 }) async {
   final file = File(filePath);
@@ -37,23 +41,30 @@ Future<({int channels, int programs})> parseXmltvFromFile(
   }
 
   final channels = <EpgChannel>[];
+  final nameMappings = <String, List<String>>{};
   final programBatch = <EpgProgram>[];
   int totalPrograms = 0;
   bool channelsFlushed = false;
 
-  // Buffer for accumulating partial XML elements across stream chunks
   final elementBuffer = StringBuffer();
   bool insideElement = false;
-  String? currentTag; // 'channel' or 'programme'
+  String? currentTag;
 
   Future<void> processElement(String xml, String tag) async {
     if (tag == 'channel') {
-      final ch = _parseChannelElement(xml);
-      if (ch != null) channels.add(ch);
+      final result = _parseChannelElementFull(xml);
+      if (result != null) {
+        channels.add(result.channel);
+        if (result.allNames.isNotEmpty) {
+          nameMappings[result.channel.id] = result.allNames;
+        }
+      }
     } else if (tag == 'programme') {
-      // If we encounter the first programme and haven't flushed channels yet
       if (!channelsFlushed && channels.isNotEmpty) {
         await onChannels(channels);
+        if (onNameMappings != null && nameMappings.isNotEmpty) {
+          await onNameMappings(nameMappings);
+        }
         channelsFlushed = true;
       }
 
@@ -123,9 +134,11 @@ Future<({int channels, int programs})> parseXmltvFromFile(
     }
   }
 
-  // Flush remaining channels if we never hit a <programme>
   if (!channelsFlushed && channels.isNotEmpty) {
     await onChannels(channels);
+    if (onNameMappings != null && nameMappings.isNotEmpty) {
+      await onNameMappings(nameMappings);
+    }
   }
 
   // Flush remaining programs
@@ -140,9 +153,12 @@ Future<({int channels, int programs})> parseXmltvFromFile(
 // Per-element parsers using lightweight event-based XML
 // ---------------------------------------------------------------------------
 
-EpgChannel? _parseChannelElement(String xml) {
+typedef _ChannelParseResult = ({EpgChannel channel, List<String> allNames});
+
+_ChannelParseResult? _parseChannelElementFull(String xml) {
   String? id;
-  String? displayName;
+  String? firstDisplayName;
+  final allNames = <String>[];
   String? icon;
   String? currentText;
 
@@ -157,14 +173,17 @@ EpgChannel? _parseChannelElement(String xml) {
       }
     } else if (event is XmlTextEvent && currentText == 'display-name') {
       final text = event.value.trim();
-      if (text.isNotEmpty) displayName = text;
+      if (text.isNotEmpty) {
+        firstDisplayName ??= text;
+        allNames.add(text);
+      }
     } else if (event is XmlEndElementEvent) {
       currentText = null;
     }
   }
 
   if (id == null || id.isEmpty) return null;
-  return EpgChannel(id: id, displayName: displayName ?? id, icon: icon);
+  return (channel: EpgChannel(id: id, displayName: firstDisplayName ?? id, icon: icon), allNames: allNames);
 }
 
 EpgProgram? _parseProgrammeElement(String xml) {

@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import 'channel_thumbnail.dart';
 
 class CinemaCard extends ConsumerStatefulWidget {
   final Channel channel;
@@ -64,23 +65,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
   }
 
   Widget _buildPoster() {
-    if (widget.channel.logoUrl != null && widget.channel.logoUrl!.isNotEmpty) {
-      return Image.network(
-        widget.channel.logoUrl!,
-        fit: BoxFit.cover,
-        errorBuilder: (ctx, err, st) => _posterPlaceholder(),
-      );
-    }
-    return _posterPlaceholder();
-  }
-
-  Widget _posterPlaceholder() {
-    return Container(
-      color: const Color(0xFF12121E),
-      child: Center(
-        child: Icon(Icons.tv, size: 36.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
-      ),
-    );
+    return ChannelThumbnail(channel: widget.channel, fit: BoxFit.cover);
   }
 
   Widget _buildGradientOverlay() {

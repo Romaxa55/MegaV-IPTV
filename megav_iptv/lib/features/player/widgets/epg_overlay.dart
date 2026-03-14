@@ -38,12 +38,13 @@ class _EpgOverlayState extends ConsumerState<EpgOverlay> with SingleTickerProvid
   }
 
   Future<void> _loadPrograms() async {
-    if (widget.tvgId == null || widget.tvgId!.isEmpty) {
-      setState(() => _loading = false);
+    final repo = ref.read(epgRepositoryProvider);
+    final resolvedId = await repo.resolveChannelId(tvgId: widget.tvgId, channelName: widget.channelName);
+    if (resolvedId == null || resolvedId.isEmpty) {
+      if (mounted) setState(() => _loading = false);
       return;
     }
-    final repo = ref.read(epgRepositoryProvider);
-    final programs = await repo.getProgramsForChannel(widget.tvgId!);
+    final programs = await repo.getProgramsForChannel(resolvedId);
     if (mounted) {
       setState(() {
         _programs = programs;

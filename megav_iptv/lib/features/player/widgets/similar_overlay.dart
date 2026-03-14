@@ -22,6 +22,7 @@ class SimilarOverlay extends ConsumerStatefulWidget {
 class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTickerProviderStateMixin {
   late final AnimationController _slideController;
   late final Animation<Offset> _slideAnimation;
+  List<Channel> _similar = [];
 
   @override
   void initState() {
@@ -32,6 +33,19 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _slideController.forward();
+    _loadSimilar();
+  }
+
+  Future<void> _loadSimilar() async {
+    final group = widget.currentChannel.groupTitle;
+    if (group == null) return;
+    final repo = ref.read(playlistRepositoryProvider);
+    final channels = await repo.getChannelsByGroup(group, limit: 30);
+    if (mounted) {
+      setState(() {
+        _similar = channels.where((c) => c.url != widget.currentChannel.url).toList();
+      });
+    }
   }
 
   @override
@@ -42,10 +56,7 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final channels = ref.watch(channelsProvider).value ?? [];
-    final similar = channels
-        .where((c) => c.url != widget.currentChannel.url && c.groupTitle == widget.currentChannel.groupTitle)
-        .toList();
+    final similar = _similar;
 
     return SlideTransition(
       position: _slideAnimation,

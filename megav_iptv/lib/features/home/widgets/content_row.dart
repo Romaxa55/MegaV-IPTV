@@ -8,19 +8,23 @@ import 'channel_card.dart';
 class ContentRow extends StatefulWidget {
   final String title;
   final List<Channel> channels;
+  final int? totalCount;
   final bool isFocusedRow;
   final int focusedCol;
   final void Function(Channel channel, int index) onChannelTap;
   final void Function(Channel channel)? onChannelFocus;
+  final VoidCallback? onLoadMore;
 
   const ContentRow({
     super.key,
     required this.title,
     required this.channels,
+    this.totalCount,
     this.isFocusedRow = false,
     this.focusedCol = -1,
     required this.onChannelTap,
     this.onChannelFocus,
+    this.onLoadMore,
   });
 
   @override
@@ -31,10 +35,27 @@ class _ContentRowState extends State<ContentRow> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
   void didUpdateWidget(ContentRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isFocusedRow && widget.focusedCol >= 0) {
       _scrollToIndex(widget.focusedCol);
+    }
+  }
+
+  void _onScroll() {
+    if (widget.onLoadMore == null) return;
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final current = _scrollController.offset;
+    // Trigger load when within 2 cards of the end
+    if (current >= maxScroll - 500.w) {
+      widget.onLoadMore!();
     }
   }
 
@@ -68,6 +89,8 @@ class _ContentRowState extends State<ContentRow> {
   Widget build(BuildContext context) {
     if (widget.channels.isEmpty) return const SizedBox.shrink();
 
+    final count = widget.totalCount ?? widget.channels.length;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       color: widget.isFocusedRow ? Colors.white.withValues(alpha: 0.015) : Colors.transparent,
@@ -90,6 +113,11 @@ class _ContentRowState extends State<ContentRow> {
                         ? Colors.white.withValues(alpha: 0.8)
                         : Colors.white.withValues(alpha: 0.5),
                   ),
+                ),
+                SizedBox(width: 6.w),
+                Text(
+                  '$count',
+                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 SizedBox(width: 6.w),
                 Icon(Icons.chevron_right, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.15)),

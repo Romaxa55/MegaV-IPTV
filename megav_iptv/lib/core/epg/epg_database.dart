@@ -6,7 +6,7 @@ import '../playlist/models/epg_program.dart';
 
 class EpgDatabase {
   static const _dbName = 'megav_epg.db';
-  static const _version = 2;
+  static const _version = 3;
 
   Database? _db;
 
@@ -26,12 +26,11 @@ class EpgDatabase {
         await _createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('DROP TABLE IF EXISTS epg_programs');
-          await db.execute('DROP TABLE IF EXISTS epg_channels');
-          await db.execute('DROP TABLE IF EXISTS epg_meta');
-          await _createTables(db);
-        }
+        await db.execute('DROP TABLE IF EXISTS epg_programs');
+        await db.execute('DROP TABLE IF EXISTS epg_channels');
+        await db.execute('DROP TABLE IF EXISTS epg_name_map');
+        await db.execute('DROP TABLE IF EXISTS epg_meta');
+        await _createTables(db);
       },
     );
   }
@@ -71,6 +70,18 @@ class EpgDatabase {
     ''');
 
     await db.execute('''
+      CREATE TABLE epg_name_map (
+        name_lower TEXT NOT NULL,
+        channel_id TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_name_map_name
+      ON epg_name_map (name_lower)
+    ''');
+
+    await db.execute('''
       CREATE TABLE epg_meta (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -90,6 +101,7 @@ class EpgDatabase {
     final db = await database;
     await db.rawUpdate('UPDATE epg_channels SET deleted = 1');
     await db.rawUpdate('UPDATE epg_programs SET deleted = 1');
+    await db.delete('epg_name_map');
   }
 
   /// Remove records still marked as deleted after a successful parse.
@@ -110,6 +122,20 @@ class EpgDatabase {
            VALUES (?, ?, ?, 0)''',
         [ch.id, ch.displayName, ch.icon],
       );
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// Insert display-name -> channel_id mappings (all alternate names).
+  Future<void> insertNameMappings(Map<String, List<String>> channelIdToNames) async {
+    if (channelIdToNames.isEmpty) return;
+    final db = await database;
+    final batch = db.batch();
+    for (final entry in channelIdToNames.entries) {
+      final channelId = entry.key;
+      for (final name in entry.value) {
+        batch.insert('epg_name_map', {'name_lower': name.toLowerCase().trim(), 'channel_id': channelId});
+      }
     }
     await batch.commit(noResult: true);
   }
@@ -243,14 +269,14 @@ class EpgDatabase {
   }
 
   /// Bulk-resolve channel names to EPG channel IDs.
-  /// Returns a map of channelName -> epgChannelId.
+  /// Uses epg_name_map which has ALL alternate display-names.
   Future<Map<String, String>> buildNameToIdMap() async {
     final db = await database;
-    final rows = await db.query('epg_channels', where: 'deleted = 0');
+    final rows = await db.query('epg_name_map');
     final map = <String, String>{};
     for (final row in rows) {
-      final id = row['id'] as String;
-      final name = (row['display_name'] as String).toLowerCase().trim();
+      final name = row['name_lower'] as String;
+      final id = row['channel_id'] as String;
       map[name] = id;
     }
     return map;
@@ -265,10 +291,11 @@ class EpgDatabase {
   }
 
   /// Resolve a playlist channel to an EPG channel ID.
-  /// Tries exact match on [tvgId] first, then fuzzy match on [channelName].
+  /// Priority: tvgId exact → name_map exact → name_map LIKE.
   Future<String?> resolveChannelId({String? tvgId, String? channelName}) async {
     final db = await database;
 
+    // 1. Try tvgId as direct EPG channel ID
     if (tvgId != null && tvgId.isNotEmpty) {
       final rows = await db.query(
         'epg_channels',
@@ -280,26 +307,34 @@ class EpgDatabase {
       if (rows.isNotEmpty) return rows.first['id'] as String;
     }
 
-    if (channelName != null && channelName.isNotEmpty) {
-      final rows = await db.query(
-        'epg_channels',
-        columns: ['id'],
-        where: 'display_name = ? AND deleted = 0',
-        whereArgs: [channelName],
-        limit: 1,
-      );
-      if (rows.isNotEmpty) return rows.first['id'] as String;
+    if (channelName == null || channelName.isEmpty) return null;
+    final normalized = channelName.toLowerCase().trim();
 
-      // Fuzzy: case-insensitive LIKE
-      final fuzzyRows = await db.query(
-        'epg_channels',
-        columns: ['id'],
-        where: 'LOWER(display_name) LIKE ? AND deleted = 0',
-        whereArgs: ['%${channelName.toLowerCase()}%'],
-        limit: 1,
-      );
-      if (fuzzyRows.isNotEmpty) return fuzzyRows.first['id'] as String;
-    }
+    // 2. Exact match in epg_name_map (all alternate display names)
+    var rows = await db.query(
+      'epg_name_map',
+      columns: ['channel_id'],
+      where: 'name_lower = ?',
+      whereArgs: [normalized],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) return rows.first['channel_id'] as String;
+
+    // 3. Fuzzy LIKE match in epg_name_map
+    rows = await db.query(
+      'epg_name_map',
+      columns: ['channel_id'],
+      where: 'name_lower LIKE ?',
+      whereArgs: ['%$normalized%'],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) return rows.first['channel_id'] as String;
+
+    // 4. Reverse: check if channel name contains any EPG name
+    rows = await db.rawQuery('SELECT channel_id FROM epg_name_map WHERE ? LIKE \'%\' || name_lower || \'%\' LIMIT 1', [
+      normalized,
+    ]);
+    if (rows.isNotEmpty) return rows.first['channel_id'] as String;
 
     return null;
   }

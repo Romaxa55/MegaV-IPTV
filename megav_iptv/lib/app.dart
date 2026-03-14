@@ -9,7 +9,7 @@ import 'features/playlist_loader/playlist_loader_screen.dart';
 import 'features/settings/settings_screen.dart';
 
 final _router = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/home',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const PlaylistLoaderScreen()),
     GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
