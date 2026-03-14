@@ -19,7 +19,7 @@ env:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: [self-hosted, iptv]
     permissions:
       contents: read
       packages: write
@@ -182,7 +182,7 @@ jobs:
         kubectl -n ${{ env.BUILD_NAMESPACE }} delete secret kaniko-ghcr-iptv --ignore-not-found
 
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, iptv]
     needs: build
     steps:
     - name: Checkout repository
