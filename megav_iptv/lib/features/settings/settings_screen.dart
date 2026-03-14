@@ -107,7 +107,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ref.read(baseUrlProvider.notifier).state = controller.text.trim();
               Navigator.pop(context);
               // Invalidate groups to reload data from new server
-              ref.invalidate(groupsProvider);
+              ref.invalidate(categoriesProvider);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Save'),

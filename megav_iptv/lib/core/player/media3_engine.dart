@@ -11,24 +11,21 @@ class Media3Engine {
   void openChannel({
     required BuildContext context,
     required Channel channel,
+    required String streamUrl,
     List<Channel>? playlist,
     int initialIndex = 0,
   }) {
-    final items = (playlist ?? [channel]).map(_toMediaItem).toList();
-
-    _controller.openPlayer(context: context, playlist: items, initialIndex: initialIndex);
-  }
-
-  static PlaylistMediaItem _toMediaItem(Channel channel) {
-    return PlaylistMediaItem(
+    final item = PlaylistMediaItem(
       id: channel.id,
-      url: channel.url,
+      url: streamUrl,
       title: channel.name,
       subTitle: channel.groupTitle,
       mediaItemType: MediaItemType.tvStream,
       placeholderImg: channel.logoUrl,
       updateWatchTime: false,
     );
+
+    _controller.openPlayer(context: context, playlist: [item], initialIndex: initialIndex);
   }
 
   void dispose() {

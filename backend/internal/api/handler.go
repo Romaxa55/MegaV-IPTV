@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -156,6 +158,59 @@ func (h *Handler) GetChannelEPG(c *gin.Context) {
 	c.JSON(http.StatusOK, programs)
 }
 
+func (h *Handler) GetNowPlaying(c *gin.Context) {
+	items, err := h.repo.GetNowPlaying()
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get now playing")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load now playing"})
+		return
+	}
+
+	c.JSON(http.StatusOK, items)
+}
+
+func (h *Handler) GetUpcomingAll(c *gin.Context) {
+	withinMinutes := 180
+	if v := c.Query("within"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			withinMinutes = n
+		}
+	}
+	limit := 50
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	items, err := h.repo.GetUpcomingAll(withinMinutes, limit)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get upcoming")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load upcoming"})
+		return
+	}
+
+	c.JSON(http.StatusOK, items)
+}
+
+func (h *Handler) GetFeaturedNowPlaying(c *gin.Context) {
+	limit := 10
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	items, err := h.repo.GetFeaturedNowPlaying(limit)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get featured now playing")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load featured"})
+		return
+	}
+
+	c.JSON(http.StatusOK, items)
+}
+
 func (h *Handler) GetFeaturedChannels(c *gin.Context) {
 	limit := 10
 	if v := c.Query("limit"); v != "" {
@@ -238,6 +293,58 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=300")
 	c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
 	c.Data(http.StatusOK, "image/jpeg", data)
+}
+
+func (h *Handler) GetM3UPlaylist(c *gin.Context) {
+	channels, _, err := h.repo.GetReferenceChannels(repositories.ReferenceChannelFilters{
+		Limit:  5000,
+		Offset: 0,
+	})
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get channels for M3U")
+		c.String(http.StatusInternalServerError, "Failed to generate playlist")
+		return
+	}
+
+	baseURL := c.Request.Host
+	scheme := "https"
+	if c.Request.TLS == nil {
+		if fwd := c.GetHeader("X-Forwarded-Proto"); fwd != "" {
+			scheme = fwd
+		}
+	}
+	epgURL := fmt.Sprintf("%s://%s/api/epg.xml", scheme, baseURL)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("#EXTM3U url-tvg=\"%s\" x-tvg-url=\"%s\"\n", epgURL, epgURL))
+
+	for _, ch := range channels {
+		if ch.WorkingCount == 0 {
+			continue
+		}
+		streamURL, err := h.repo.GetBestStreamURL(ch.ID)
+		if err != nil || streamURL == "" {
+			continue
+		}
+
+		logo := ""
+		if ch.LogoURL != nil {
+			logo = *ch.LogoURL
+		}
+
+		group := ""
+		if len(ch.Categories) > 0 {
+			group = string(ch.Categories[0])
+		}
+
+		sb.WriteString(fmt.Sprintf("#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n",
+			ch.ID, ch.Name, logo, group, ch.Name))
+		sb.WriteString(streamURL + "\n")
+	}
+
+	c.Header("Content-Type", "audio/x-mpegurl; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=\"megav-iptv.m3u\"")
+	c.String(http.StatusOK, sb.String())
 }
 
 func (h *Handler) enqueueThumbnail(channelID string) bool {

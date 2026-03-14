@@ -124,6 +124,142 @@ func (r *IPTVRepository) GetProgramsForStream(referenceChannelID string, timeshi
 	return programs, nil
 }
 
+type NowPlayingItem struct {
+	ChannelID   string  `json:"channelId"`
+	ChannelName string  `json:"channelName"`
+	LogoURL     *string `json:"logoUrl,omitempty"`
+	Country     string  `json:"country"`
+	Categories  []string `json:"categories"`
+	Program     *models.EpgProgram `json:"program"`
+}
+
+func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {
+	now := time.Now()
+	rows, err := r.db.Query(`
+		SELECT rc.id, rc.name, rc.logo_url, rc.country, rc.categories,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM iptv_epg_programs ep
+		JOIN iptv_reference_channels rc ON rc.id = ep.channel_id
+		JOIN (
+			SELECT channel_id FROM iptv_streams
+			WHERE is_working = true
+			GROUP BY channel_id
+		) ws ON ws.channel_id = rc.id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		  AND rc.is_nsfw = false
+		ORDER BY rc.name ASC`, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		var cats []byte
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.LogoURL, &item.Country, &cats,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		item.Categories = parsePostgresArray(string(cats))
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *IPTVRepository) GetUpcomingAll(withinMinutes int, limit int) ([]*NowPlayingItem, error) {
+	now := time.Now()
+	until := now.Add(time.Duration(withinMinutes) * time.Minute)
+	rows, err := r.db.Query(`
+		SELECT rc.id, rc.name, rc.logo_url, rc.country, rc.categories,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM iptv_epg_programs ep
+		JOIN iptv_reference_channels rc ON rc.id = ep.channel_id
+		JOIN (
+			SELECT channel_id FROM iptv_streams
+			WHERE is_working = true
+			GROUP BY channel_id
+		) ws ON ws.channel_id = rc.id
+		WHERE ep.start_time > $1 AND ep.start_time <= $2
+		  AND rc.is_nsfw = false
+		ORDER BY ep.start_time ASC
+		LIMIT $3`, now, until, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		var cats []byte
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.LogoURL, &item.Country, &cats,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		item.Categories = parsePostgresArray(string(cats))
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, error) {
+	now := time.Now()
+	rows, err := r.db.Query(`
+		SELECT rc.id, rc.name, rc.logo_url, rc.country, rc.categories,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM iptv_epg_programs ep
+		JOIN iptv_reference_channels rc ON rc.id = ep.channel_id
+		JOIN (
+			SELECT channel_id,
+			       MAX(uptime_pct) as best_uptime
+			FROM iptv_streams
+			WHERE is_working = true
+			GROUP BY channel_id
+		) ws ON ws.channel_id = rc.id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		  AND rc.is_nsfw = false
+		  AND rc.logo_url IS NOT NULL
+		  AND ep.icon IS NOT NULL AND ep.icon != ''
+		ORDER BY ws.best_uptime DESC, ep.end_time - ep.start_time DESC
+		LIMIT $2`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		var cats []byte
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.LogoURL, &item.Country, &cats,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		item.Categories = parsePostgresArray(string(cats))
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 func (r *IPTVRepository) DeleteOldEpgPrograms() (int64, error) {
 	result, err := r.db.Exec(`
 		DELETE FROM iptv_epg_programs

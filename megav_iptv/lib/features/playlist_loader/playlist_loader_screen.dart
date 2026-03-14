@@ -33,8 +33,8 @@ class _SplashLoaderScreenState extends ConsumerState<SplashLoaderScreen> {
 
     try {
       final api = ref.read(apiClientProvider);
-      // Just try to fetch groups to verify connection
-      await api.getGroups();
+      // Just try to fetch categories to verify connection
+      await api.getCategories();
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) {

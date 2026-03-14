@@ -68,7 +68,8 @@ class _ContentRowState extends ConsumerState<ContentRow> {
 
     try {
       final api = ref.read(apiClientProvider);
-      final page = await api.getChannels(group: widget.title, limit: _pageSize, offset: offset);
+      final result = await api.getChannels(category: widget.title, limit: _pageSize, offset: offset);
+      final page = result.channels;
 
       if (mounted) {
         setState(() {

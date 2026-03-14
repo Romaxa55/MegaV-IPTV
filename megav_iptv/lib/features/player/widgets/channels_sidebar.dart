@@ -67,7 +67,8 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
 
     try {
       final api = ref.read(apiClientProvider);
-      final batch = await api.getChannels(group: _selectedGroup, limit: _pageSize, offset: _channels.length);
+      final result = await api.getChannels(category: _selectedGroup, limit: _pageSize, offset: _channels.length);
+      final batch = result.channels;
 
       if (mounted) {
         setState(() {
@@ -98,8 +99,8 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(groupsProvider);
-    final groupNames = groupsAsync.value?.map((g) => g.name).toList() ?? [];
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final groupNames = categoriesAsync.value?.map((g) => g.name).toList() ?? [];
 
     return SlideTransition(
       position: _slideAnimation,
@@ -189,7 +190,7 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
         }
 
         final ch = _channels[index];
-        final isCurrent = ch.url == widget.currentChannel.url;
+        final isCurrent = ch.id == widget.currentChannel.id;
 
         return GestureDetector(
           onTap: () {

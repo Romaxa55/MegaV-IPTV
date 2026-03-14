@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../core/playlist/models/channel.dart';
 import '../../../core/theme/app_colors.dart';
 
 class HeroBackdrop extends StatelessWidget {
-  final Channel channel;
-  const HeroBackdrop({super.key, required this.channel});
+  final String? imageUrl;
+  const HeroBackdrop({super.key, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
-    final url = channel.thumbnailUrl ?? channel.logoUrl;
-
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 1200),
       transitionBuilder: (child, animation) {
@@ -26,15 +23,15 @@ class HeroBackdrop extends StatelessWidget {
           ),
         );
       },
-      child: url == null || url.isEmpty
-          ? _placeholder(key: ValueKey(channel.url))
+      child: imageUrl == null || imageUrl!.isEmpty
+          ? _placeholder(key: const ValueKey('empty'))
           : Image.network(
-              url,
-              key: ValueKey(url),
+              imageUrl!,
+              key: ValueKey(imageUrl),
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              errorBuilder: (ctx, err, st) => _placeholder(key: ValueKey('${channel.url}_error')),
+              errorBuilder: (ctx, err, st) => _placeholder(key: ValueKey('${imageUrl}_error')),
             ),
     );
   }

@@ -5,9 +5,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/playlist/models/channel.dart';
+import '../../core/playlist/models/now_playing.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
-import 'widgets/content_row.dart';
+import 'widgets/cinema_row.dart';
 import 'widgets/hero_section.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -34,20 +35,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  void _openChannel(Channel channel, int indexInGroup) {
-    ref.read(currentChannelProvider.notifier).state = channel;
-    ref.read(currentChannelIndexProvider.notifier).state = indexInGroup;
+  void _playNowPlaying(NowPlayingItem item) {
+    ref.read(currentChannelProvider.notifier).state = Channel(
+      id: item.channelId,
+      name: item.channelName,
+      logoUrl: item.logoUrl,
+      categories: item.categories,
+      country: item.country,
+      hasEpg: true,
+    );
+    ref.read(currentChannelIndexProvider.notifier).state = 0;
     context.push('/player');
   }
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(groupsProvider);
-    final featuredAsync = ref.watch(featuredChannelsProvider);
+    final categoriesAsync = ref.watch(cinemaCategoriesProvider);
+    final featuredAsync = ref.watch(featuredNowPlayingProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: groupsAsync.when(
+      body: featuredAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (error, stack) => Center(
           child: Column(
@@ -60,31 +68,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: TextStyle(fontSize: 14.sp, color: AppColors.error),
               ),
               SizedBox(height: 16.h),
-              ElevatedButton(onPressed: () => ref.invalidate(groupsProvider), child: const Text('Retry')),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(featuredNowPlayingProvider);
+                  ref.invalidate(cinemaCategoriesProvider);
+                },
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
-        data: (groups) {
-          final featured = featuredAsync.value ?? [];
+        data: (featured) {
+          final categories = categoriesAsync.value ?? [];
 
           return KeyboardListener(
             focusNode: _focusNode,
-            onKeyEvent: (event) => _handleKeyEvent(event, groups),
+            onKeyEvent: (event) => _handleKeyEvent(event, categories),
             child: Column(
               children: [
-                HeroSection(featuredChannels: featured, onPlay: (ch) => _openChannel(ch, 0)),
+                HeroSection(featuredItems: featured, onPlay: _playNowPlaying),
                 Expanded(
                   child: ListView.builder(
                     padding: EdgeInsets.only(bottom: 32.h),
-                    itemCount: groups.length,
+                    itemCount: categories.length,
                     itemBuilder: (context, rowIdx) {
-                      final group = groups[rowIdx];
-                      return ContentRow(
-                        title: group.name,
-                        totalCount: group.count,
+                      final cat = categories[rowIdx];
+                      return CinemaRow(
+                        title: cat.name,
+                        items: cat.items,
                         isFocusedRow: _focusedRow == rowIdx,
                         focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
-                        onChannelTap: _openChannel,
+                        onItemTap: _playNowPlaying,
                       );
                     },
                   ),
@@ -97,7 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _handleKeyEvent(KeyEvent event, List<({String name, int count})> groups) {
+  void _handleKeyEvent(KeyEvent event, List<CinemaCategory> categories) {
     if (event is! KeyDownEvent) return;
 
     setState(() {
@@ -112,7 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (_focusedRow == -1) {
             _focusedRow = 0;
             _focusedCol = 0;
-          } else if (_focusedRow < groups.length - 1) {
+          } else if (_focusedRow < categories.length - 1) {
             _focusedRow++;
           }
         case LogicalKeyboardKey.arrowLeft:
@@ -120,16 +134,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _focusedCol = (_focusedCol - 1).clamp(0, 999);
           }
         case LogicalKeyboardKey.arrowRight:
-          if (_focusedRow >= 0) {
-            final maxCol = groups[_focusedRow].count - 1;
+          if (_focusedRow >= 0 && _focusedRow < categories.length) {
+            final maxCol = categories[_focusedRow].items.length - 1;
             _focusedCol = (_focusedCol + 1).clamp(0, maxCol);
           }
         case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
-          // Channel selection handled by ContentRow tap callback
           if (_focusedRow == -1) {
-            final feat = ref.read(featuredChannelsProvider).value;
+            final feat = ref.read(featuredNowPlayingProvider).value;
             if (feat != null && feat.isNotEmpty) {
-              _openChannel(feat.first, 0);
+              _playNowPlaying(feat.first);
+            }
+          } else if (_focusedRow >= 0 && _focusedRow < categories.length) {
+            final items = categories[_focusedRow].items;
+            final col = _focusedCol.clamp(0, items.length - 1);
+            if (items.isNotEmpty) {
+              _playNowPlaying(items[col]);
             }
           }
         default:

@@ -54,18 +54,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _openChannel(Channel channel) async {
     final config = ref.read(decoderConfigProvider);
+    final api = ref.read(apiClientProvider);
+
+    final streamUrl = await api.getBestStreamUrl(channel.id);
+    if (streamUrl == null || streamUrl.isEmpty) return;
 
     if (config.usesMedia3) {
+      if (!context.mounted) return;
       _openedViaMedia3 = true;
-      _playerManager.media3Engine?.openChannel(
-        context: context,
-        channel: channel,
-        playlist: [channel],
-        initialIndex: 0,
-      );
+      _playerManager.media3Engine?.openChannel(context: context, channel: channel, streamUrl: streamUrl);
     } else {
       _openedViaMedia3 = false;
-      await _playerManager.playChannel(channel.url, channelId: channel.id);
+      await _playerManager.playChannel(streamUrl, channelId: channel.id);
     }
     _showBriefOSDFor();
   }
@@ -100,15 +100,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final group = ref.read(selectedGroupProvider);
     final api = ref.read(apiClientProvider);
 
-    // TODO: Need total count from backend. For now just try to load next.
     final nextIdx = currentIndex + delta;
     if (nextIdx < 0) return;
 
     try {
-      final channels = await api.getChannels(group: group, limit: 1, offset: nextIdx);
-      if (channels.isEmpty) return;
+      final result = await api.getChannels(category: group, limit: 1, offset: nextIdx);
+      if (result.channels.isEmpty) return;
 
-      final next = channels.first;
+      final next = result.channels.first;
       setState(() => _switchPreview = next);
 
       _switchTimer?.cancel();

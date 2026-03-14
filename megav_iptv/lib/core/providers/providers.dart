@@ -5,6 +5,7 @@ import '../player/decoder_config.dart';
 import '../player/player_manager.dart';
 import '../playlist/models/channel.dart';
 import '../playlist/models/epg_program.dart';
+import '../playlist/models/now_playing.dart';
 
 // --- API ---
 
@@ -27,32 +28,31 @@ final playerManagerProvider = Provider<PlayerManager>((ref) {
 
 final decoderConfigProvider = StateProvider<DecoderConfig>((ref) => const DecoderConfig());
 
-// --- Channels & Playlists (from Backend API) ---
+// --- Channels & Categories (from Backend API) ---
 
-/// All group names with channel counts.
-final groupsProvider = FutureProvider<List<({String name, int count})>>((ref) async {
+/// All categories with channel counts.
+final categoriesProvider = FutureProvider<List<({String name, int count})>>((ref) async {
   final api = ref.watch(apiClientProvider);
-  return api.getGroups();
+  return api.getCategories();
 });
 
-/// Paginated channels for a specific group.
-/// Key format: "groupName|offset|limit"
-final groupChannelsProvider = FutureProvider.family<List<Channel>, String>((ref, key) async {
+/// Paginated channels for a specific category.
+/// Key format: "categoryName|offset|limit"
+final categoryChannelsProvider = FutureProvider.family<({List<Channel> channels, int total}), String>((ref, key) async {
   final api = ref.watch(apiClientProvider);
   final parts = key.split('|');
-  final groupName = parts[0] == 'null' ? null : parts[0];
+  final categoryName = parts[0] == 'null' ? null : parts[0];
   final offset = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
   final limit = parts.length > 2 ? int.tryParse(parts[2]) ?? 20 : 20;
 
-  return api.getChannels(group: groupName, offset: offset, limit: limit);
+  return api.getChannels(category: categoryName, offset: offset, limit: limit);
 });
 
-/// Helper to build group channels cache key
-String groupChannelsKey(String? groupName, {int offset = 0, int limit = 20}) {
-  return '${groupName ?? 'null'}|$offset|$limit';
+String categoryChannelsKey(String? categoryName, {int offset = 0, int limit = 20}) {
+  return '${categoryName ?? 'null'}|$offset|$limit';
 }
 
-/// Featured channels for HeroSection (e.g. popular or recently added)
+/// Featured channels for HeroSection
 final featuredChannelsProvider = FutureProvider<List<Channel>>((ref) async {
   final api = ref.watch(apiClientProvider);
   return api.getFeaturedChannels(limit: 8);
@@ -62,7 +62,97 @@ final selectedGroupProvider = StateProvider<String?>((ref) => null);
 final currentChannelProvider = StateProvider<Channel?>((ref) => null);
 final currentChannelIndexProvider = StateProvider<int>((ref) => -1);
 
-// --- EPG (from Backend API) ---
+// --- EPG Cinema Experience ---
+
+/// All currently playing programs across all channels
+final nowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
+  ref.watch(epgProgressTickProvider);
+  final api = ref.watch(apiClientProvider);
+  return api.getNowPlaying();
+});
+
+/// Upcoming programs (next 3 hours)
+final upcomingAllProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
+  ref.watch(epgProgressTickProvider);
+  final api = ref.watch(apiClientProvider);
+  return api.getUpcomingAll();
+});
+
+/// Featured now playing (hero carousel)
+final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
+  ref.watch(epgProgressTickProvider);
+  final api = ref.watch(apiClientProvider);
+  return api.getFeaturedNowPlaying(limit: 8);
+});
+
+/// Cinema categories built from now playing + upcoming data
+final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
+  final nowPlaying = await ref.watch(nowPlayingProvider.future);
+  final upcoming = await ref.watch(upcomingAllProvider.future);
+
+  final categories = <CinemaCategory>[];
+
+  final liveMovies = nowPlaying.where((i) => _isMovieCategory(i.program.category)).toList();
+  if (liveMovies.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: liveMovies));
+  }
+
+  final liveSport = nowPlaying.where((i) => _isSportCategory(i.program.category)).toList();
+  if (liveSport.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-sport', name: '⚽  Спорт в эфире', items: liveSport));
+  }
+
+  final liveShows = nowPlaying
+      .where((i) => !_isMovieCategory(i.program.category) && !_isSportCategory(i.program.category))
+      .toList();
+  if (liveShows.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-shows', name: '📡  Сейчас в эфире', items: liveShows));
+  }
+
+  if (upcoming.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: upcoming));
+  }
+
+  return categories;
+});
+
+bool _isMovieCategory(String? cat) {
+  if (cat == null) return false;
+  final lower = cat.toLowerCase();
+  return lower.contains('фильм') ||
+      lower.contains('кино') ||
+      lower.contains('movie') ||
+      lower.contains('film') ||
+      lower.contains('сериал') ||
+      lower.contains('series') ||
+      lower.contains('драма') ||
+      lower.contains('комедия') ||
+      lower.contains('боевик') ||
+      lower.contains('триллер') ||
+      lower.contains('ужас') ||
+      lower.contains('фантаст');
+}
+
+bool _isSportCategory(String? cat) {
+  if (cat == null) return false;
+  final lower = cat.toLowerCase();
+  return lower.contains('спорт') ||
+      lower.contains('sport') ||
+      lower.contains('футбол') ||
+      lower.contains('хоккей') ||
+      lower.contains('баскетбол') ||
+      lower.contains('теннис');
+}
+
+class CinemaCategory {
+  final String id;
+  final String name;
+  final List<NowPlayingItem> items;
+
+  const CinemaCategory({required this.id, required this.name, required this.items});
+}
+
+// --- Per-channel EPG ---
 
 final currentProgramProvider = FutureProvider.family<EpgProgram?, String>((ref, channelId) async {
   if (channelId.isEmpty) return null;

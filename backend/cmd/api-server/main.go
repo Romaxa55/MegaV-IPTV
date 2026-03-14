@@ -136,6 +136,10 @@ func main() {
 		apiGroup.GET("/channels/:id/streams", handler.GetChannelStreams)
 		apiGroup.GET("/channels/:id/epg", handler.GetChannelEPG)
 		apiGroup.GET("/channels/:id/thumbnail.jpg", handler.GetChannelThumbnail)
+		apiGroup.GET("/epg/now", handler.GetNowPlaying)
+		apiGroup.GET("/epg/upcoming", handler.GetUpcomingAll)
+		apiGroup.GET("/epg/featured", handler.GetFeaturedNowPlaying)
+		apiGroup.GET("/playlist.m3u", handler.GetM3UPlaylist)
 		apiGroup.GET("/countries", handler.GetCountries)
 		apiGroup.GET("/categories", handler.GetCategories)
 		apiGroup.GET("/health", handler.HealthCheck)
@@ -143,19 +147,23 @@ func main() {
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"service": "IPTV API Server",
-			"version": "2.1.0",
-			"endpoints": gin.H{
-				"channels":   "/api/channels?country=US&category=news&search=CNN&limit=50&offset=0",
-				"channel":    "/api/channels/:id",
-				"streams":    "/api/channels/:id/streams",
-				"epg":        "/api/channels/:id/epg?timeshift=0&limit=20",
-				"thumbnail":  "/api/channels/:id/thumbnail.jpg",
-				"featured":   "/api/channels/featured?limit=10",
-				"countries":  "/api/countries",
-				"categories": "/api/categories",
-				"health":     "/api/health",
-			},
+		"service": "IPTV API Server",
+		"version": "3.0.0",
+		"endpoints": gin.H{
+			"channels":     "/api/channels?country=US&category=news&search=CNN&limit=50&offset=0",
+			"channel":      "/api/channels/:id",
+			"streams":      "/api/channels/:id/streams",
+			"epg":          "/api/channels/:id/epg?timeshift=0&limit=20",
+			"thumbnail":    "/api/channels/:id/thumbnail.jpg",
+			"featured":     "/api/channels/featured?limit=10",
+			"epg_now":      "/api/epg/now",
+			"epg_upcoming": "/api/epg/upcoming?within=180&limit=50",
+			"epg_featured": "/api/epg/featured?limit=10",
+			"playlist":     "/api/playlist.m3u",
+			"countries":    "/api/countries",
+			"categories":   "/api/categories",
+			"health":       "/api/health",
+		},
 		})
 	})
 

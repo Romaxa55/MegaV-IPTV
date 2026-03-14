@@ -41,10 +41,10 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
     if (group == null) return;
     try {
       final api = ref.read(apiClientProvider);
-      final channels = await api.getChannels(group: group, limit: 30);
+      final result = await api.getChannels(category: group, limit: 30);
       if (mounted) {
         setState(() {
-          _similar = channels.where((c) => c.id != widget.currentChannel.id).toList();
+          _similar = result.channels.where((c) => c.id != widget.currentChannel.id).toList();
         });
       }
     } catch (_) {}
