@@ -14,8 +14,9 @@ class ApiClient {
   Future<List<({String name, int count})>> getCategories() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/categories'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((g) => (name: g['category'] as String, count: g['channelCount'] as int)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded == null || decoded is! List) return [];
+      return decoded.map((g) => (name: g['category'] as String, count: g['channelCount'] as int)).toList();
     }
     throw Exception('Failed to load categories');
   }
@@ -48,8 +49,9 @@ class ApiClient {
   Future<List<Channel>> getFeaturedChannels({int limit = 10}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/channels/featured?limit=$limit'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Channel.fromJson(json)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded == null || decoded is! List) return [];
+      return decoded.map((json) => Channel.fromJson(json)).toList();
     }
     throw Exception('Failed to load featured channels');
   }
@@ -58,8 +60,9 @@ class ApiClient {
   Future<List<NowPlayingItem>> getNowPlaying() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/now'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => NowPlayingItem.fromJson(json)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded == null || decoded is! List) return [];
+      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
     }
     throw Exception('Failed to load now playing');
   }
@@ -68,8 +71,9 @@ class ApiClient {
   Future<List<NowPlayingItem>> getUpcomingAll({int withinMinutes = 180, int limit = 50}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/upcoming?within=$withinMinutes&limit=$limit'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => NowPlayingItem.fromJson(json)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded == null || decoded is! List) return [];
+      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
     }
     throw Exception('Failed to load upcoming');
   }
@@ -78,8 +82,9 @@ class ApiClient {
   Future<List<NowPlayingItem>> getFeaturedNowPlaying({int limit = 10}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/featured?limit=$limit'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => NowPlayingItem.fromJson(json)).toList();
+      final decoded = jsonDecode(response.body);
+      if (decoded == null || decoded is! List) return [];
+      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
     }
     throw Exception('Failed to load featured now playing');
   }

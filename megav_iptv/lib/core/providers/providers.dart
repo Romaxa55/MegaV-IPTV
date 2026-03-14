@@ -64,11 +64,13 @@ final currentChannelIndexProvider = StateProvider<int>((ref) => -1);
 
 // --- EPG Cinema Experience ---
 
-/// All currently playing programs across all channels
+/// Currently playing programs (capped at 60 to save memory)
 final nowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
-  return api.getNowPlaying();
+  final all = await api.getNowPlaying();
+  if (all.length <= 60) return all;
+  return all.sublist(0, 60);
 });
 
 /// Upcoming programs (next 3 hours)
@@ -78,11 +80,19 @@ final upcomingAllProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   return api.getUpcomingAll();
 });
 
-/// Featured now playing (hero carousel)
+/// Featured now playing (hero carousel) with fallback to featured channels
 final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
-  return api.getFeaturedNowPlaying(limit: 8);
+  final featured = await api.getFeaturedNowPlaying(limit: 8);
+  if (featured.isNotEmpty) return featured;
+
+  var channels = await api.getFeaturedChannels(limit: 8);
+  if (channels.isEmpty) {
+    final result = await api.getChannels(limit: 8);
+    channels = result.channels;
+  }
+  return channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
 });
 
 /// Cinema categories built from now playing + upcoming data
@@ -90,27 +100,29 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
   final nowPlaying = await ref.watch(nowPlayingProvider.future);
   final upcoming = await ref.watch(upcomingAllProvider.future);
 
+  const maxPerRow = 20;
   final categories = <CinemaCategory>[];
 
-  final liveMovies = nowPlaying.where((i) => _isMovieCategory(i.program.category)).toList();
+  final liveMovies = nowPlaying.where((i) => _isMovieCategory(i.program.category)).take(maxPerRow).toList();
   if (liveMovies.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: liveMovies));
   }
 
-  final liveSport = nowPlaying.where((i) => _isSportCategory(i.program.category)).toList();
+  final liveSport = nowPlaying.where((i) => _isSportCategory(i.program.category)).take(maxPerRow).toList();
   if (liveSport.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-sport', name: '⚽  Спорт в эфире', items: liveSport));
   }
 
   final liveShows = nowPlaying
       .where((i) => !_isMovieCategory(i.program.category) && !_isSportCategory(i.program.category))
+      .take(maxPerRow)
       .toList();
   if (liveShows.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-shows', name: '📡  Сейчас в эфире', items: liveShows));
   }
 
   if (upcoming.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: upcoming));
+    categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: upcoming.take(maxPerRow).toList()));
   }
 
   return categories;

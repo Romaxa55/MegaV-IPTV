@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -17,6 +18,8 @@ class CinemaCard extends StatefulWidget {
 
 class _CinemaCardState extends State<CinemaCard> {
   bool _isHovered = false;
+  bool _thumbFailed = false;
+  int _thumbRetryCount = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -61,10 +64,25 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
+  void _retryThumbnail() {
+    if (_thumbRetryCount >= 3) return;
+    Future.delayed(Duration(seconds: 5 * (_thumbRetryCount + 1)), () {
+      if (mounted) {
+        setState(() {
+          _thumbFailed = false;
+          _thumbRetryCount++;
+        });
+      }
+    });
+  }
+
   Widget _buildPoster() {
+    final thumbUrl = widget.item.thumbnailUrl;
     final iconUrl = widget.item.program.icon;
     final logoUrl = widget.item.logoUrl;
-    final url = iconUrl ?? logoUrl;
+
+    final useThumb = thumbUrl != null && thumbUrl.isNotEmpty && !_thumbFailed;
+    final url = useThumb ? thumbUrl : (iconUrl ?? logoUrl);
 
     if (url == null || url.isEmpty) {
       return Container(
@@ -75,16 +93,45 @@ class _CinemaCardState extends State<CinemaCard> {
       );
     }
 
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      key: ValueKey('$url-$_thumbRetryCount'),
+      imageUrl: url,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (ctx, err, st) => Container(
+      memCacheWidth: 360,
+      placeholder: (ctx, _) => Container(
         color: const Color(0xFF12121E),
         child: Center(
           child: Icon(Icons.tv, size: 36.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
         ),
+      ),
+      errorWidget: (ctx, _, _) {
+        if (useThumb) {
+          _thumbFailed = true;
+          _retryThumbnail();
+          final fallback = iconUrl ?? logoUrl;
+          if (fallback != null && fallback.isNotEmpty) {
+            return CachedNetworkImage(
+              imageUrl: fallback,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              memCacheWidth: 360,
+              errorWidget: (ctx, _, _) => _posterPlaceholder(),
+            );
+          }
+        }
+        return _posterPlaceholder();
+      },
+    );
+  }
+
+  Widget _posterPlaceholder() {
+    return Container(
+      color: const Color(0xFF12121E),
+      child: Center(
+        child: Icon(Icons.tv, size: 36.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
       ),
     );
   }

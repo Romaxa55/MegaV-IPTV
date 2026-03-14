@@ -11,9 +11,10 @@ import (
 
 type ChannelWithStreams struct {
 	models.ReferenceChannel
-	StreamCount  int  `json:"streamCount"`
-	WorkingCount int  `json:"workingCount"`
-	HasEPG       bool `json:"hasEpg"`
+	StreamCount  int     `json:"streamCount"`
+	WorkingCount int     `json:"workingCount"`
+	HasEPG       bool    `json:"hasEpg"`
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty"`
 }
 
 type ReferenceChannelFilters struct {

@@ -79,6 +79,8 @@ func (h *Handler) GetChannels(c *gin.Context) {
 		return
 	}
 
+	h.enrichChannelThumbnails(c, channels)
+
 	c.JSON(http.StatusOK, gin.H{
 		"channels": channels,
 		"total":    total,
@@ -166,6 +168,8 @@ func (h *Handler) GetNowPlaying(c *gin.Context) {
 		return
 	}
 
+	h.enrichNowPlayingThumbnails(c, items)
+
 	c.JSON(http.StatusOK, items)
 }
 
@@ -190,6 +194,8 @@ func (h *Handler) GetUpcomingAll(c *gin.Context) {
 		return
 	}
 
+	h.enrichNowPlayingThumbnails(c, items)
+
 	c.JSON(http.StatusOK, items)
 }
 
@@ -208,6 +214,8 @@ func (h *Handler) GetFeaturedNowPlaying(c *gin.Context) {
 		return
 	}
 
+	h.enrichNowPlayingThumbnails(c, items)
+
 	c.JSON(http.StatusOK, items)
 }
 
@@ -225,6 +233,8 @@ func (h *Handler) GetFeaturedChannels(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load featured channels"})
 		return
 	}
+
+	h.enrichChannelThumbnails(c, channels)
 
 	c.JSON(http.StatusOK, channels)
 }
@@ -345,6 +355,44 @@ func (h *Handler) GetM3UPlaylist(c *gin.Context) {
 	c.Header("Content-Type", "audio/x-mpegurl; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename=\"megav-iptv.m3u\"")
 	c.String(http.StatusOK, sb.String())
+}
+
+func (h *Handler) buildThumbnailURL(c *gin.Context, channelID string) string {
+	scheme := "https"
+	if c.Request.TLS == nil {
+		if fwd := c.GetHeader("X-Forwarded-Proto"); fwd != "" {
+			scheme = fwd
+		}
+	}
+	return fmt.Sprintf("%s://%s/api/channels/%s/thumbnail.jpg", scheme, c.Request.Host, channelID)
+}
+
+func (h *Handler) enrichChannelThumbnails(c *gin.Context, channels []*repositories.ChannelWithStreams) {
+	if h.thumbService == nil {
+		return
+	}
+	for _, ch := range channels {
+		if h.thumbService.ThumbnailExists(ch.ID) {
+			url := h.buildThumbnailURL(c, ch.ID)
+			ch.ThumbnailURL = &url
+		} else {
+			h.enqueueThumbnail(ch.ID)
+		}
+	}
+}
+
+func (h *Handler) enrichNowPlayingThumbnails(c *gin.Context, items []*repositories.NowPlayingItem) {
+	if h.thumbService == nil {
+		return
+	}
+	for _, item := range items {
+		if h.thumbService.ThumbnailExists(item.ChannelID) {
+			url := h.buildThumbnailURL(c, item.ChannelID)
+			item.ThumbnailURL = &url
+		} else {
+			h.enqueueThumbnail(item.ChannelID)
+		}
+	}
 }
 
 func (h *Handler) enqueueThumbnail(channelID string) bool {

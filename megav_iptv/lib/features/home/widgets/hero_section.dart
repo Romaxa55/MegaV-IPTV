@@ -68,7 +68,7 @@ class _HeroSectionState extends State<HeroSection> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          HeroBackdrop(imageUrl: item.program.icon ?? item.logoUrl),
+          HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
           _buildGradients(),
           HeroTopBar(onSettings: () => context.push('/settings')),
           _HeroContent(item: item, onPlay: () => widget.onPlay(item)),

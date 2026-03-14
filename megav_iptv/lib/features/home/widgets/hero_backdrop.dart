@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -25,13 +26,14 @@ class HeroBackdrop extends StatelessWidget {
       },
       child: imageUrl == null || imageUrl!.isEmpty
           ? _placeholder(key: const ValueKey('empty'))
-          : Image.network(
-              imageUrl!,
+          : CachedNetworkImage(
+              imageUrl: imageUrl!,
               key: ValueKey(imageUrl),
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              errorBuilder: (ctx, err, st) => _placeholder(key: ValueKey('${imageUrl}_error')),
+              memCacheWidth: 800,
+              errorWidget: (ctx, _, _) => _placeholder(key: ValueKey('${imageUrl}_error')),
             ),
     );
   }

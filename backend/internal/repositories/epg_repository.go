@@ -125,12 +125,13 @@ func (r *IPTVRepository) GetProgramsForStream(referenceChannelID string, timeshi
 }
 
 type NowPlayingItem struct {
-	ChannelID   string  `json:"channelId"`
-	ChannelName string  `json:"channelName"`
-	LogoURL     *string `json:"logoUrl,omitempty"`
-	Country     string  `json:"country"`
-	Categories  []string `json:"categories"`
-	Program     *models.EpgProgram `json:"program"`
+	ChannelID    string             `json:"channelId"`
+	ChannelName  string             `json:"channelName"`
+	LogoURL      *string            `json:"logoUrl,omitempty"`
+	ThumbnailURL *string            `json:"thumbnailUrl,omitempty"`
+	Country      string             `json:"country"`
+	Categories   []string           `json:"categories"`
+	Program      *models.EpgProgram `json:"program"`
 }
 
 func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {

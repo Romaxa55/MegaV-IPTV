@@ -107,6 +107,9 @@ class _CinemaRowState extends State<CinemaRow> {
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 32.w),
+              cacheExtent: 400,
+              addAutomaticKeepAlives: false,
+              addRepaintBoundaries: true,
               itemCount: widget.items.length,
               itemBuilder: (context, index) {
                 final isFocused = widget.isFocusedRow && index == widget.focusedCol.clamp(0, widget.items.length - 1);
