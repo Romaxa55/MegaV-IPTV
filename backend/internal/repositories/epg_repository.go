@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/romaxa55/iptv-parser/internal/models"
@@ -200,4 +201,71 @@ func (r *IPTVRepository) GetAllChannelNames() (map[string]string, error) {
 		m[name] = id
 	}
 	return m, nil
+}
+
+func (r *IPTVRepository) GetAllReferenceChannelNamesMap() (map[string]string, error) {
+	rows, err := r.db.Query(`
+		SELECT id, name, alt_names FROM iptv_reference_channels`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	m := make(map[string]string)
+	for rows.Next() {
+		var id, name string
+		var altNames []byte
+		if err := rows.Scan(&id, &name, &altNames); err != nil {
+			return nil, err
+		}
+		m[name] = id
+		if altNames != nil {
+			parsed := parsePostgresArray(string(altNames))
+			for _, alt := range parsed {
+				if alt != "" {
+					m[alt] = id
+				}
+			}
+		}
+	}
+	return m, nil
+}
+
+func parsePostgresArray(s string) []string {
+	if s == "" || s == "{}" {
+		return nil
+	}
+	s = strings.TrimPrefix(s, "{")
+	s = strings.TrimSuffix(s, "}")
+
+	var result []string
+	var current strings.Builder
+	inQuote := false
+	escaped := false
+
+	for _, r := range s {
+		if escaped {
+			current.WriteRune(r)
+			escaped = false
+			continue
+		}
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+		if r == '"' {
+			inQuote = !inQuote
+			continue
+		}
+		if r == ',' && !inQuote {
+			result = append(result, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteRune(r)
+	}
+	if current.Len() > 0 {
+		result = append(result, current.String())
+	}
+	return result
 }

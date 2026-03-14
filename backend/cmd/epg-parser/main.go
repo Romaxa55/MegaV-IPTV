@@ -49,10 +49,11 @@ func main() {
 	if err != nil {
 		logger.WithError(err).Fatal("Failed to load tvg-id map")
 	}
-	channelNames, err := repo.GetAllChannelNames()
+	channelNames, err := repo.GetAllReferenceChannelNamesMap()
 	if err != nil {
 		logger.WithError(err).Fatal("Failed to load channel names")
 	}
+	logger.Infof("Loaded %d tvg-id mappings, %d channel name mappings (incl. altNames)", len(tvgIDMap), len(channelNames))
 
 	existingMap, err := repo.GetEpgChannelMap()
 	if err != nil {

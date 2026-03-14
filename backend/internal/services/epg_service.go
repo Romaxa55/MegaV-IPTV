@@ -59,8 +59,8 @@ type xmlIcon struct {
 }
 
 type EPGData struct {
-	Channels  map[string]string
-	Programs  []*models.EpgProgram
+	Channels     map[string][]string // epgID -> all display names
+	Programs     []*models.EpgProgram
 }
 
 func (s *EPGService) FetchAndParse(epgURL string) (*EPGData, error) {
@@ -103,15 +103,19 @@ func (s *EPGService) Parse(reader io.Reader) (*EPGData, error) {
 	}
 
 	data := &EPGData{
-		Channels: make(map[string]string),
+		Channels: make(map[string][]string),
 	}
 
 	for _, ch := range tv.Channels {
-		name := ""
-		if len(ch.DisplayName) > 0 {
-			name = ch.DisplayName[0].Value
+		var names []string
+		for _, dn := range ch.DisplayName {
+			if dn.Value != "" {
+				names = append(names, dn.Value)
+			}
 		}
-		data.Channels[ch.ID] = name
+		if len(names) > 0 {
+			data.Channels[ch.ID] = names
+		}
 	}
 
 	for _, prog := range tv.Programmes {
@@ -166,32 +170,52 @@ func (s *EPGService) Parse(reader io.Reader) (*EPGData, error) {
 	return data, nil
 }
 
-// SmartMatch maps EPG channel IDs to IPTV channel IDs using tvg-id exact match and fuzzy name matching.
+// SmartMatch maps EPG channel IDs to IPTV channel IDs.
+// channelNames should include both name and altNames from reference_channels.
 func (s *EPGService) SmartMatch(
-	epgChannels map[string]string,
+	epgChannels map[string][]string,
 	tvgIDMap map[string]string,
 	channelNames map[string]string,
 ) map[string]string {
 	result := make(map[string]string)
 
-	for epgID, epgName := range epgChannels {
-		// 1. Exact tvg-id match
+	normalizedDB := make(map[string]string, len(channelNames))
+	for name, id := range channelNames {
+		normalizedDB[normalizeName(name)] = id
+	}
+
+	for epgID, epgNames := range epgChannels {
 		if channelID, ok := tvgIDMap[epgID]; ok {
 			result[epgID] = channelID
 			continue
 		}
 
-		// 2. Fuzzy name match
-		normalizedEPG := normalizeName(epgName)
+		matched := false
+		for _, epgName := range epgNames {
+			norm := normalizeName(epgName)
+			if chID, ok := normalizedDB[norm]; ok {
+				result[epgID] = chID
+				matched = true
+				break
+			}
+		}
+		if matched {
+			continue
+		}
+
 		bestScore := 0.0
 		bestChannelID := ""
-
-		for chName, chID := range channelNames {
-			normalizedCh := normalizeName(chName)
-			score := similarity(normalizedEPG, normalizedCh)
-			if score > bestScore && score >= 0.8 {
-				bestScore = score
-				bestChannelID = chID
+		for _, epgName := range epgNames {
+			normalizedEPG := normalizeName(epgName)
+			for normCh, chID := range normalizedDB {
+				score := similarity(normalizedEPG, normCh)
+				if score > bestScore && score >= 0.85 {
+					bestScore = score
+					bestChannelID = chID
+				}
+			}
+			if bestChannelID != "" {
+				break
 			}
 		}
 
@@ -284,11 +308,7 @@ func parseXMLTVTime(s string) (time.Time, error) {
 func GetDefaultEPGSources() []string {
 	return []string{
 		"http://epg.it999.ru/epg2.xml.gz",
-		"http://epg.it999.ru/epg.xml.gz",
 		"http://programtv.ru/xmltv.xml.gz",
-		"http://www.teleguide.info/download/new3/xmltv.xml.gz",
-		"https://iptvx.one/epg/epg.xml.gz",
-		"https://github.com/iFrez/EPG-EdemTV/raw/master/edem.xml.gz",
 	}
 }
 
