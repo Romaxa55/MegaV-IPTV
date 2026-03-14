@@ -35,10 +35,11 @@ func main() {
 		migrations   = flag.String("migrations", "", "Path to migrations directory")
 		migrateOnly  = flag.Bool("migrate-only", false, "Run migrations and exit")
 		sourceURL    = flag.String("source", "", "Single M3U source URL to parse")
-		fastCheck    = flag.Bool("fast-check", true, "Enable ffprobe fast check")
-		checkWorkers = flag.Int("check-workers", 50, "Number of fast-check worker goroutines")
-		dbWriters    = flag.Int("db-writers", 4, "Number of DB batch-writer goroutines")
-		batchSize    = flag.Int("batch-size", 500, "Batch size for DB writes")
+		fastCheck     = flag.Bool("fast-check", true, "Enable ffprobe fast check")
+		checkWorkers  = flag.Int("check-workers", 500, "Number of fast-check worker goroutines")
+		dbWriters     = flag.Int("db-writers", 8, "Number of DB batch-writer goroutines")
+		batchSize     = flag.Int("batch-size", 1000, "Batch size for DB writes")
+		sourceWorkers = flag.Int("source-workers", 10, "Number of parallel source processing goroutines")
 	)
 	flag.Parse()
 
@@ -58,6 +59,11 @@ func main() {
 	if v := os.Getenv("BATCH_SIZE"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			*batchSize = n
+		}
+	}
+	if v := os.Getenv("SOURCE_WORKERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			*sourceWorkers = n
 		}
 	}
 
@@ -108,13 +114,20 @@ func main() {
 		go batchWriter(logger, repo, resultCh, *batchSize, &totalMatched, &totalUnmatched, &writerWg)
 	}
 
+	type sourceJob struct {
+		url        string
+		sourceType string
+		si         *queue.SourceItem
+	}
+
+	var allJobs []sourceJob
+
 	defaultSources := services.GetDefaultSources()
 	if *sourceURL != "" {
 		defaultSources = []string{*sourceURL}
 	}
-
 	for _, src := range defaultSources {
-		processSource(logger, repo, m3uService, checker, enricher, src, "iptv_org", nil, resultCh, *checkWorkers)
+		allJobs = append(allJobs, sourceJob{url: src, sourceType: "iptv_org"})
 	}
 
 	var rq *queue.RedisQueue
@@ -136,17 +149,34 @@ func main() {
 		if len(crawledSources) > 0 {
 			logger.Infof("Processing %d crawled sources from Redis", len(crawledSources))
 		}
-
 		for _, si := range crawledSources {
-			logger.Infof("Processing crawled source: %s (%s, %d stars)", si.RawURL, si.GitHubRepo, si.Stars)
-			processSource(logger, repo, m3uService, checker, enricher, si.RawURL, "github_crawl", si, resultCh, *checkWorkers)
-
-			if err := rq.MarkSourceProcessed(ctx, si.RawURL); err != nil {
-				logger.WithError(err).Warn("Failed to mark source as processed")
-			}
+			allJobs = append(allJobs, sourceJob{url: si.RawURL, sourceType: "github_crawl", si: si})
 		}
 	}
 
+	logger.Infof("Total sources to process: %d (parallel workers: %d)", len(allJobs), *sourceWorkers)
+
+	sourceSem := make(chan struct{}, *sourceWorkers)
+	var sourceWg sync.WaitGroup
+
+	for _, job := range allJobs {
+		sourceWg.Add(1)
+		sourceSem <- struct{}{}
+		go func(j sourceJob) {
+			defer sourceWg.Done()
+			defer func() { <-sourceSem }()
+
+			processSource(logger, repo, m3uService, checker, enricher, j.url, j.sourceType, j.si, resultCh, *checkWorkers)
+
+			if j.si != nil && rq != nil {
+				if err := rq.MarkSourceProcessed(context.Background(), j.si.RawURL); err != nil {
+					logger.WithError(err).Warn("Failed to mark source as processed")
+				}
+			}
+		}(job)
+	}
+
+	sourceWg.Wait()
 	close(resultCh)
 	writerWg.Wait()
 

@@ -22,8 +22,8 @@ func main() {
 
 	var (
 		debug   = flag.Bool("debug", cfg.Debug, "Enable debug logging")
-		workers = flag.Int("workers", 100, "Number of concurrent check workers")
-		batch   = flag.Int("batch", 2000, "Number of streams to check per run")
+		workers = flag.Int("workers", 500, "Number of concurrent check workers")
+		batch   = flag.Int("batch", 5000, "Number of streams to check per run")
 	)
 	flag.Parse()
 

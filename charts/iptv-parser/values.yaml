@@ -40,18 +40,19 @@ apiService:
 m3uParser:
   enabled: true
   schedule: "0 */1 * * *"
-  batchSize: 500
+  batchSize: 1000
   fastCheck: "true"
-  fastCheckWorkers: 50
-  dbWriters: 4
+  fastCheckWorkers: 500
+  dbWriters: 8
+  sourceWorkers: 10
   debug: false
   resources:
     requests:
-      cpu: 500m
-      memory: 256Mi
+      cpu: 1000m
+      memory: 512Mi
     limits:
-      cpu: 2000m
-      memory: 1Gi
+      cpu: 4000m
+      memory: 2Gi
 
 # --- EPG Parser CronJob ---
 epgParser:
@@ -71,9 +72,26 @@ epgParser:
 channelChecker:
   enabled: true
   schedule: "*/15 * * * *"
-  workers: 100
-  batch: 2000
+  workers: 500
+  batch: 5000
   debug: false
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 512Mi
+    limits:
+      cpu: 4000m
+      memory: 2Gi
+
+# --- Thumbnail Worker Deployment ---
+thumbnailWorker:
+  enabled: true
+  replicas: 1
+  workers: 50
+  outputDir: "/app/thumbnails"
+  mode: "batch"
+  batchSchedule: "*/15 * * * *"
+  batchSize: 1000
   resources:
     requests:
       cpu: 500m
@@ -81,23 +99,6 @@ channelChecker:
     limits:
       cpu: 2000m
       memory: 1Gi
-
-# --- Thumbnail Worker Deployment ---
-thumbnailWorker:
-  enabled: true
-  replicas: 1
-  workers: 10
-  outputDir: "/app/thumbnails"
-  mode: "batch"
-  batchSchedule: "*/15 * * * *"
-  batchSize: 200
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
 
 # --- GitHub Crawler CronJob ---
 githubCrawler:

@@ -47,6 +47,12 @@ spec:
                   value: {{ .Values.m3uParser.fastCheckWorkers | default "50" | quote }}
                 - name: DB_WRITERS
                   value: {{ .Values.m3uParser.dbWriters | default "4" | quote }}
+                - name: SOURCE_WORKERS
+                  value: {{ .Values.m3uParser.sourceWorkers | default "10" | quote }}
+                - name: DB_MAX_OPEN_CONNS
+                  value: "50"
+                - name: DB_MAX_IDLE_CONNS
+                  value: "20"
               resources:
                 {{- toYaml .Values.m3uParser.resources | nindent 16 }}
       backoffLimit: 2

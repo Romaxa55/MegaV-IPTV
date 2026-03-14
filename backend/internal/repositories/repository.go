@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -23,8 +25,11 @@ func NewIPTVRepository(databaseURL string, logger *logrus.Logger) (*IPTVReposito
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(10)
+	maxOpen := envInt("DB_MAX_OPEN_CONNS", 25)
+	maxIdle := envInt("DB_MAX_IDLE_CONNS", 10)
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(maxIdle)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -43,6 +48,15 @@ func (r *IPTVRepository) Close() {
 
 func (r *IPTVRepository) GetDB() *sql.DB {
 	return r.db
+}
+
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return def
 }
 
 func (r *IPTVRepository) RunMigrations(migrationsDir string) error {

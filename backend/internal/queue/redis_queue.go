@@ -191,24 +191,31 @@ func (q *RedisQueue) EnqueueSourceBatch(ctx context.Context, items []*SourceItem
 	if len(items) == 0 {
 		return 0, nil
 	}
+
+	checkPipe := q.client.Pipeline()
+	checks := make([]*redis.BoolCmd, len(items))
+	for i, item := range items {
+		checks[i] = checkPipe.SIsMember(ctx, keyPrefix+"sources:processed", item.RawURL)
+	}
+	checkPipe.Exec(ctx)
+
+	pushPipe := q.client.Pipeline()
 	enqueued := 0
-	pipe := q.client.Pipeline()
-	for _, item := range items {
-		ok, _ := q.IsSourceProcessed(ctx, item.RawURL)
-		if ok {
+	for i, item := range items {
+		if checks[i].Val() {
 			continue
 		}
 		data, err := json.Marshal(item)
 		if err != nil {
 			continue
 		}
-		pipe.LPush(ctx, keyPrefix+"sources:queue", data)
+		pushPipe.LPush(ctx, keyPrefix+"sources:queue", data)
 		enqueued++
 	}
 	if enqueued == 0 {
 		return 0, nil
 	}
-	_, err := pipe.Exec(ctx)
+	_, err := pushPipe.Exec(ctx)
 	return enqueued, err
 }
 
