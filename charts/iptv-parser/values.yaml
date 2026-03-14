@@ -1,0 +1,124 @@
+image:
+  repository: ghcr.io/romaxa55/iptv-parser
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+# Cross-namespace shared infrastructure (from megav namespace)
+postgresql:
+  host: "megav-heavy.megav.svc.cluster.local"
+  port: "5432"
+  database: "megav_sources"
+  existingSecret: "postgres.megav-heavy.credentials.postgresql.acid.zalan.do"
+  usernameKey: "username"
+  passwordKey: "password"
+
+redis:
+  host: "redis-master.megav.svc.cluster.local"
+  port: "6379"
+  db: "1"
+  existingSecret: "redis"
+  passwordKey: "redis-password"
+
+# --- API Server ---
+apiService:
+  enabled: true
+  replicas: 2
+  port: 8080
+  cache: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- M3U Parser CronJob ---
+m3uParser:
+  enabled: true
+  schedule: "0 */1 * * *"
+  batchSize: 100
+  debug: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# --- EPG Parser CronJob ---
+epgParser:
+  enabled: true
+  schedule: "30 */6 * * *"
+  batchSize: 500
+  debug: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# --- Channel Checker CronJob ---
+channelChecker:
+  enabled: true
+  schedule: "*/30 * * * *"
+  workers: 50
+  batch: 1000
+  debug: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+# --- Thumbnail Worker Deployment ---
+thumbnailWorker:
+  enabled: true
+  replicas: 1
+  workers: 10
+  outputDir: "/app/thumbnails"
+  mode: "batch"
+  batchSchedule: "*/15 * * * *"
+  batchSize: 200
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# --- Ingress ---
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: iptv.megav.app
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: iptv-megav-app-tls
+      hosts:
+        - iptv.megav.app
+
+# --- Service Account ---
+serviceAccount:
+  create: true
+  name: ""
+
+# --- Thumbnail PVC ---
+thumbnailStorage:
+  enabled: true
+  size: 5Gi
+  storageClass: longhorn
+  accessModes:
+    - ReadWriteOnce

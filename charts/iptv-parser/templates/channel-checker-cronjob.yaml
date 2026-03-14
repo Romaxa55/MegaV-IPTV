@@ -1,0 +1,47 @@
+{{- if .Values.channelChecker.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-channel-checker
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+    app.kubernetes.io/component: channel-checker
+spec:
+  schedule: {{ .Values.channelChecker.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "iptv-parser.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: channel-checker
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          containers:
+            - name: channel-checker
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              command: ["./bin/channel-checker"]
+              args:
+                - "-workers"
+                - "{{ .Values.channelChecker.workers }}"
+                - "-batch"
+                - "{{ .Values.channelChecker.batch }}"
+                {{- if .Values.channelChecker.debug }}
+                - "-debug"
+                {{- end }}
+              env:
+                {{- include "iptv-parser.dbEnv" . | nindent 16 }}
+                - name: TIMEOUT
+                  value: "10s"
+              resources:
+                {{- toYaml .Values.channelChecker.resources | nindent 16 }}
+      backoffLimit: 2
+{{- end }}

@@ -1,20 +1,16 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/channel.dart';
-import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 
-class HeroBackdrop extends ConsumerWidget {
+class HeroBackdrop extends StatelessWidget {
   final Channel channel;
   const HeroBackdrop({super.key, required this.channel});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final thumbAsync = ref.watch(channelThumbnailProvider(channel));
+  Widget build(BuildContext context) {
+    final url = channel.thumbnailUrl ?? channel.logoUrl;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 1200),
@@ -30,36 +26,16 @@ class HeroBackdrop extends ConsumerWidget {
           ),
         );
       },
-      child: thumbAsync.when(
-        loading: () => _placeholder(key: ValueKey('${channel.url}_loading')),
-        error: (e, st) => _placeholder(key: ValueKey('${channel.url}_error')),
-        data: (result) {
-          if (result == null) {
-            return _placeholder(key: ValueKey(channel.url));
-          }
-          if (result.isNetwork) {
-            return Image.network(
-              result.url!,
-              key: ValueKey(result.url),
+      child: url == null || url.isEmpty
+          ? _placeholder(key: ValueKey(channel.url))
+          : Image.network(
+              url,
+              key: ValueKey(url),
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              errorBuilder: (ctx, err, st) => _placeholder(),
-            );
-          }
-          if (result.isFile) {
-            return Image.file(
-              File(result.filePath!),
-              key: ValueKey(result.filePath),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (ctx, err, st) => _placeholder(),
-            );
-          }
-          return _placeholder(key: ValueKey(channel.url));
-        },
-      ),
+              errorBuilder: (ctx, err, st) => _placeholder(key: ValueKey('${channel.url}_error')),
+            ),
     );
   }
 

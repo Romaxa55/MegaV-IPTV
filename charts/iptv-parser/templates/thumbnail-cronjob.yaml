@@ -1,0 +1,58 @@
+{{- if .Values.thumbnailWorker.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-thumbnail
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+    app.kubernetes.io/component: thumbnail
+spec:
+  schedule: {{ .Values.thumbnailWorker.batchSchedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "iptv-parser.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: thumbnail
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          containers:
+            - name: thumbnail-worker
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              command: ["./bin/thumbnail-worker"]
+              args:
+                - "-mode"
+                - "batch"
+                - "-workers"
+                - "{{ .Values.thumbnailWorker.workers }}"
+                - "-batch"
+                - "{{ .Values.thumbnailWorker.batchSize }}"
+                - "-output"
+                - "{{ .Values.thumbnailWorker.outputDir }}"
+              env:
+                {{- include "iptv-parser.dbEnv" . | nindent 16 }}
+                {{- include "iptv-parser.redisEnv" . | nindent 16 }}
+              {{- if .Values.thumbnailStorage.enabled }}
+              volumeMounts:
+                - name: thumbnails
+                  mountPath: {{ .Values.thumbnailWorker.outputDir }}
+              {{- end }}
+              resources:
+                {{- toYaml .Values.thumbnailWorker.resources | nindent 16 }}
+          {{- if .Values.thumbnailStorage.enabled }}
+          volumes:
+            - name: thumbnails
+              persistentVolumeClaim:
+                claimName: {{ include "iptv-parser.fullname" . }}-thumbnails
+          {{- end }}
+      backoffLimit: 2
+{{- end }}

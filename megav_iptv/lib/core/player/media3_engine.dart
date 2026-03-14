@@ -21,7 +21,7 @@ class Media3Engine {
 
   static PlaylistMediaItem _toMediaItem(Channel channel) {
     return PlaylistMediaItem(
-      id: channel.tvgId ?? channel.url.hashCode.toString(),
+      id: channel.id,
       url: channel.url,
       title: channel.name,
       subTitle: channel.groupTitle,

@@ -1,0 +1,15 @@
+{{- if .Values.thumbnailStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-thumbnails
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.thumbnailStorage.accessModes | nindent 4 }}
+  storageClassName: {{ .Values.thumbnailStorage.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.thumbnailStorage.size }}
+{{- end }}

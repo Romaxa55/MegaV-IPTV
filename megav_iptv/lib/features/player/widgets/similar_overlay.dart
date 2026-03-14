@@ -39,13 +39,15 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
   Future<void> _loadSimilar() async {
     final group = widget.currentChannel.groupTitle;
     if (group == null) return;
-    final repo = ref.read(playlistRepositoryProvider);
-    final channels = await repo.getChannelsByGroup(group, limit: 30);
-    if (mounted) {
-      setState(() {
-        _similar = channels.where((c) => c.url != widget.currentChannel.url).toList();
-      });
-    }
+    try {
+      final api = ref.read(apiClientProvider);
+      final channels = await api.getChannels(group: group, limit: 30);
+      if (mounted) {
+        setState(() {
+          _similar = channels.where((c) => c.id != widget.currentChannel.id).toList();
+        });
+      }
+    } catch (_) {}
   }
 
   @override

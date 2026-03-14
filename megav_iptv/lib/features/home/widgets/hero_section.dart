@@ -142,9 +142,9 @@ class _HeroContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final key = epgKey(tvgId: channel.tvgId, channelName: channel.name);
+    final key = channel.id;
     final nowAsync = ref.watch(currentProgramProvider(key));
-    final nextAsync = ref.watch(nextProgramProvider(key));
+    final upcomingAsync = ref.watch(upcomingProgramsProvider(key));
 
     return Positioned(
       bottom: 40.h,
@@ -170,7 +170,7 @@ class _HeroContent extends ConsumerWidget {
           children: [
             Expanded(child: _buildLeftContent(nowAsync)),
             SizedBox(width: 24.w),
-            _buildMiniEpg(key, nowAsync, nextAsync),
+            _buildMiniEpg(key, nowAsync, upcomingAsync),
           ],
         ),
       ),
@@ -426,7 +426,11 @@ class _HeroContent extends ConsumerWidget {
   }
 
   // Mini EPG sidebar (right side in hero, "Далее на канале")
-  Widget _buildMiniEpg(String epgLookupKey, AsyncValue<EpgProgram?> nowAsync, AsyncValue<EpgProgram?> nextAsync) {
+  Widget _buildMiniEpg(
+    String epgLookupKey,
+    AsyncValue<EpgProgram?> nowAsync,
+    AsyncValue<List<EpgProgram>> upcomingAsync,
+  ) {
     return Container(
       width: 220.w,
       padding: EdgeInsets.all(12.w),
@@ -464,12 +468,12 @@ class _HeroContent extends ConsumerWidget {
             },
           ),
           SizedBox(height: 4.h),
-          nextAsync.when(
+          upcomingAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (e, st) => const SizedBox.shrink(),
-            data: (prog) {
-              if (prog == null) return const SizedBox.shrink();
-              return _MiniEpgItem(program: prog, isCurrent: false);
+            data: (programs) {
+              if (programs.isEmpty) return const SizedBox.shrink();
+              return _MiniEpgItem(program: programs.first, isCurrent: false);
             },
           ),
         ],

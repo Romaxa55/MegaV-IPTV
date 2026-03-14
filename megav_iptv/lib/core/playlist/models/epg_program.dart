@@ -1,5 +1,5 @@
 class EpgProgram {
-  final String channelId;
+  final String id;
   final String title;
   final String? description;
   final String? category;
@@ -8,7 +8,7 @@ class EpgProgram {
   final DateTime end;
 
   const EpgProgram({
-    required this.channelId,
+    required this.id,
     required this.title,
     this.description,
     this.category,
@@ -31,26 +31,18 @@ class EpgProgram {
     return now.difference(start).inSeconds / duration.inSeconds;
   }
 
-  Map<String, dynamic> toMap() => {
-    'channel_id': channelId,
-    'title': title,
-    'description': description,
-    'category': category,
-    'icon': icon,
-    'start': start.millisecondsSinceEpoch,
-    'end_time': end.millisecondsSinceEpoch,
-  };
-
-  factory EpgProgram.fromMap(Map<String, dynamic> map) => EpgProgram(
-    channelId: map['channel_id'] as String,
-    title: map['title'] as String,
-    description: map['description'] as String?,
-    category: map['category'] as String?,
-    icon: map['icon'] as String?,
-    start: DateTime.fromMillisecondsSinceEpoch(map['start'] as int),
-    end: DateTime.fromMillisecondsSinceEpoch(map['end_time'] as int),
-  );
+  factory EpgProgram.fromJson(Map<String, dynamic> json) {
+    return EpgProgram(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      category: json['category'] as String?,
+      icon: json['icon'] as String?,
+      start: DateTime.parse(json['start'] as String).toLocal(),
+      end: DateTime.parse(json['end'] as String).toLocal(),
+    );
+  }
 
   @override
-  String toString() => 'EpgProgram(channel: $channelId, title: $title, ${isNow ? "NOW" : ""})';
+  String toString() => 'EpgProgram(title: $title, ${isNow ? "NOW" : ""})';
 }

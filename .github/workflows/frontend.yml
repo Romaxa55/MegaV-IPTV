@@ -1,0 +1,83 @@
+name: Build Frontend APK
+
+on:
+  push:
+    tags:
+      - 'frontend-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Build version tag'
+        required: true
+        default: 'latest'
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Get version tag
+      id: tag
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          TAG="${{ github.event.inputs.tag }}"
+        else
+          TAG="${GITHUB_REF#refs/tags/frontend-}"
+        fi
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        echo "Build version: ${TAG}"
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.27.4'
+        channel: 'stable'
+
+    - name: Install dependencies
+      working-directory: megav_iptv
+      run: flutter pub get
+
+    - name: Build APK (release)
+      working-directory: megav_iptv
+      run: |
+        flutter build apk --release \
+          --build-name="${{ steps.tag.outputs.tag }}" \
+          --build-number="${{ github.run_number }}"
+
+    - name: Build App Bundle (release)
+      working-directory: megav_iptv
+      run: |
+        flutter build appbundle --release \
+          --build-name="${{ steps.tag.outputs.tag }}" \
+          --build-number="${{ github.run_number }}"
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: megav-iptv-${{ steps.tag.outputs.tag }}-apk
+        path: megav_iptv/build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Upload AAB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: megav-iptv-${{ steps.tag.outputs.tag }}-aab
+        path: megav_iptv/build/app/outputs/bundle/release/app-release.aab
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          megav_iptv/build/app/outputs/flutter-apk/app-release.apk
+          megav_iptv/build/app/outputs/bundle/release/app-release.aab
+        tag_name: ${{ github.ref_name }}
+        name: "MegaV IPTV ${{ steps.tag.outputs.tag }}"
+        generate_release_notes: true

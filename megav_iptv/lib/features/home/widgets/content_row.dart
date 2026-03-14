@@ -1,42 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/channel.dart';
+import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import 'channel_card.dart';
 
-class ContentRow extends StatefulWidget {
+/// Page size for lazy loading channels in a group row.
+const _pageSize = 20;
+
+class ContentRow extends ConsumerStatefulWidget {
   final String title;
-  final List<Channel> channels;
-  final int? totalCount;
+  final int totalCount;
   final bool isFocusedRow;
   final int focusedCol;
   final void Function(Channel channel, int index) onChannelTap;
   final void Function(Channel channel)? onChannelFocus;
-  final VoidCallback? onLoadMore;
 
   const ContentRow({
     super.key,
     required this.title,
-    required this.channels,
-    this.totalCount,
+    required this.totalCount,
     this.isFocusedRow = false,
     this.focusedCol = -1,
     required this.onChannelTap,
     this.onChannelFocus,
-    this.onLoadMore,
   });
 
   @override
-  State<ContentRow> createState() => _ContentRowState();
+  ConsumerState<ContentRow> createState() => _ContentRowState();
 }
 
-class _ContentRowState extends State<ContentRow> {
+class _ContentRowState extends ConsumerState<ContentRow> {
   final ScrollController _scrollController = ScrollController();
+  final List<Channel> _channels = [];
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
 
   @override
   void initState() {
     super.initState();
+    _loadPage(0);
     _scrollController.addListener(_onScroll);
   }
 
@@ -44,18 +49,43 @@ class _ContentRowState extends State<ContentRow> {
   void didUpdateWidget(ContentRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isFocusedRow && widget.focusedCol >= 0) {
+      _ensureLoaded(widget.focusedCol);
       _scrollToIndex(widget.focusedCol);
     }
   }
 
   void _onScroll() {
-    if (widget.onLoadMore == null) return;
     if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final current = _scrollController.offset;
-    // Trigger load when within 2 cards of the end
-    if (current >= maxScroll - 500.w) {
-      widget.onLoadMore!();
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    if (_scrollController.offset > maxExtent - 400.w && !_isLoadingMore && _hasMore) {
+      _loadPage(_channels.length);
+    }
+  }
+
+  Future<void> _loadPage(int offset) async {
+    if (_isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+
+    try {
+      final api = ref.read(apiClientProvider);
+      final page = await api.getChannels(group: widget.title, limit: _pageSize, offset: offset);
+
+      if (mounted) {
+        setState(() {
+          _channels.addAll(page);
+          _hasMore = page.length >= _pageSize && _channels.length < widget.totalCount;
+        });
+      }
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+
+  Future<void> _ensureLoaded(int index) async {
+    if (index < _channels.length) return;
+    // Load pages until we have enough
+    while (_channels.length <= index && _hasMore) {
+      await _loadPage(_channels.length);
     }
   }
 
@@ -87,9 +117,7 @@ class _ContentRowState extends State<ContentRow> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.channels.isEmpty) return const SizedBox.shrink();
-
-    final count = widget.totalCount ?? widget.channels.length;
+    if (widget.totalCount == 0) return const SizedBox.shrink();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -116,8 +144,8 @@ class _ContentRowState extends State<ContentRow> {
                 ),
                 SizedBox(width: 6.w),
                 Text(
-                  '$count',
-                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.2)),
+                  '${widget.totalCount}',
+                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 SizedBox(width: 6.w),
                 Icon(Icons.chevron_right, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.15)),
@@ -134,16 +162,26 @@ class _ContentRowState extends State<ContentRow> {
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 32.w),
-              itemCount: widget.channels.length,
+              // +1 for loading indicator at the end
+              itemCount: _channels.length + (_hasMore ? 1 : 0),
               itemBuilder: (context, index) {
-                final isFocused =
-                    widget.isFocusedRow && index == widget.focusedCol.clamp(0, widget.channels.length - 1);
+                if (index >= _channels.length) {
+                  return Padding(
+                    padding: EdgeInsets.only(right: 12.w),
+                    child: SizedBox(
+                      width: 220.w,
+                      child: const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+                    ),
+                  );
+                }
+
+                final isFocused = widget.isFocusedRow && index == widget.focusedCol.clamp(0, _channels.length - 1);
                 return Padding(
                   padding: EdgeInsets.only(right: 12.w),
                   child: CinemaCard(
-                    channel: widget.channels[index],
+                    channel: _channels[index],
                     isFocused: isFocused,
-                    onTap: () => widget.onChannelTap(widget.channels[index], index),
+                    onTap: () => widget.onChannelTap(_channels[index], index),
                   ),
                 );
               },

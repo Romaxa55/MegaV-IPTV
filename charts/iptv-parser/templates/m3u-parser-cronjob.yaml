@@ -1,0 +1,45 @@
+{{- if .Values.m3uParser.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-m3u-parser
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+    app.kubernetes.io/component: m3u-parser
+spec:
+  schedule: {{ .Values.m3uParser.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "iptv-parser.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: m3u-parser
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          containers:
+            - name: m3u-parser
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              command: ["./bin/m3u-parser"]
+              args:
+                - "-migrations"
+                - "/app/migrations"
+                {{- if .Values.m3uParser.debug }}
+                - "-debug"
+                {{- end }}
+              env:
+                {{- include "iptv-parser.dbEnv" . | nindent 16 }}
+                - name: BATCH_SIZE
+                  value: {{ .Values.m3uParser.batchSize | quote }}
+              resources:
+                {{- toYaml .Values.m3uParser.resources | nindent 16 }}
+      backoffLimit: 2
+{{- end }}

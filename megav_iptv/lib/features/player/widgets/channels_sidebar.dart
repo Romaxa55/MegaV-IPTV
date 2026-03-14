@@ -65,45 +65,20 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
       _hasMore = true;
     }
 
-    final repo = ref.read(playlistRepositoryProvider);
-    final group = _selectedGroup;
+    try {
+      final api = ref.read(apiClientProvider);
+      final batch = await api.getChannels(group: _selectedGroup, limit: _pageSize, offset: _channels.length);
 
-    List<Channel> batch;
-    if (group != null) {
-      batch = await repo.getChannelsByGroup(group, limit: _pageSize, offset: _channels.length);
-    } else {
-      batch = await repo.getChannelsByGroup(_channels.isEmpty ? '' : '', limit: _pageSize, offset: _channels.length);
-      // For "all" mode, use search or sequential loading
-      batch = await _loadAllChannelsBatch(_channels.length);
+      if (mounted) {
+        setState(() {
+          _channels.addAll(batch);
+          _hasMore = batch.length == _pageSize;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
-
-    if (mounted) {
-      setState(() {
-        _channels.addAll(batch);
-        _hasMore = batch.length == _pageSize;
-        _loading = false;
-      });
-    }
-  }
-
-  Future<List<Channel>> _loadAllChannelsBatch(int offset) async {
-    final repo = ref.read(playlistRepositoryProvider);
-    final db = repo.database;
-    final dbInst = await db.database;
-    final rows = await dbInst.query('channels', limit: _pageSize, offset: offset, orderBy: 'id ASC');
-    return rows
-        .map(
-          (r) => Channel(
-            name: r['name'] as String,
-            url: r['url'] as String,
-            logoUrl: r['logo_url'] as String?,
-            groupTitle: r['group_title'] as String?,
-            tvgId: r['tvg_id'] as String?,
-            tvgName: r['tvg_name'] as String?,
-            language: r['language'] as String?,
-          ),
-        )
-        .toList();
   }
 
   void _switchGroup(String? group) {

@@ -10,10 +10,10 @@ import '../../../core/theme/app_colors.dart';
 
 class EpgOverlay extends ConsumerStatefulWidget {
   final String channelName;
-  final String? tvgId;
+  final String channelId;
   final VoidCallback onClose;
 
-  const EpgOverlay({super.key, required this.channelName, this.tvgId, required this.onClose});
+  const EpgOverlay({super.key, required this.channelName, required this.channelId, required this.onClose});
 
   @override
   ConsumerState<EpgOverlay> createState() => _EpgOverlayState();
@@ -38,18 +38,20 @@ class _EpgOverlayState extends ConsumerState<EpgOverlay> with SingleTickerProvid
   }
 
   Future<void> _loadPrograms() async {
-    final repo = ref.read(epgRepositoryProvider);
-    final resolvedId = await repo.resolveChannelId(tvgId: widget.tvgId, channelName: widget.channelName);
-    if (resolvedId == null || resolvedId.isEmpty) {
+    try {
+      final api = ref.read(apiClientProvider);
+
+      final current = await api.getCurrentProgram(widget.channelId);
+      final upcoming = await api.getUpcomingPrograms(widget.channelId, limit: 15);
+
+      if (mounted) {
+        setState(() {
+          _programs = [?current, ...upcoming];
+          _loading = false;
+        });
+      }
+    } catch (e) {
       if (mounted) setState(() => _loading = false);
-      return;
-    }
-    final programs = await repo.getProgramsForChannel(resolvedId);
-    if (mounted) {
-      setState(() {
-        _programs = programs;
-        _loading = false;
-      });
     }
   }
 

@@ -1,0 +1,224 @@
+name: Build & Deploy Backend
+
+on:
+  push:
+    tags:
+      - 'backend-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag to build'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: romaxa55/iptv-parser
+  NAMESPACE: megav-iptv
+  BUILD_NAMESPACE: megav
+
+jobs:
+  build:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Get image tag
+      id: tag
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          TAG="${{ github.event.inputs.tag }}"
+        else
+          TAG="${GITHUB_REF#refs/tags/backend-}"
+        fi
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        echo "Image tag: ${TAG}"
+
+    - name: Setup kubectl
+      run: |
+        if ! command -v kubectl &> /dev/null; then
+          curl -sLO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        fi
+
+    - name: Configure kubeconfig
+      run: |
+        TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        SERVER=${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}
+        mkdir -p ~/.kube
+        kubectl config set-cluster k8s --server=https://${SERVER} --certificate-authority=${CA} --kubeconfig ~/.kube/config
+        kubectl config set-credentials sa --token=${TOKEN} --kubeconfig ~/.kube/config
+        kubectl config set-context default --cluster=k8s --user=sa --kubeconfig ~/.kube/config
+        kubectl config use-context default --kubeconfig ~/.kube/config
+
+    - name: Create GHCR push secret for Kaniko
+      run: |
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete secret kaniko-ghcr-iptv --ignore-not-found
+        kubectl -n ${{ env.BUILD_NAMESPACE }} create secret docker-registry kaniko-ghcr-iptv \
+          --docker-server=${{ env.REGISTRY }} \
+          --docker-username=${{ github.actor }} \
+          --docker-password=${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload context to PVC and run Kaniko
+      run: |
+        TAG="${{ steps.tag.outputs.tag }}"
+        IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+
+        tar -czf /tmp/iptv-context.tar.gz -C $GITHUB_WORKSPACE/backend .
+
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete job kaniko-build-iptv --ignore-not-found
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pod kaniko-iptv-loader --ignore-not-found
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pvc kaniko-context-iptv --ignore-not-found
+        sleep 2
+
+        cat <<'EOFPVC' | kubectl apply -n ${{ env.BUILD_NAMESPACE }} -f -
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: kaniko-context-iptv
+        spec:
+          accessModes: [ReadWriteOnce]
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 2Gi
+        EOFPVC
+
+        kubectl wait -n ${{ env.BUILD_NAMESPACE }} pvc/kaniko-context-iptv --for=jsonpath='{.status.phase}'=Bound --timeout=60s
+
+        cat <<'EOFLOADER' | kubectl apply -n ${{ env.BUILD_NAMESPACE }} -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: kaniko-iptv-loader
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            node-role.kubernetes.io/worker: ""
+          containers:
+          - name: loader
+            image: alpine:3.19
+            command: ["sleep", "3600"]
+            volumeMounts:
+            - name: context
+              mountPath: /context
+          volumes:
+          - name: context
+            persistentVolumeClaim:
+              claimName: kaniko-context-iptv
+        EOFLOADER
+
+        kubectl wait -n ${{ env.BUILD_NAMESPACE }} pod/kaniko-iptv-loader --for=condition=Ready --timeout=120s
+        kubectl cp /tmp/iptv-context.tar.gz ${{ env.BUILD_NAMESPACE }}/kaniko-iptv-loader:/context/context.tar.gz
+        kubectl exec -n ${{ env.BUILD_NAMESPACE }} kaniko-iptv-loader -- sh -c "cd /context && tar xzf context.tar.gz && rm context.tar.gz"
+        kubectl delete -n ${{ env.BUILD_NAMESPACE }} pod kaniko-iptv-loader --wait=false
+
+        cat <<EOFJOB | kubectl apply -n ${{ env.BUILD_NAMESPACE }} -f -
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: kaniko-build-iptv
+        spec:
+          backoffLimit: 0
+          ttlSecondsAfterFinished: 300
+          template:
+            spec:
+              restartPolicy: Never
+              nodeSelector:
+                node-role.kubernetes.io/worker: ""
+              containers:
+              - name: kaniko
+                image: gcr.io/kaniko-project/executor:latest
+                args:
+                - --dockerfile=Dockerfile
+                - --context=dir:///workspace
+                - --destination=${IMAGE}:${TAG}
+                - --destination=${IMAGE}:latest
+                - --cache=true
+                - --cache-repo=${IMAGE}/cache
+                - --snapshot-mode=redo
+                - --compressed-caching=false
+                volumeMounts:
+                - name: context
+                  mountPath: /workspace
+                - name: docker-config
+                  mountPath: /kaniko/.docker
+              volumes:
+              - name: context
+                persistentVolumeClaim:
+                  claimName: kaniko-context-iptv
+              - name: docker-config
+                secret:
+                  secretName: kaniko-ghcr-iptv
+                  items:
+                  - key: .dockerconfigjson
+                    path: config.json
+        EOFJOB
+
+        echo "Waiting for Kaniko build to complete..."
+        kubectl wait -n ${{ env.BUILD_NAMESPACE }} job/kaniko-build-iptv --for=condition=Complete --timeout=900s || {
+          echo "Build failed! Logs:"
+          kubectl logs -n ${{ env.BUILD_NAMESPACE }} -l job-name=kaniko-build-iptv --tail=100
+          exit 1
+        }
+
+        echo "Build logs:"
+        kubectl logs -n ${{ env.BUILD_NAMESPACE }} -l job-name=kaniko-build-iptv --tail=30
+        echo "Image pushed: ${IMAGE}:${TAG}"
+
+    - name: Cleanup build resources
+      if: always()
+      run: |
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete job kaniko-build-iptv --ignore-not-found
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pod kaniko-iptv-loader --ignore-not-found --force
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pvc kaniko-context-iptv --ignore-not-found
+        kubectl -n ${{ env.BUILD_NAMESPACE }} delete secret kaniko-ghcr-iptv --ignore-not-found
+
+  deploy:
+    runs-on: self-hosted
+    needs: build
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup tools
+      run: |
+        if ! command -v kubectl &> /dev/null; then
+          curl -sLO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        fi
+        if ! command -v helm &> /dev/null; then
+          curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        fi
+
+    - name: Configure kubeconfig
+      run: |
+        TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        SERVER=${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}
+        mkdir -p ~/.kube
+        kubectl config set-cluster k8s --server=https://${SERVER} --certificate-authority=${CA} --kubeconfig ~/.kube/config
+        kubectl config set-credentials sa --token=${TOKEN} --kubeconfig ~/.kube/config
+        kubectl config set-context default --cluster=k8s --user=sa --kubeconfig ~/.kube/config
+        kubectl config use-context default --kubeconfig ~/.kube/config
+
+    - name: Deploy with Helm
+      run: |
+        TAG="${{ needs.build.outputs.tag }}"
+        echo "Deploying iptv-parser ${TAG}"
+
+        helm upgrade --install iptv-parser ./charts/iptv-parser/ \
+          --namespace ${{ env.NAMESPACE }} \
+          --set image.tag="${TAG}" \
+          --wait \
+          --timeout 5m
+
+        echo "Deployed iptv-parser ${TAG}"
+        kubectl get pods -n ${{ env.NAMESPACE }}

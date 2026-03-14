@@ -47,16 +47,18 @@ certs/
 **/ios/.symlinks/
 **/ios/Flutter/Flutter.podspec
 
-# Backend / Python (if needed)
-**/__pycache__/
+# Backend / Go
+backend/bin/
 backend/.env
+**/__pycache__/
 backend/venv/
 backend/.venv/
-backend/.coverage
-backend/uploads/
+
+# Helm secrets
+charts/*/secrets-values.yaml
+charts/*/secret-values.yaml
 
 # Backups and Secrets
-backend/secrets_backup/
 *.env
 
 # Misc

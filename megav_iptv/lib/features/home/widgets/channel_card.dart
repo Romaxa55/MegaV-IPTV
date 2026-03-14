@@ -24,7 +24,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
   @override
   Widget build(BuildContext context) {
     final isHighlighted = widget.isFocused || _isHovered;
-    final key = epgKey(tvgId: widget.channel.tvgId, channelName: widget.channel.name);
+    final key = widget.channel.id;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),

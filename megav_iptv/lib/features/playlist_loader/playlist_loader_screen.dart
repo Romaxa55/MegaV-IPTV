@@ -6,21 +6,49 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
 
-class PlaylistLoaderScreen extends ConsumerStatefulWidget {
-  const PlaylistLoaderScreen({super.key});
+class SplashLoaderScreen extends ConsumerStatefulWidget {
+  const SplashLoaderScreen({super.key});
 
   @override
-  ConsumerState<PlaylistLoaderScreen> createState() => _PlaylistLoaderScreenState();
+  ConsumerState<SplashLoaderScreen> createState() => _SplashLoaderScreenState();
 }
 
-class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
+class _SplashLoaderScreenState extends ConsumerState<SplashLoaderScreen> {
+  bool _isLoading = true;
+  String? _error;
   late final TextEditingController _urlController;
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _urlController = TextEditingController(text: ref.read(playlistUrlProvider));
+    _urlController = TextEditingController(text: ref.read(baseUrlProvider));
+    _checkServer();
+  }
+
+  Future<void> _checkServer() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final api = ref.read(apiClientProvider);
+      // Just try to fetch groups to verify connection
+      await api.getGroups();
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Не удалось подключиться к серверу';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _saveAndRetry() {
+    ref.read(baseUrlProvider.notifier).state = _urlController.text.trim();
+    _checkServer();
   }
 
   @override
@@ -29,85 +57,64 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
     super.dispose();
   }
 
-  Future<void> _loadPlaylist() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) return;
-
-    setState(() => _isLoading = true);
-
-    ref.read(playlistUrlProvider.notifier).state = url;
-
-    try {
-      final repo = ref.read(playlistRepositoryProvider);
-      await repo.loadPlaylist(url, force: true);
-      if (mounted) {
-        ref.read(epgRefreshProvider);
-        context.go('/home');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading playlist: $e'), backgroundColor: AppColors.error));
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 48.w),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.live_tv_rounded, size: 80.sp, color: AppColors.primary),
-                SizedBox(height: 24.h),
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Container(
+          width: 400.w,
+          padding: EdgeInsets.all(32.w),
+          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16.r)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tv, size: 64.sp, color: AppColors.primary),
+              SizedBox(height: 24.h),
+              if (_isLoading) ...[
+                const CircularProgressIndicator(color: AppColors.primary),
+                SizedBox(height: 16.h),
                 Text(
-                  'MegaV IPTV',
-                  style: TextStyle(fontSize: 36.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  'Подключение к серверу...',
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  'Enter playlist URL to start',
-                  style: TextStyle(fontSize: 16.sp, color: AppColors.textSecondary),
-                ),
-                SizedBox(height: 48.h),
-                SizedBox(
-                  width: 600.w,
-                  child: TextField(
-                    controller: _urlController,
-                    autofocus: true,
-                    style: TextStyle(fontSize: 14.sp),
-                    decoration: InputDecoration(
-                      hintText: 'https://example.com/playlist.m3u',
-                      prefixIcon: const Icon(Icons.link),
-                      suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () => _urlController.clear()),
-                    ),
-                    onSubmitted: (_) => _loadPlaylist(),
+              ] else ...[
+                if (_error != null)
+                  Text(
+                    _error!,
+                    style: TextStyle(color: AppColors.error, fontSize: 14.sp),
+                    textAlign: TextAlign.center,
+                  ),
+                SizedBox(height: 16.h),
+                TextField(
+                  controller: _urlController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'API Server URL',
+                    labelStyle: TextStyle(color: AppColors.textHint),
+                    filled: true,
+                    fillColor: Colors.black.withValues(alpha: 0.3),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r), borderSide: BorderSide.none),
                   ),
                 ),
                 SizedBox(height: 24.h),
                 SizedBox(
-                  width: 300.w,
-                  height: 50.h,
+                  width: double.infinity,
+                  height: 48.h,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _loadPlaylist,
-                    child: _isLoading
-                        ? SizedBox(
-                            width: 24.w,
-                            height: 24.h,
-                            child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text('Load Playlist', style: TextStyle(fontSize: 16.sp)),
+                    onPressed: _saveAndRetry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+                    ),
+                    child: Text(
+                      'Подключиться',
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),

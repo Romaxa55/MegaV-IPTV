@@ -65,7 +65,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
     } else {
       _openedViaMedia3 = false;
-      await _playerManager.playChannel(channel.url, channelId: channel.tvgId ?? channel.name);
+      await _playerManager.playChannel(channel.url, channelId: channel.id);
     }
     _showBriefOSDFor();
   }
@@ -97,25 +97,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _quickSwitch(int delta) async {
     final currentIndex = ref.read(currentChannelIndexProvider);
-    final repo = ref.read(playlistRepositoryProvider);
-    final total = await repo.getTotalChannelCount();
-    if (total == 0) return;
+    final group = ref.read(selectedGroupProvider);
+    final api = ref.read(apiClientProvider);
 
-    final nextIdx = (currentIndex + delta).clamp(0, total - 1);
-    if (nextIdx == currentIndex) return;
+    // TODO: Need total count from backend. For now just try to load next.
+    final nextIdx = currentIndex + delta;
+    if (nextIdx < 0) return;
 
-    final next = await repo.getChannelByIndex(nextIdx);
-    if (next == null) return;
+    try {
+      final channels = await api.getChannels(group: group, limit: 1, offset: nextIdx);
+      if (channels.isEmpty) return;
 
-    setState(() => _switchPreview = next);
+      final next = channels.first;
+      setState(() => _switchPreview = next);
 
-    _switchTimer?.cancel();
-    _switchTimer = Timer(const Duration(milliseconds: 1500), () async {
-      ref.read(currentChannelIndexProvider.notifier).state = nextIdx;
-      ref.read(currentChannelProvider.notifier).state = next;
-      await _openChannel(next);
-      if (mounted) setState(() => _switchPreview = null);
-    });
+      _switchTimer?.cancel();
+      _switchTimer = Timer(const Duration(milliseconds: 1500), () async {
+        ref.read(currentChannelIndexProvider.notifier).state = nextIdx;
+        ref.read(currentChannelProvider.notifier).state = next;
+        await _openChannel(next);
+        if (mounted) setState(() => _switchPreview = null);
+      });
+    } catch (_) {}
   }
 
   @override
@@ -217,7 +220,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   child: PlayerControlsOverlay(
                     channelName: channel.name,
                     groupName: channel.groupTitle,
-                    tvgId: channel.tvgId,
+                    channelId: channel.id,
                     logoUrl: channel.logoUrl,
                     onBack: () => context.pop(),
                     onChannelUp: () => _quickSwitch(1),
@@ -231,7 +234,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               if (_overlay == PlayerOverlayMode.epg && channel != null)
                 EpgOverlay(
                   channelName: channel.name,
-                  tvgId: channel.tvgId,
+                  channelId: channel.id,
                   onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
                 ),
 
@@ -239,7 +242,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               if (_overlay == PlayerOverlayMode.channels && channel != null)
                 ChannelsSidebar(
                   currentChannel: channel,
-                  onSelectChannel: _selectChannel,
+                  onSelectChannel: (ch) => _selectChannel(ch, 0),
                   onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
                 ),
 
@@ -251,7 +254,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               if (_overlay == PlayerOverlayMode.similar && channel != null)
                 SimilarOverlay(
                   currentChannel: channel,
-                  onSelectChannel: _selectChannel,
+                  onSelectChannel: (ch) => _selectChannel(ch, 0),
                   onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
                 ),
             ],
@@ -261,11 +264,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  void _selectChannel(Channel ch) async {
-    final repo = ref.read(playlistRepositoryProvider);
-    final idx = await repo.getGlobalIndex(ch);
+  void _selectChannel(Channel ch, int indexInGroup) {
     ref.read(currentChannelProvider.notifier).state = ch;
-    ref.read(currentChannelIndexProvider.notifier).state = idx;
+    ref.read(currentChannelIndexProvider.notifier).state = indexInGroup;
     _openChannel(ch);
     setState(() => _overlay = PlayerOverlayMode.none);
   }

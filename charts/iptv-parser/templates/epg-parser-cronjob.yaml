@@ -1,0 +1,44 @@
+{{- if .Values.epgParser.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-epg-parser
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+    app.kubernetes.io/component: epg-parser
+spec:
+  schedule: {{ .Values.epgParser.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "iptv-parser.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: epg-parser
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          containers:
+            - name: epg-parser
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              command: ["./bin/epg-parser"]
+              args:
+                - "-clean-old"
+                {{- if .Values.epgParser.debug }}
+                - "-debug"
+                {{- end }}
+              env:
+                {{- include "iptv-parser.dbEnv" . | nindent 16 }}
+                - name: BATCH_SIZE
+                  value: {{ .Values.epgParser.batchSize | quote }}
+              resources:
+                {{- toYaml .Values.epgParser.resources | nindent 16 }}
+      backoffLimit: 2
+{{- end }}

@@ -44,7 +44,7 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final ch = widget.channel;
-    final key = epgKey(tvgId: ch.tvgId, channelName: ch.name);
+    final key = ch.id;
 
     return Positioned(
       bottom: 80.h,
@@ -111,7 +111,7 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
     child: Icon(Icons.tv, size: 28.sp, color: Colors.white.withValues(alpha: 0.2)),
   );
 
-  Widget _buildInfo(Channel ch, String epgLookupKey) {
+  Widget _buildInfo(Channel ch, String key) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -139,19 +139,13 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
                 color: AppColors.primary.withValues(alpha: 0.2),
                 textColor: AppColors.primaryLight,
               ),
-            if (ch.language != null)
-              _InfoBadge(
-                text: ch.language!,
-                color: Colors.white.withValues(alpha: 0.1),
-                textColor: Colors.white.withValues(alpha: 0.5),
-              ),
           ],
         ),
         SizedBox(height: 12.h),
         Consumer(
           builder: (context, ref, _) {
-            final nowAsync = ref.watch(currentProgramProvider(epgLookupKey));
-            final nextAsync = ref.watch(nextProgramProvider(epgLookupKey));
+            final nowAsync = ref.watch(currentProgramProvider(key));
+            final upcomingAsync = ref.watch(upcomingProgramsProvider(key));
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -173,11 +167,12 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
                   },
                 ),
                 SizedBox(height: 4.h),
-                nextAsync.when(
+                upcomingAsync.when(
                   loading: () => const SizedBox.shrink(),
                   error: (e, st) => const SizedBox.shrink(),
-                  data: (prog) {
-                    if (prog == null) return const SizedBox.shrink();
+                  data: (progs) {
+                    if (progs.isEmpty) return const SizedBox.shrink();
+                    final prog = progs.first;
                     return Row(
                       children: [
                         Icon(Icons.access_time, size: 12.sp, color: Colors.white.withValues(alpha: 0.2)),

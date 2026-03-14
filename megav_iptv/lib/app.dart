@@ -11,7 +11,7 @@ import 'features/settings/settings_screen.dart';
 final _router = GoRouter(
   initialLocation: '/home',
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const PlaylistLoaderScreen()),
+    GoRoute(path: '/', builder: (context, state) => const SplashLoaderScreen()),
     GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
     GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),

@@ -10,7 +10,7 @@ enum PlayerOverlayMode { none, epg, channels, info, similar }
 class PlayerControlsOverlay extends StatelessWidget {
   final String channelName;
   final String? groupName;
-  final String? tvgId;
+  final String channelId;
   final String? logoUrl;
   final VoidCallback onBack;
   final VoidCallback onChannelUp;
@@ -22,7 +22,7 @@ class PlayerControlsOverlay extends StatelessWidget {
     super.key,
     required this.channelName,
     this.groupName,
-    this.tvgId,
+    required this.channelId,
     this.logoUrl,
     required this.onBack,
     required this.onChannelUp,

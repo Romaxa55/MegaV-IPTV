@@ -42,13 +42,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final playlistAsync = ref.watch(playlistLoadProvider);
     final groupsAsync = ref.watch(groupsProvider);
     final featuredAsync = ref.watch(featuredChannelsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: playlistAsync.when(
+      body: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (error, stack) => Center(
           child: Column(
@@ -61,13 +60,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: TextStyle(fontSize: 14.sp, color: AppColors.error),
               ),
               SizedBox(height: 16.h),
-              ElevatedButton(onPressed: () => ref.invalidate(playlistLoadProvider), child: const Text('Retry')),
+              ElevatedButton(onPressed: () => ref.invalidate(groupsProvider), child: const Text('Retry')),
             ],
           ),
         ),
-        data: (_) {
+        data: (groups) {
           final featured = featuredAsync.value ?? [];
-          final groups = groupsAsync.value ?? [];
 
           return KeyboardListener(
             focusNode: _focusNode,
@@ -81,9 +79,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     itemCount: groups.length,
                     itemBuilder: (context, rowIdx) {
                       final group = groups[rowIdx];
-                      return _LazyContentRow(
-                        groupName: group.name,
-                        channelCount: group.count,
+                      return ContentRow(
+                        title: group.name,
+                        totalCount: group.count,
                         isFocusedRow: _focusedRow == rowIdx,
                         focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
                         onChannelTap: _openChannel,
@@ -122,78 +120,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _focusedCol = (_focusedCol - 1).clamp(0, 999);
           }
         case LogicalKeyboardKey.arrowRight:
-          if (_focusedRow >= 0 && _focusedRow < groups.length) {
-            final maxCol = (groups[_focusedRow].count) - 1;
+          if (_focusedRow >= 0) {
+            final maxCol = groups[_focusedRow].count - 1;
             _focusedCol = (_focusedCol + 1).clamp(0, maxCol);
           }
         case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
-          // Handled by ContentRow tap
-          break;
+          // Channel selection handled by ContentRow tap callback
+          if (_focusedRow == -1) {
+            final feat = ref.read(featuredChannelsProvider).value;
+            if (feat != null && feat.isNotEmpty) {
+              _openChannel(feat.first, 0);
+            }
+          }
         default:
           break;
       }
     });
-  }
-}
-
-/// A ContentRow that lazily loads its channels from DB.
-class _LazyContentRow extends ConsumerStatefulWidget {
-  final String groupName;
-  final int channelCount;
-  final bool isFocusedRow;
-  final int focusedCol;
-  final void Function(Channel channel, int index) onChannelTap;
-
-  const _LazyContentRow({
-    required this.groupName,
-    required this.channelCount,
-    this.isFocusedRow = false,
-    this.focusedCol = -1,
-    required this.onChannelTap,
-  });
-
-  @override
-  ConsumerState<_LazyContentRow> createState() => _LazyContentRowState();
-}
-
-class _LazyContentRowState extends ConsumerState<_LazyContentRow> {
-  static const _pageSize = 20;
-  final List<Channel> _channels = [];
-  bool _loading = false;
-  bool _hasMore = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMore();
-  }
-
-  Future<void> _loadMore() async {
-    if (_loading || !_hasMore) return;
-    _loading = true;
-
-    final repo = ref.read(playlistRepositoryProvider);
-    final batch = await repo.getChannelsByGroup(widget.groupName, limit: _pageSize, offset: _channels.length);
-
-    if (mounted) {
-      setState(() {
-        _channels.addAll(batch);
-        _hasMore = batch.length == _pageSize;
-        _loading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ContentRow(
-      title: widget.groupName,
-      channels: _channels,
-      totalCount: widget.channelCount,
-      isFocusedRow: widget.isFocusedRow,
-      focusedCol: widget.focusedCol,
-      onChannelTap: widget.onChannelTap,
-      onLoadMore: _hasMore ? _loadMore : null,
-    );
   }
 }

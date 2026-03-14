@@ -1,0 +1,54 @@
+{{- if .Values.apiService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iptv-parser.fullname" . }}-api
+  labels:
+    {{- include "iptv-parser.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.apiService.replicas }}
+  selector:
+    matchLabels:
+      {{- include "iptv-parser.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "iptv-parser.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["./bin/api-server"]
+          args:
+            - "-port"
+            - "{{ .Values.apiService.port }}"
+            - "-cache={{ .Values.apiService.cache }}"
+          ports:
+            - containerPort: {{ .Values.apiService.port }}
+              protocol: TCP
+          env:
+            {{- include "iptv-parser.dbEnv" . | nindent 12 }}
+            {{- include "iptv-parser.redisEnv" . | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.apiService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.apiService.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.apiService.resources | nindent 12 }}
+{{- end }}
