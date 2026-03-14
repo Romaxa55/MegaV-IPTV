@@ -44,7 +44,7 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final ch = widget.channel;
-    final tvgId = ch.tvgId;
+    final key = epgKey(tvgId: ch.tvgId, channelName: ch.name);
 
     return Positioned(
       bottom: 80.h,
@@ -70,7 +70,7 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
                   children: [
                     _buildLogo(ch),
                     SizedBox(width: 16.w),
-                    Expanded(child: _buildInfo(ch, tvgId)),
+                    Expanded(child: _buildInfo(ch, key)),
                     GestureDetector(
                       onTap: widget.onClose,
                       child: Container(

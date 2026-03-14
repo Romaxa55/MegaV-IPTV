@@ -23,7 +23,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
   @override
   Widget build(BuildContext context) {
     final isHighlighted = widget.isFocused || _isHovered;
-    final tvgId = widget.channel.tvgId;
+    final key = epgKey(tvgId: widget.channel.tvgId, channelName: widget.channel.name);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -50,9 +50,9 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
                 children: [
                   _buildPoster(),
                   _buildGradientOverlay(),
-                  _buildLiveBadge(tvgId),
+                  _buildLiveBadge(key),
                   _buildRatingBadge(),
-                  _buildBottomInfo(tvgId),
+                  _buildBottomInfo(key),
                   if (isHighlighted) _buildPlayOverlay(),
                 ],
               ),
@@ -102,15 +102,13 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
     );
   }
 
-  // LIVE badge (top-left)
-  Widget _buildLiveBadge(String? tvgId) {
-    if (tvgId == null || tvgId.isEmpty) return const SizedBox.shrink();
+  Widget _buildLiveBadge(String epgLookupKey) {
     return Positioned(
       top: 8.h,
       left: 8.w,
       child: Consumer(
         builder: (context, ref, _) {
-          final nowAsync = ref.watch(currentProgramProvider(tvgId));
+          final nowAsync = ref.watch(currentProgramProvider(epgLookupKey));
           return nowAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (e, st) => const SizedBox.shrink(),
@@ -173,7 +171,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
     );
   }
 
-  Widget _buildBottomInfo(String? tvgId) {
+  Widget _buildBottomInfo(String epgLookupKey) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -185,50 +183,49 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // EPG program progress bar
-            if (tvgId != null && tvgId.isNotEmpty)
-              Consumer(
-                builder: (context, ref, _) {
-                  final nowAsync = ref.watch(currentProgramProvider(tvgId));
-                  return nowAsync.when(
-                    loading: () => const SizedBox.shrink(),
-                    error: (e, st) => const SizedBox.shrink(),
-                    data: (prog) {
-                      if (prog == null || !prog.isNow) return const SizedBox.shrink();
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 6.h),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  _fmtDuration(prog.end.difference(DateTime.now())),
-                                  style: TextStyle(fontSize: TS.t7.sp, color: Colors.white.withValues(alpha: 0.25)),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  '-${_fmtDuration(prog.end.difference(DateTime.now()))}',
-                                  style: TextStyle(fontSize: TS.t7.sp, color: Colors.white.withValues(alpha: 0.4)),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 2.h),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(2.r),
-                              child: LinearProgressIndicator(
-                                value: prog.progress,
-                                minHeight: 3.h,
-                                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            Consumer(
+              builder: (context, ref, _) {
+                final nowAsync = ref.watch(currentProgramProvider(epgLookupKey));
+                return nowAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (prog) {
+                    if (prog == null || !prog.isNow) return const SizedBox.shrink();
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 6.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                _fmtDuration(prog.end.difference(DateTime.now())),
+                                style: TextStyle(fontSize: TS.t7.sp, color: Colors.white.withValues(alpha: 0.25)),
                               ),
+                              const Spacer(),
+                              Text(
+                                '-${_fmtDuration(prog.end.difference(DateTime.now()))}',
+                                style: TextStyle(fontSize: TS.t7.sp, color: Colors.white.withValues(alpha: 0.4)),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 2.h),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(2.r),
+                            child: LinearProgressIndicator(
+                              value: prog.progress,
+                              minHeight: 3.h,
+                              backgroundColor: Colors.white.withValues(alpha: 0.1),
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
             // Channel/program title
             Text(
               widget.channel.name,
@@ -243,44 +240,41 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
             ),
             // Meta row
             SizedBox(height: 2.h),
-            if (tvgId != null && tvgId.isNotEmpty)
-              Consumer(
-                builder: (context, ref, _) {
-                  final nowAsync = ref.watch(currentProgramProvider(tvgId));
-                  return nowAsync.when(
-                    loading: () => _metaFallback(),
-                    error: (e, st) => _metaFallback(),
-                    data: (prog) {
-                      if (prog == null) return _metaFallback();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              if (prog.category != null) ...[
-                                Text(
-                                  prog.category!,
-                                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.3)),
-                                ),
-                                Text(
-                                  ' · ',
-                                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.15)),
-                                ),
-                              ],
+            Consumer(
+              builder: (context, ref, _) {
+                final nowAsync = ref.watch(currentProgramProvider(epgLookupKey));
+                return nowAsync.when(
+                  loading: () => _metaFallback(),
+                  error: (e, st) => _metaFallback(),
+                  data: (prog) {
+                    if (prog == null) return _metaFallback();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (prog.category != null) ...[
                               Text(
-                                _fmtDuration(prog.duration),
+                                prog.category!,
                                 style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.3)),
                               ),
+                              Text(
+                                ' · ',
+                                style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.15)),
+                              ),
                             ],
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              )
-            else
-              _metaFallback(),
+                            Text(
+                              _fmtDuration(prog.duration),
+                              style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.3)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
             SizedBox(height: 1.h),
             Text(
               widget.channel.groupTitle ?? '',

@@ -213,12 +213,95 @@ class EpgDatabase {
     return rows.map(EpgProgram.fromMap).toList();
   }
 
+  /// Find EPG channel ID by display name (case-insensitive fuzzy match).
+  /// Returns the best matching channel_id or null.
+  Future<String?> findChannelIdByName(String channelName) async {
+    final db = await database;
+    final normalized = channelName.trim().toLowerCase();
+
+    // Exact match first
+    var rows = await db.query(
+      'epg_channels',
+      columns: ['id'],
+      where: 'LOWER(display_name) = ? AND deleted = 0',
+      whereArgs: [normalized],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) return rows.first['id'] as String;
+
+    // LIKE match (display_name contains the channel name)
+    rows = await db.query(
+      'epg_channels',
+      columns: ['id'],
+      where: 'LOWER(display_name) LIKE ? AND deleted = 0',
+      whereArgs: ['%$normalized%'],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) return rows.first['id'] as String;
+
+    return null;
+  }
+
+  /// Bulk-resolve channel names to EPG channel IDs.
+  /// Returns a map of channelName -> epgChannelId.
+  Future<Map<String, String>> buildNameToIdMap() async {
+    final db = await database;
+    final rows = await db.query('epg_channels', where: 'deleted = 0');
+    final map = <String, String>{};
+    for (final row in rows) {
+      final id = row['id'] as String;
+      final name = (row['display_name'] as String).toLowerCase().trim();
+      map[name] = id;
+    }
+    return map;
+  }
+
   /// Get channel info by ID.
   Future<EpgChannel?> getChannel(String channelId) async {
     final db = await database;
     final rows = await db.query('epg_channels', where: 'id = ? AND deleted = 0', whereArgs: [channelId], limit: 1);
     if (rows.isEmpty) return null;
     return EpgChannel.fromMap(rows.first);
+  }
+
+  /// Resolve a playlist channel to an EPG channel ID.
+  /// Tries exact match on [tvgId] first, then fuzzy match on [channelName].
+  Future<String?> resolveChannelId({String? tvgId, String? channelName}) async {
+    final db = await database;
+
+    if (tvgId != null && tvgId.isNotEmpty) {
+      final rows = await db.query(
+        'epg_channels',
+        columns: ['id'],
+        where: 'id = ? AND deleted = 0',
+        whereArgs: [tvgId],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) return rows.first['id'] as String;
+    }
+
+    if (channelName != null && channelName.isNotEmpty) {
+      final rows = await db.query(
+        'epg_channels',
+        columns: ['id'],
+        where: 'display_name = ? AND deleted = 0',
+        whereArgs: [channelName],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) return rows.first['id'] as String;
+
+      // Fuzzy: case-insensitive LIKE
+      final fuzzyRows = await db.query(
+        'epg_channels',
+        columns: ['id'],
+        where: 'LOWER(display_name) LIKE ? AND deleted = 0',
+        whereArgs: ['%${channelName.toLowerCase()}%'],
+        limit: 1,
+      );
+      if (fuzzyRows.isNotEmpty) return fuzzyRows.first['id'] as String;
+    }
+
+    return null;
   }
 
   /// Get total counts for diagnostics.

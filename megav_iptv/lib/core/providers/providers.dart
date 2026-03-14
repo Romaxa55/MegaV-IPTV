@@ -89,16 +89,36 @@ final epgRefreshProvider = FutureProvider<void>((ref) async {
   repo.startPeriodicRefresh();
 });
 
-final currentProgramProvider = FutureProvider.family<EpgProgram?, String>((ref, tvgId) async {
+/// Build EPG lookup key: "tvgId|channelName". Either part may be empty.
+String epgKey({String? tvgId, required String channelName}) {
+  return '${tvgId ?? ''}|$channelName';
+}
+
+/// Resolves a "tvgId|channelName" key to EPG channel ID, then fetches current program.
+/// Pass either "tvgId" alone or "tvgId|channelName" for fallback matching by name.
+final currentProgramProvider = FutureProvider.family<EpgProgram?, String>((ref, key) async {
   ref.watch(epgRefreshProvider);
   final repo = ref.watch(epgRepositoryProvider);
-  return repo.getCurrentProgram(tvgId);
+  final parts = key.split('|');
+  final tvgId = parts[0].isNotEmpty ? parts[0] : null;
+  final channelName = parts.length > 1 ? parts[1] : null;
+
+  final resolvedId = await repo.resolveChannelId(tvgId: tvgId, channelName: channelName);
+  if (resolvedId == null) return null;
+  return repo.getCurrentProgram(resolvedId);
 });
 
-final nextProgramProvider = FutureProvider.family<EpgProgram?, String>((ref, tvgId) async {
+/// Same pattern for next program.
+final nextProgramProvider = FutureProvider.family<EpgProgram?, String>((ref, key) async {
   ref.watch(epgRefreshProvider);
   final repo = ref.watch(epgRepositoryProvider);
-  return repo.getNextProgram(tvgId);
+  final parts = key.split('|');
+  final tvgId = parts[0].isNotEmpty ? parts[0] : null;
+  final channelName = parts.length > 1 ? parts[1] : null;
+
+  final resolvedId = await repo.resolveChannelId(tvgId: tvgId, channelName: channelName);
+  if (resolvedId == null) return null;
+  return repo.getNextProgram(resolvedId);
 });
 
 final epgLastUpdatedProvider = FutureProvider<DateTime?>((ref) async {

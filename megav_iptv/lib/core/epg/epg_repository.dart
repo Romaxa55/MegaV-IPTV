@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart';
 
 import '../playlist/models/epg_program.dart';
 import 'epg_database.dart';
@@ -14,11 +17,16 @@ class EpgRepository {
 
   String sourceUrl = 'https://iptvx.one/epg/epg.xml.gz';
   static const _refreshInterval = Duration(hours: 6);
-  static const _programChunkSize = 1000;
 
   void startPeriodicRefresh() {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(_refreshInterval, (_) => refresh());
+  }
+
+  /// Returns the path where the EPG file is cached on disk.
+  Future<String> get _epgFilePath async {
+    final dbPath = await getDatabasesPath();
+    return p.join(dbPath, 'epg_cache.xml.gz');
   }
 
   Future<void> refresh({bool force = false}) async {
@@ -37,49 +45,64 @@ class EpgRepository {
         }
       }
 
-      debugPrint('EPG: Downloading from $sourceUrl ...');
-      final response = await http.get(Uri.parse(sourceUrl));
-      if (response.statusCode != 200) {
-        throw Exception('EPG download failed: ${response.statusCode}');
+      final filePath = await _epgFilePath;
+
+      // --- Step 1: Stream download to file (no RAM buffering) ---
+      debugPrint('EPG: Downloading from $sourceUrl to disk...');
+      final stopwatch = Stopwatch()..start();
+
+      final request = http.Request('GET', Uri.parse(sourceUrl));
+      final streamedResponse = await request.send();
+      if (streamedResponse.statusCode != 200) {
+        throw Exception('EPG download failed: ${streamedResponse.statusCode}');
       }
 
-      final gzippedData = Uint8List.fromList(response.bodyBytes);
-      debugPrint(
-        'EPG: Downloaded ${(gzippedData.length / 1024 / 1024).toStringAsFixed(1)} MB, '
-        'parsing with streaming parser...',
-      );
+      final file = File(filePath);
+      final sink = file.openWrite();
+      int downloadedBytes = 0;
+      await for (final chunk in streamedResponse.stream) {
+        sink.add(chunk);
+        downloadedBytes += chunk.length;
+      }
+      await sink.flush();
+      await sink.close();
 
-      final result = await parseXmltvInIsolate(gzippedData);
-      debugPrint(
-        'EPG: Parsed ${result.channels.length} channels, '
-        '${result.programs.length} programs',
-      );
+      final downloadMb = (downloadedBytes / 1024 / 1024).toStringAsFixed(1);
+      debugPrint('EPG: Downloaded $downloadMb MB in ${stopwatch.elapsedMilliseconds}ms');
 
-      // Soft-delete workflow:
-      // 1) Mark existing records as deleted
+      // --- Step 2: Soft-delete existing records ---
       await _db.markAllDeleted();
 
-      // 2) Upsert channels (reactivates existing, inserts new)
-      await _db.upsertChannels(result.channels);
+      // --- Step 3: Stream-parse from file, inserting into DB in chunks ---
+      debugPrint('EPG: Parsing from file (streaming)...');
+      stopwatch.reset();
 
-      // 3) Insert programs in chunks of 1000 to avoid huge memory spikes
-      for (var i = 0; i < result.programs.length; i += _programChunkSize) {
-        final end = (i + _programChunkSize).clamp(0, result.programs.length);
-        await _db.insertProgramsBatch(result.programs.sublist(i, end));
-      }
+      final counts = await parseXmltvFromFile(
+        filePath,
+        onChannels: (channels) async {
+          await _db.upsertChannels(channels);
+          debugPrint('EPG: Inserted ${channels.length} channels');
+        },
+        onProgramBatch: (batch) async {
+          await _db.insertProgramsBatch(batch);
+        },
+        batchSize: 1000,
+      );
 
-      // 4) Purge orphaned records still marked as deleted
+      debugPrint(
+        'EPG: Parsed ${counts.channels} channels, ${counts.programs} programs '
+        'in ${stopwatch.elapsedMilliseconds}ms',
+      );
+
+      // --- Step 4: Cleanup ---
       await _db.purgeDeleted();
-
-      // 5) Clean up programs older than 24h
       await _db.clearOldPrograms();
-
       await _db.setLastUpdated(DateTime.now());
 
-      final counts = await _db.getCounts();
+      final dbCounts = await _db.getCounts();
       debugPrint(
-        'EPG: Database updated — ${counts.channels} channels, '
-        '${counts.programs} programs',
+        'EPG: Done — ${dbCounts.channels} channels, '
+        '${dbCounts.programs} programs in DB',
       );
     } catch (e, st) {
       debugPrint('EPG: Refresh error: $e\n$st');
@@ -99,6 +122,10 @@ class EpgRepository {
 
   Future<List<EpgProgram>> getProgramsForChannel(String channelId, {DateTime? from, DateTime? to}) {
     return _db.getProgramsForChannel(channelId, from: from, to: to);
+  }
+
+  Future<String?> resolveChannelId({String? tvgId, String? channelName}) {
+    return _db.resolveChannelId(tvgId: tvgId, channelName: channelName);
   }
 
   Future<List<EpgProgram>> searchPrograms(String query, {int limit = 50}) {

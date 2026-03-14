@@ -1,177 +1,231 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
-import 'dart:typed_data';
 
 import 'package:xml/xml_events.dart';
 
 import '../playlist/models/epg_channel.dart';
 import '../playlist/models/epg_program.dart';
 
-typedef EpgParseResult = ({List<EpgChannel> channels, List<EpgProgram> programs});
+/// Callback that receives a batch of parsed programs for immediate DB insertion.
+typedef OnProgramBatch = Future<void> Function(List<EpgProgram> batch);
 
-/// Callback signature for receiving parsed EPG data in chunks.
-/// Returns channels and programs parsed so far in this chunk.
-/// [done] is true when parsing is complete.
-typedef EpgChunkCallback = Future<void> Function(EpgParseResult chunk, {required bool done});
+/// Callback that receives all parsed channels (called once after all channels parsed).
+typedef OnChannelsParsed = Future<void> Function(List<EpgChannel> channels);
 
-/// Parses XMLTV gzipped data in an isolate, returning all results at once.
-/// Use [parseXmltvStreaming] for memory-efficient chunked processing.
-Future<EpgParseResult> parseXmltvInIsolate(Uint8List gzippedData) {
-  return Isolate.run(() => _parseXmltvStreaming(gzippedData));
-}
-
-/// Parses XMLTV gzipped data using event-based (SAX-style) streaming.
-/// Never loads the full DOM tree into memory.
-/// Returns channels and programs in chunks via [onChunk] callback,
-/// flushing every [chunkSize] programs to keep memory low.
-Future<EpgParseResult> parseXmltvStreamingWithChunks(
-  Uint8List gzippedData, {
-  required EpgChunkCallback onChunk,
-  int chunkSize = 1000,
+/// Fully streaming EPG parser with bounded memory.
+///
+/// Pipeline: File → gzip.decoder → utf8.decoder → element splitter → parse → DB
+///
+/// Instead of loading the entire XML into memory, this parser:
+/// 1. Streams the gzipped file through decompression and UTF-8 decoding
+/// 2. Extracts individual `<channel>` and `<programme>` XML elements
+///    using a lightweight regex-free text scanner
+/// 3. Parses each small element (~0.5-2 KB) with `parseEvents()`
+/// 4. Flushes programs to the database every [batchSize] items
+///
+/// Peak memory: ~10-20 MB regardless of EPG file size.
+Future<({int channels, int programs})> parseXmltvFromFile(
+  String filePath, {
+  required OnChannelsParsed onChannels,
+  required OnProgramBatch onProgramBatch,
+  int batchSize = 1000,
 }) async {
-  final allChannels = <EpgChannel>[];
-  final allPrograms = <EpgProgram>[];
-
-  final result = await Isolate.run(() => _parseXmltvStreaming(gzippedData));
-
-  // Split into chunks and deliver
-  for (var i = 0; i < result.channels.length; i += chunkSize) {
-    final end = (i + chunkSize).clamp(0, result.channels.length);
-    allChannels.addAll(result.channels.sublist(i, end));
+  final file = File(filePath);
+  if (!await file.exists()) {
+    throw FileSystemException('EPG file not found', filePath);
   }
-
-  for (var i = 0; i < result.programs.length; i += chunkSize) {
-    final end = (i + chunkSize).clamp(0, result.programs.length);
-    final chunk = result.programs.sublist(i, end);
-    allPrograms.addAll(chunk);
-    await onChunk((channels: <EpgChannel>[], programs: chunk), done: end >= result.programs.length);
-  }
-
-  return (channels: allChannels, programs: allPrograms);
-}
-
-/// Internal streaming parser using xml event-based API.
-/// Processes events one-by-one — no DOM tree, no full document in memory.
-EpgParseResult _parseXmltvStreaming(Uint8List gzippedData) {
-  final decompressed = gzip.decode(gzippedData);
-  final xmlString = utf8.decode(decompressed, allowMalformed: true);
 
   final channels = <EpgChannel>[];
-  final programs = <EpgProgram>[];
+  final programBatch = <EpgProgram>[];
+  int totalPrograms = 0;
+  bool channelsFlushed = false;
 
-  // State machine for SAX-style parsing
-  _ParserState state = _ParserState.idle;
-  String? currentChannelId;
-  String? currentChannelName;
-  String? currentChannelIcon;
+  // Buffer for accumulating partial XML elements across stream chunks
+  final elementBuffer = StringBuffer();
+  bool insideElement = false;
+  String? currentTag; // 'channel' or 'programme'
 
-  String? currentProgChannelId;
-  DateTime? currentProgStart;
-  DateTime? currentProgStop;
-  String? currentProgTitle;
-  String? currentProgDesc;
-  String? currentProgCategory;
-  String? currentProgIcon;
-
-  String? currentTextElement;
-
-  for (final event in parseEvents(xmlString)) {
-    if (event is XmlStartElementEvent) {
-      switch (event.name) {
-        case 'channel':
-          state = _ParserState.channel;
-          currentChannelId = _attr(event, 'id');
-          currentChannelName = null;
-          currentChannelIcon = null;
-
-        case 'display-name' when state == _ParserState.channel:
-          currentTextElement = 'display-name';
-
-        case 'icon' when state == _ParserState.channel:
-          currentChannelIcon = _attr(event, 'src');
-
-        case 'programme':
-          state = _ParserState.programme;
-          currentProgChannelId = _attr(event, 'channel');
-          currentProgStart = _parseXmltvDateTime(_attr(event, 'start'));
-          currentProgStop = _parseXmltvDateTime(_attr(event, 'stop'));
-          currentProgTitle = null;
-          currentProgDesc = null;
-          currentProgCategory = null;
-          currentProgIcon = null;
-
-        case 'title' when state == _ParserState.programme:
-          currentTextElement = 'title';
-
-        case 'desc' when state == _ParserState.programme:
-          currentTextElement = 'desc';
-
-        case 'category' when state == _ParserState.programme:
-          currentTextElement = 'category';
-
-        case 'icon' when state == _ParserState.programme:
-          currentProgIcon = _attr(event, 'src');
+  Future<void> processElement(String xml, String tag) async {
+    if (tag == 'channel') {
+      final ch = _parseChannelElement(xml);
+      if (ch != null) channels.add(ch);
+    } else if (tag == 'programme') {
+      // If we encounter the first programme and haven't flushed channels yet
+      if (!channelsFlushed && channels.isNotEmpty) {
+        await onChannels(channels);
+        channelsFlushed = true;
       }
-    } else if (event is XmlTextEvent) {
-      final text = event.value.trim();
-      if (text.isEmpty) continue;
 
-      switch (currentTextElement) {
-        case 'display-name':
-          currentChannelName = text;
-        case 'title':
-          currentProgTitle = text;
-        case 'desc':
-          currentProgDesc = text;
-        case 'category':
-          currentProgCategory = text;
-      }
-    } else if (event is XmlEndElementEvent) {
-      switch (event.name) {
-        case 'channel':
-          final chId = currentChannelId;
-          if (chId != null && chId.isNotEmpty) {
-            channels.add(EpgChannel(id: chId, displayName: currentChannelName ?? chId, icon: currentChannelIcon));
-          }
-          state = _ParserState.idle;
-          currentTextElement = null;
+      final prog = _parseProgrammeElement(xml);
+      if (prog != null) {
+        programBatch.add(prog);
+        totalPrograms++;
 
-        case 'programme':
-          final progChId = currentProgChannelId;
-          final progStart = currentProgStart;
-          final progStop = currentProgStop;
-          final progTitle = currentProgTitle;
-          if (progChId != null && progStart != null && progStop != null && progTitle != null && progTitle.isNotEmpty) {
-            programs.add(
-              EpgProgram(
-                channelId: progChId,
-                title: progTitle,
-                description: currentProgDesc,
-                category: currentProgCategory,
-                icon: currentProgIcon,
-                start: progStart,
-                end: progStop,
-              ),
-            );
-          }
-          state = _ParserState.idle;
-          currentTextElement = null;
-
-        case 'display-name':
-        case 'title':
-        case 'desc':
-        case 'category':
-        case 'icon':
-          currentTextElement = null;
+        if (programBatch.length >= batchSize) {
+          await onProgramBatch(List.of(programBatch));
+          programBatch.clear();
+        }
       }
     }
   }
 
-  return (channels: channels, programs: programs);
+  // Stream pipeline: file → gzip → utf8 → String chunks
+  final xmlStream = file.openRead().transform(gzip.decoder).transform(utf8.decoder);
+
+  await for (final chunk in xmlStream) {
+    int pos = 0;
+
+    while (pos < chunk.length) {
+      if (!insideElement) {
+        // Scan for opening tag: <channel or <programme
+        final channelStart = chunk.indexOf('<channel', pos);
+        final programmeStart = chunk.indexOf('<programme', pos);
+
+        int earliest = -1;
+        String? tag;
+
+        if (channelStart >= 0 && (programmeStart < 0 || channelStart < programmeStart)) {
+          earliest = channelStart;
+          tag = 'channel';
+        } else if (programmeStart >= 0) {
+          earliest = programmeStart;
+          tag = 'programme';
+        }
+
+        if (earliest < 0) break; // no more elements in this chunk
+
+        insideElement = true;
+        currentTag = tag;
+        elementBuffer.clear();
+        pos = earliest;
+      }
+
+      if (insideElement) {
+        // Scan for closing tag
+        final closingTag = '</$currentTag>';
+        final closingIdx = chunk.indexOf(closingTag, pos);
+
+        if (closingIdx >= 0) {
+          final endPos = closingIdx + closingTag.length;
+          elementBuffer.write(chunk.substring(pos, endPos));
+          await processElement(elementBuffer.toString(), currentTag!);
+          elementBuffer.clear();
+          insideElement = false;
+          currentTag = null;
+          pos = endPos;
+        } else {
+          // Closing tag not found in this chunk — buffer and continue
+          elementBuffer.write(chunk.substring(pos));
+          break;
+        }
+      }
+    }
+  }
+
+  // Flush remaining channels if we never hit a <programme>
+  if (!channelsFlushed && channels.isNotEmpty) {
+    await onChannels(channels);
+  }
+
+  // Flush remaining programs
+  if (programBatch.isNotEmpty) {
+    await onProgramBatch(programBatch);
+  }
+
+  return (channels: channels.length, programs: totalPrograms);
 }
 
-enum _ParserState { idle, channel, programme }
+// ---------------------------------------------------------------------------
+// Per-element parsers using lightweight event-based XML
+// ---------------------------------------------------------------------------
+
+EpgChannel? _parseChannelElement(String xml) {
+  String? id;
+  String? displayName;
+  String? icon;
+  String? currentText;
+
+  for (final event in parseEvents(xml)) {
+    if (event is XmlStartElementEvent) {
+      if (event.name == 'channel') {
+        id = _attr(event, 'id');
+      } else if (event.name == 'display-name') {
+        currentText = 'display-name';
+      } else if (event.name == 'icon') {
+        icon = _attr(event, 'src');
+      }
+    } else if (event is XmlTextEvent && currentText == 'display-name') {
+      final text = event.value.trim();
+      if (text.isNotEmpty) displayName = text;
+    } else if (event is XmlEndElementEvent) {
+      currentText = null;
+    }
+  }
+
+  if (id == null || id.isEmpty) return null;
+  return EpgChannel(id: id, displayName: displayName ?? id, icon: icon);
+}
+
+EpgProgram? _parseProgrammeElement(String xml) {
+  String? channelId;
+  DateTime? start;
+  DateTime? stop;
+  String? title;
+  String? description;
+  String? category;
+  String? icon;
+  String? currentText;
+
+  for (final event in parseEvents(xml)) {
+    if (event is XmlStartElementEvent) {
+      switch (event.name) {
+        case 'programme':
+          channelId = _attr(event, 'channel');
+          start = _parseXmltvDateTime(_attr(event, 'start'));
+          stop = _parseXmltvDateTime(_attr(event, 'stop'));
+        case 'title':
+          currentText = 'title';
+        case 'desc':
+          currentText = 'desc';
+        case 'category':
+          currentText = 'category';
+        case 'icon':
+          icon = _attr(event, 'src');
+      }
+    } else if (event is XmlTextEvent) {
+      final text = event.value.trim();
+      if (text.isEmpty) continue;
+      switch (currentText) {
+        case 'title':
+          title = text;
+        case 'desc':
+          description = text;
+        case 'category':
+          category = text;
+      }
+    } else if (event is XmlEndElementEvent) {
+      currentText = null;
+    }
+  }
+
+  if (channelId == null || start == null || stop == null) return null;
+  if (title == null || title.isEmpty) return null;
+
+  return EpgProgram(
+    channelId: channelId,
+    title: title,
+    description: description,
+    category: category,
+    icon: icon,
+    start: start,
+    end: stop,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 String? _attr(XmlStartElementEvent event, String name) {
   for (final attr in event.attributes) {

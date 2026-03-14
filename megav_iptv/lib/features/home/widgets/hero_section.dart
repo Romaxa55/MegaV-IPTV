@@ -142,13 +142,9 @@ class _HeroContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tvgId = channel.tvgId;
-    final nowAsync = tvgId != null && tvgId.isNotEmpty
-        ? ref.watch(currentProgramProvider(tvgId))
-        : const AsyncValue<EpgProgram?>.data(null);
-    final nextAsync = tvgId != null && tvgId.isNotEmpty
-        ? ref.watch(nextProgramProvider(tvgId))
-        : const AsyncValue<EpgProgram?>.data(null);
+    final key = epgKey(tvgId: channel.tvgId, channelName: channel.name);
+    final nowAsync = ref.watch(currentProgramProvider(key));
+    final nextAsync = ref.watch(nextProgramProvider(key));
 
     return Positioned(
       bottom: 40.h,
@@ -174,7 +170,7 @@ class _HeroContent extends ConsumerWidget {
           children: [
             Expanded(child: _buildLeftContent(nowAsync)),
             SizedBox(width: 24.w),
-            _buildMiniEpg(tvgId, nowAsync, nextAsync),
+            _buildMiniEpg(key, nowAsync, nextAsync),
           ],
         ),
       ),
@@ -430,9 +426,7 @@ class _HeroContent extends ConsumerWidget {
   }
 
   // Mini EPG sidebar (right side in hero, "Далее на канале")
-  Widget _buildMiniEpg(String? tvgId, AsyncValue<EpgProgram?> nowAsync, AsyncValue<EpgProgram?> nextAsync) {
-    if (tvgId == null || tvgId.isEmpty) return const SizedBox.shrink();
-
+  Widget _buildMiniEpg(String epgLookupKey, AsyncValue<EpgProgram?> nowAsync, AsyncValue<EpgProgram?> nextAsync) {
     return Container(
       width: 220.w,
       padding: EdgeInsets.all(12.w),
