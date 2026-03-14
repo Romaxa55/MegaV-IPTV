@@ -234,8 +234,10 @@ func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, er
 		WHERE ep.start_time <= $1 AND ep.end_time > $1
 		  AND rc.is_nsfw = false
 		  AND rc.logo_url IS NOT NULL
-		  AND ep.icon IS NOT NULL AND ep.icon != ''
-		ORDER BY ws.best_uptime DESC, ep.end_time - ep.start_time DESC
+		ORDER BY
+		  CASE WHEN ep.icon IS NOT NULL AND ep.icon != '' THEN 0 ELSE 1 END,
+		  ws.best_uptime DESC,
+		  ep.end_time - ep.start_time DESC
 		LIMIT $2`, now, limit)
 	if err != nil {
 		return nil, err

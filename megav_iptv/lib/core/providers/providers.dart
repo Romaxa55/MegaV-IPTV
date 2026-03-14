@@ -102,27 +102,56 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
 
   const maxPerRow = 20;
   final categories = <CinemaCategory>[];
+  final seen = <String>{};
 
-  final liveMovies = nowPlaying.where((i) => _isMovieCategory(i.program.category)).take(maxPerRow).toList();
+  List<NowPlayingItem> unique(Iterable<NowPlayingItem> items) {
+    final result = <NowPlayingItem>[];
+    for (final i in items) {
+      if (seen.add(i.channelId)) result.add(i);
+      if (result.length >= maxPerRow) break;
+    }
+    return result;
+  }
+
+  final liveMovies = unique(nowPlaying.where((i) => _isMovieCategory(i.program.category)));
   if (liveMovies.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: liveMovies));
   }
 
-  final liveSport = nowPlaying.where((i) => _isSportCategory(i.program.category)).take(maxPerRow).toList();
+  final liveSport = unique(nowPlaying.where((i) => _isSportCategory(i.program.category)));
   if (liveSport.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-sport', name: '⚽  Спорт в эфире', items: liveSport));
   }
 
-  final liveShows = nowPlaying
-      .where((i) => !_isMovieCategory(i.program.category) && !_isSportCategory(i.program.category))
-      .take(maxPerRow)
-      .toList();
-  if (liveShows.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-shows', name: '📡  Сейчас в эфире', items: liveShows));
+  final liveKids = unique(nowPlaying.where((i) => _isKidsCategory(i.program.category)));
+  if (liveKids.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-kids', name: '🧸  Детям', items: liveKids));
+  }
+
+  final liveDocs = unique(nowPlaying.where((i) => _isDocCategory(i.program.category)));
+  if (liveDocs.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-docs', name: '🔬  Познавательное', items: liveDocs));
+  }
+
+  final liveOther = unique(
+    nowPlaying.where(
+      (i) =>
+          !_isMovieCategory(i.program.category) &&
+          !_isSportCategory(i.program.category) &&
+          !_isKidsCategory(i.program.category) &&
+          !_isDocCategory(i.program.category),
+    ),
+  );
+  if (liveOther.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-other', name: '📡  Сейчас в эфире', items: liveOther));
   }
 
   if (upcoming.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: upcoming.take(maxPerRow).toList()));
+    final upcomingSeen = <String>{};
+    final uniqueUpcoming = upcoming.where((i) => upcomingSeen.add(i.channelId)).take(maxPerRow).toList();
+    if (uniqueUpcoming.isNotEmpty) {
+      categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: uniqueUpcoming));
+    }
   }
 
   return categories;
@@ -142,7 +171,10 @@ bool _isMovieCategory(String? cat) {
       lower.contains('боевик') ||
       lower.contains('триллер') ||
       lower.contains('ужас') ||
-      lower.contains('фантаст');
+      lower.contains('фантаст') ||
+      lower.contains('мелодрам') ||
+      lower.contains('детектив') ||
+      lower.contains('приключен');
 }
 
 bool _isSportCategory(String? cat) {
@@ -153,7 +185,32 @@ bool _isSportCategory(String? cat) {
       lower.contains('футбол') ||
       lower.contains('хоккей') ||
       lower.contains('баскетбол') ||
-      lower.contains('теннис');
+      lower.contains('теннис') ||
+      lower.contains('бокс') ||
+      lower.contains('mma') ||
+      lower.contains('борьб');
+}
+
+bool _isKidsCategory(String? cat) {
+  if (cat == null) return false;
+  final lower = cat.toLowerCase();
+  return lower.contains('дет') ||
+      lower.contains('kids') ||
+      lower.contains('мульт') ||
+      lower.contains('cartoon') ||
+      lower.contains('аним');
+}
+
+bool _isDocCategory(String? cat) {
+  if (cat == null) return false;
+  final lower = cat.toLowerCase();
+  return lower.contains('познав') ||
+      lower.contains('документ') ||
+      lower.contains('docum') ||
+      lower.contains('наук') ||
+      lower.contains('science') ||
+      lower.contains('discovery') ||
+      lower.contains('природ');
 }
 
 class CinemaCategory {

@@ -100,12 +100,8 @@ class _CinemaCardState extends State<CinemaCard> {
       width: double.infinity,
       height: double.infinity,
       memCacheWidth: 360,
-      placeholder: (ctx, _) => Container(
-        color: const Color(0xFF12121E),
-        child: Center(
-          child: Icon(Icons.tv, size: 36.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
-        ),
-      ),
+      alignment: Alignment.topCenter,
+      placeholder: (ctx, _) => _posterPlaceholder(),
       errorWidget: (ctx, _, _) {
         if (useThumb) {
           _thumbFailed = true;
@@ -118,6 +114,7 @@ class _CinemaCardState extends State<CinemaCard> {
               width: double.infinity,
               height: double.infinity,
               memCacheWidth: 360,
+              alignment: Alignment.topCenter,
               errorWidget: (ctx, _, _) => _posterPlaceholder(),
             );
           }
@@ -143,11 +140,13 @@ class _CinemaCardState extends State<CinemaCard> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.3, 0.65, 1.0],
+            stops: const [0.0, 0.15, 0.4, 0.7, 1.0],
             colors: [
+              Colors.black.withValues(alpha: 0.3),
               Colors.transparent,
-              AppColors.background.withValues(alpha: 0.5),
-              AppColors.background.withValues(alpha: 0.95),
+              Colors.transparent,
+              AppColors.background.withValues(alpha: 0.75),
+              AppColors.background,
             ],
           ),
         ),
