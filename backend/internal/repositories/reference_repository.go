@@ -211,7 +211,7 @@ func (r *IPTVRepository) GetFeaturedReferenceChannels(limit int) ([]*ChannelWith
 			FROM iptv_streams
 			GROUP BY channel_id
 		) s ON s.channel_id = rc.id
-		WHERE s.working_count > 0 AND rc.logo_url IS NOT NULL AND rc.is_nsfw = false
+		WHERE s.working_count > 0 AND rc.is_nsfw = false
 		ORDER BY RANDOM()
 		LIMIT $1`, limit)
 	if err != nil {

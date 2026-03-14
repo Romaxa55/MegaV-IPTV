@@ -1,9 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
+
+final _thumbCacheManager = CacheManager(
+  Config('thumbnailCache', stalePeriod: const Duration(minutes: 1), maxNrOfCacheObjects: 200),
+);
 
 class CinemaCard extends StatefulWidget {
   final NowPlayingItem item;
@@ -99,6 +104,7 @@ class _CinemaCardState extends State<CinemaCard> {
     return CachedNetworkImage(
       key: ValueKey('$url-$_thumbRetryCount'),
       imageUrl: url,
+      cacheManager: useThumb ? _thumbCacheManager : null,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,

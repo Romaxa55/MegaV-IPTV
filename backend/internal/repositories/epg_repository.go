@@ -233,7 +233,6 @@ func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, er
 		) ws ON ws.channel_id = rc.id
 		WHERE ep.start_time <= $1 AND ep.end_time > $1
 		  AND rc.is_nsfw = false
-		  AND rc.logo_url IS NOT NULL
 		ORDER BY
 		  CASE WHEN ep.icon IS NOT NULL AND ep.icon != '' THEN 0 ELSE 1 END,
 		  ws.best_uptime DESC,

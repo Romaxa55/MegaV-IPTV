@@ -129,7 +129,7 @@ func (r *IPTVRepository) GetFeaturedChannels(limit int) ([]*models.Channel, erro
 	query := `
 		SELECT id, name, url, logo_url, group_title, country, language, tvg_id, is_working, thumbnail_url
 		FROM iptv_channels
-		WHERE is_working = true AND logo_url IS NOT NULL
+		WHERE is_working = true
 		ORDER BY RANDOM()
 		LIMIT $1`
 
