@@ -218,7 +218,7 @@ jobs:
           --namespace ${{ env.NAMESPACE }} \
           --set image.tag="${TAG}" \
           --wait \
-          --timeout 5m
+          --timeout 3m
 
         echo "Deployed iptv-parser ${TAG}"
         kubectl get pods -n ${{ env.NAMESPACE }}
