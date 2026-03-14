@@ -240,3 +240,9 @@ func (r *IPTVRepository) TruncateChannels() error {
 	_, err := r.db.Exec("TRUNCATE channels CASCADE")
 	return err
 }
+
+func (r *IPTVRepository) UpdateChannelThumbnail(channelID string, thumbnailURL string) error {
+	_, err := r.db.Exec("UPDATE channels SET thumbnail_url = $1, updated_at = NOW() WHERE id = $2",
+		thumbnailURL, channelID)
+	return err
+}

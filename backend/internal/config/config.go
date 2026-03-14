@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -10,11 +11,13 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	PlaylistURL string
-	EpgURL      string
-	Debug       bool
-	FFmpegBin   string
+	DatabaseURL    string
+	RedisURL       string
+	PlaylistURL    string
+	EpgURL         string
+	KinopoiskAPIKey string
+	Debug          bool
+	FFmpegBin      string
 }
 
 func LoadConfig() (*Config, error) {
@@ -41,8 +44,32 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	config.RedisURL = os.Getenv("REDIS_URL")
+	if config.RedisURL == "" {
+		redisHost := os.Getenv("REDIS_HOST")
+		redisPort := os.Getenv("REDIS_PORT")
+		redisPassword := os.Getenv("REDIS_PASSWORD")
+		redisDB := os.Getenv("REDIS_DB")
+		if redisDB == "" {
+			redisDB = "0"
+		}
+
+		if redisHost != "" && redisPort != "" {
+			if redisPassword != "" {
+				config.RedisURL = fmt.Sprintf("redis://:%s@%s:%s/%s",
+					url.QueryEscape(redisPassword), redisHost, redisPort, redisDB)
+			} else {
+				config.RedisURL = fmt.Sprintf("redis://%s:%s/%s",
+					redisHost, redisPort, redisDB)
+			}
+		} else {
+			config.RedisURL = "redis://localhost:6379/0"
+		}
+	}
+
 	config.PlaylistURL = os.Getenv("PLAYLIST_URL")
 	config.EpgURL = os.Getenv("EPG_URL")
+	config.KinopoiskAPIKey = os.Getenv("KINOPOISK_API_KEY")
 
 	if v := os.Getenv("DEBUG"); v == "true" || v == "1" {
 		config.Debug = true

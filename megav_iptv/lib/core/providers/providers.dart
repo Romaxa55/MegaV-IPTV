@@ -88,7 +88,14 @@ final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) as
   return channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
 });
 
+final moviesNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
+  ref.watch(epgProgressTickProvider);
+  final api = ref.watch(apiClientProvider);
+  return api.getMoviesNowPlaying(limit: 20);
+});
+
 final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
+  final movies = await ref.watch(moviesNowPlayingProvider.future);
   final nowPlaying = await ref.watch(nowPlayingProvider.future);
   final upcoming = await ref.watch(upcomingAllProvider.future);
 
@@ -105,7 +112,7 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
     return result;
   }
 
-  final liveMovies = unique(nowPlaying.where((i) => _isMovieCategory(i.program.category)));
+  final liveMovies = unique(movies);
   if (liveMovies.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: liveMovies));
   }

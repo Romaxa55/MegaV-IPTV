@@ -71,6 +71,16 @@ class ApiClient {
     throw Exception('Failed to load upcoming');
   }
 
+  Future<List<NowPlayingItem>> getMoviesNowPlaying({int limit = 20}) async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/epg/movies?limit=$limit'));
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded == null || decoded is! List) return [];
+      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
+    }
+    throw Exception('Failed to load movies now playing');
+  }
+
   Future<List<NowPlayingItem>> getFeaturedNowPlaying({int limit = 10}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/featured?limit=$limit'));
     if (response.statusCode == 200) {

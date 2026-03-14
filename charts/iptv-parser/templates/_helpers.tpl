@@ -86,3 +86,33 @@ IPTV playlist/EPG URLs from a manually created Kubernetes Secret
       name: {{ .Values.iptv.existingSecret }}
       key: {{ .Values.iptv.epgUrlKey }}
 {{- end }}
+
+{{/*
+Redis environment variables
+*/}}
+{{- define "iptv-parser.redisEnv" -}}
+- name: REDIS_HOST
+  value: {{ .Values.redis.host | quote }}
+- name: REDIS_PORT
+  value: {{ .Values.redis.port | quote }}
+{{- if .Values.redis.existingSecret }}
+- name: REDIS_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.redis.existingSecret }}
+      key: {{ .Values.redis.passwordKey }}
+{{- end }}
+{{- end }}
+
+{{/*
+Kinopoisk API key environment variable
+*/}}
+{{- define "iptv-parser.kinopoiskEnv" -}}
+{{- if .Values.kinopoisk.existingSecret }}
+- name: KINOPOISK_API_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.kinopoisk.existingSecret }}
+      key: {{ .Values.kinopoisk.apiKeyKey }}
+{{- end }}
+{{- end }}

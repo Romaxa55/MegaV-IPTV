@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,30 +10,42 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"github.com/romaxa55/iptv-parser/internal/queue"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
 	"github.com/romaxa55/iptv-parser/internal/services"
 	"github.com/sirupsen/logrus"
 )
 
-const thumbnailStaleDuration = 6 * time.Hour
+const thumbnailStaleDuration = 5 * time.Minute
+const thumbnailGeneratingTTL = 60 * time.Second
 
 type Handler struct {
-	repo         *repositories.IPTVRepository
-	logger       *logrus.Logger
-	thumbService *services.ThumbnailService
+	repo          *repositories.IPTVRepository
+	logger        *logrus.Logger
+	thumbService  *services.ThumbnailService
+	posterService *services.PosterService
+	redisClient   *redis.Client
+	thumbQueue    *queue.RedisQueue
 }
 
 type HandlerOpts struct {
-	Repo         *repositories.IPTVRepository
-	Logger       *logrus.Logger
-	ThumbService *services.ThumbnailService
+	Repo          *repositories.IPTVRepository
+	Logger        *logrus.Logger
+	ThumbService  *services.ThumbnailService
+	PosterService *services.PosterService
+	RedisClient   *redis.Client
+	ThumbQueue    *queue.RedisQueue
 }
 
 func NewHandler(opts HandlerOpts) *Handler {
 	return &Handler{
-		repo:         opts.Repo,
-		logger:       opts.Logger,
-		thumbService: opts.ThumbService,
+		repo:          opts.Repo,
+		logger:        opts.Logger,
+		thumbService:  opts.ThumbService,
+		posterService: opts.PosterService,
+		redisClient:   opts.RedisClient,
+		thumbQueue:    opts.ThumbQueue,
 	}
 }
 
@@ -197,6 +210,30 @@ func (h *Handler) GetFeaturedNowPlaying(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+func (h *Handler) GetMoviesNowPlaying(c *gin.Context) {
+	limit := 20
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 50 {
+			limit = n
+		}
+	}
+
+	items, err := h.repo.GetMoviesNowPlaying(limit)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get movies now playing")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load movies"})
+		return
+	}
+
+	if h.posterService != nil {
+		h.posterService.EnrichMoviePosters(items)
+	}
+
+	h.enrichNowPlayingThumbnails(c, items)
+
+	c.JSON(http.StatusOK, items)
+}
+
 func (h *Handler) GetFeaturedChannels(c *gin.Context) {
 	limit := 10
 	if v := c.Query("limit"); v != "" {
@@ -255,18 +292,55 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 	}
 
 	thumbPath := h.thumbService.GetThumbnailPath(id)
-	data, err := os.ReadFile(thumbPath)
-	if err != nil || len(data) == 0 {
-		c.Status(http.StatusNotFound)
+	info, err := os.Stat(thumbPath)
+	if err == nil && info.Size() > 0 {
+		age := time.Since(info.ModTime())
+		if age > thumbnailStaleDuration {
+			h.enqueueThumbnail(id)
+		}
+		c.Header("Cache-Control", "public, max-age=60")
+		c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
+		c.File(thumbPath)
 		return
 	}
 
-	info, _ := os.Stat(thumbPath)
-	age := time.Since(info.ModTime())
+	h.enqueueThumbnail(id)
+	c.JSON(http.StatusNotFound, gin.H{"error": "thumbnail not available yet"})
+}
 
-	c.Header("Cache-Control", "public, max-age=300")
-	c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
-	c.Data(http.StatusOK, "image/jpeg", data)
+func (h *Handler) enqueueThumbnail(channelID string) {
+	if h.redisClient == nil || h.thumbQueue == nil {
+		return
+	}
+
+	ctx := context.Background()
+	genKey := "iptv:thumb:generating:" + channelID
+	set, err := h.redisClient.SetNX(ctx, genKey, "1", thumbnailGeneratingTTL).Result()
+	if err != nil || !set {
+		return
+	}
+
+	chID, err := strconv.Atoi(channelID)
+	if err != nil {
+		h.redisClient.Del(ctx, genKey)
+		return
+	}
+
+	streamURL, err := h.repo.GetStreamURL(chID)
+	if err != nil || streamURL == "" {
+		h.redisClient.Del(ctx, genKey)
+		return
+	}
+
+	item := &queue.ThumbnailItem{
+		ChannelID: channelID,
+		URL:       streamURL,
+		Timestamp: time.Now(),
+	}
+	if err := h.thumbQueue.EnqueueThumbnail(ctx, item); err != nil {
+		h.logger.WithError(err).Warnf("Failed to enqueue thumbnail for %s", channelID)
+		h.redisClient.Del(ctx, genKey)
+	}
 }
 
 func (h *Handler) GetM3UPlaylist(c *gin.Context) {
@@ -372,6 +446,7 @@ func (h *Handler) enrichThumbnails(c *gin.Context, channels []*repositories.Chan
 			url := h.buildThumbnailURL(c, ch.ID)
 			ch.ThumbnailURL = &url
 		}
+		h.enqueueThumbnailIfStale(idStr)
 	}
 }
 
@@ -385,5 +460,17 @@ func (h *Handler) enrichNowPlayingThumbnails(c *gin.Context, items []*repositori
 			url := h.buildThumbnailURL(c, item.ChannelID)
 			item.ThumbnailURL = &url
 		}
+		h.enqueueThumbnailIfStale(idStr)
+	}
+}
+
+func (h *Handler) enqueueThumbnailIfStale(channelID string) {
+	if h.thumbService == nil {
+		return
+	}
+	thumbPath := h.thumbService.GetThumbnailPath(channelID)
+	info, err := os.Stat(thumbPath)
+	if err != nil || info.Size() == 0 || time.Since(info.ModTime()) > thumbnailStaleDuration {
+		h.enqueueThumbnail(channelID)
 	}
 }

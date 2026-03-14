@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/romaxa55/iptv-parser/internal/api"
 	"github.com/romaxa55/iptv-parser/internal/config"
+	"github.com/romaxa55/iptv-parser/internal/queue"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
 	"github.com/romaxa55/iptv-parser/internal/services"
 	"github.com/sirupsen/logrus"
@@ -68,19 +69,49 @@ func main() {
 	}
 
 	if *syncOnStart {
-		runInitialSync(repo, logger)
+		go func() {
+			runInitialSync(repo, logger)
+			backgroundSync(repo, logger)
+		}()
+	} else {
+		go backgroundSync(repo, logger)
 	}
 
-	// Start background sync (every 6 hours)
-	go backgroundSync(repo, logger)
+	// Connect to Redis for thumbnail queue
+	var thumbQueue *queue.RedisQueue
+	var redisClient interface{ Close() error }
+
+	tq, err := queue.NewRedisQueue(cfg.RedisURL, logger)
+	if err != nil {
+		logger.WithError(err).Warn("Redis unavailable, thumbnails will be served from disk only")
+	} else {
+		thumbQueue = tq
+		redisClient = tq
+	}
+	if redisClient != nil {
+		defer redisClient.Close()
+	}
 
 	thumbService := services.NewThumbnailService(logger, cfg.FFmpegBin, *thumbnailDir, 15*time.Second)
 
-	handler := api.NewHandler(api.HandlerOpts{
-		Repo:         repo,
-		Logger:       logger,
-		ThumbService: thumbService,
-	})
+	var posterService *services.PosterService
+	if cfg.KinopoiskAPIKey != "" && thumbQueue != nil {
+		posterService = services.NewPosterService(cfg.KinopoiskAPIKey, thumbQueue.GetClient(), repo, logger)
+		logger.Info("Kinopoisk poster service enabled")
+	}
+
+	handlerOpts := api.HandlerOpts{
+		Repo:          repo,
+		Logger:        logger,
+		ThumbService:  thumbService,
+		PosterService: posterService,
+	}
+	if thumbQueue != nil {
+		handlerOpts.RedisClient = thumbQueue.GetClient()
+		handlerOpts.ThumbQueue = thumbQueue
+	}
+
+	handler := api.NewHandler(handlerOpts)
 
 	router := gin.New()
 	router.Use(gin.Logger())
@@ -101,6 +132,7 @@ func main() {
 		apiGroup.GET("/channels/:id/epg", handler.GetChannelEPG)
 		apiGroup.GET("/channels/:id/thumbnail.jpg", handler.GetChannelThumbnail)
 		apiGroup.GET("/epg/now", handler.GetNowPlaying)
+		apiGroup.GET("/epg/movies", handler.GetMoviesNowPlaying)
 		apiGroup.GET("/epg/upcoming", handler.GetUpcomingAll)
 		apiGroup.GET("/epg/featured", handler.GetFeaturedNowPlaying)
 		apiGroup.GET("/playlist.m3u", handler.GetM3UPlaylist)
@@ -115,7 +147,7 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": "MegaV IPTV API",
-			"version": "4.0.0",
+			"version": "4.1.0",
 			"endpoints": gin.H{
 				"channels":     "/api/channels?category=Кино&search=Первый&limit=50&offset=0",
 				"channel":      "/api/channels/:id",
@@ -124,6 +156,7 @@ func main() {
 				"thumbnail":    "/api/channels/:id/thumbnail.jpg",
 				"featured":     "/api/channels/featured?limit=10",
 				"epg_now":      "/api/epg/now",
+				"epg_movies":   "/api/epg/movies?limit=20",
 				"epg_upcoming": "/api/epg/upcoming?within=180&limit=50",
 				"epg_featured": "/api/epg/featured?limit=10",
 				"playlist":     "/api/playlist.m3u",

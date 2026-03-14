@@ -39,6 +39,8 @@ spec:
           env:
             {{- include "iptv-parser.dbEnv" . | nindent 12 }}
             {{- include "iptv-parser.iptvEnv" . | nindent 12 }}
+            {{- include "iptv-parser.redisEnv" . | nindent 12 }}
+            {{- include "iptv-parser.kinopoiskEnv" . | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /api/health

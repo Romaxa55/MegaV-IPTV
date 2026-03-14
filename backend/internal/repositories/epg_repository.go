@@ -204,6 +204,67 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 	return total, nil
 }
 
+func (r *IPTVRepository) GetMoviesNowPlaying(limit int) ([]*NowPlayingItem, error) {
+	now := time.Now()
+	rows, err := r.db.Query(`
+		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		  AND c.group_title NOT IN ('Взрослые')
+		  AND (
+		    c.group_title ILIKE '%кино%'
+		    OR c.group_title ILIKE '%фильм%'
+		    OR ep.category ILIKE '%фильм%'
+		    OR ep.category ILIKE '%кино%'
+		    OR ep.category ILIKE '%movie%'
+		    OR ep.category ILIKE '%драма%'
+		    OR ep.category ILIKE '%комедия%'
+		    OR ep.category ILIKE '%боевик%'
+		    OR ep.category ILIKE '%триллер%'
+		    OR ep.category ILIKE '%детектив%'
+		    OR ep.category ILIKE '%мелодрам%'
+		    OR ep.category ILIKE '%фантаст%'
+		    OR ep.category ILIKE '%ужас%'
+		    OR ep.category ILIKE '%приключен%'
+		    OR ep.category ILIKE '%сериал%'
+		  )
+		ORDER BY ep.start_time DESC
+		LIMIT $2`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	seen := make(map[int]bool)
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.GroupTitle, &item.LogoURL, &item.ThumbnailURL,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		if seen[item.ChannelID] {
+			continue
+		}
+		seen[item.ChannelID] = true
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *IPTVRepository) UpdateEpgProgramIcon(programID int, iconURL string) error {
+	_, err := r.db.Exec("UPDATE epg_programs SET icon = $1 WHERE id = $2", iconURL, programID)
+	return err
+}
+
 func (r *IPTVRepository) DeleteOldEpgPrograms() (int64, error) {
 	result, err := r.db.Exec("DELETE FROM epg_programs WHERE end_time < NOW() - INTERVAL '1 day'")
 	if err != nil {

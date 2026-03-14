@@ -15,6 +15,13 @@ postgresql:
   usernameKey: "username"
   passwordKey: "password"
 
+# Redis (shared from megav namespace)
+redis:
+  host: "redis-master.megav.svc.cluster.local"
+  port: "6379"
+  existingSecret: "redis"
+  passwordKey: "redis-password"
+
 # IPTV playlist & EPG URLs (stored in a manually created K8s Secret)
 # Create with: kubectl create secret generic iptv-urls -n <namespace> \
 #   --from-literal=playlist-url='YOUR_PLAYLIST_URL' \
@@ -23,6 +30,13 @@ iptv:
   existingSecret: "iptv-urls"
   playlistUrlKey: "playlist-url"
   epgUrlKey: "epg-url"
+
+# Kinopoisk API (movie posters)
+# Create with: kubectl create secret generic kinopoisk -n <namespace> \
+#   --from-literal=api-key='YOUR_API_KEY'
+kinopoisk:
+  existingSecret: "kinopoisk"
+  apiKeyKey: "api-key"
 
 # --- API Server ---
 apiService:
@@ -38,18 +52,19 @@ apiService:
       memory: 256Mi
 
 # --- Thumbnail Worker Deployment ---
+# Workers listen to Redis queue and generate thumbnails on-demand via ffmpeg.
 thumbnailWorker:
   enabled: true
-  replicas: 3
-  workers: 50
+  replicas: 2
+  workers: 25
   outputDir: "/app/thumbnails"
   resources:
     requests:
-      cpu: 1000m
-      memory: 512Mi
+      cpu: 500m
+      memory: 256Mi
     limits:
-      cpu: 4000m
-      memory: 2Gi
+      cpu: 2000m
+      memory: 1Gi
 
 # --- Ingress ---
 ingress:

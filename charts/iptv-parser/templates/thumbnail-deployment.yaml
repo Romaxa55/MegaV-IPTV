@@ -34,6 +34,7 @@ spec:
             - "{{ .Values.thumbnailWorker.outputDir }}"
           env:
             {{- include "iptv-parser.dbEnv" . | nindent 12 }}
+            {{- include "iptv-parser.redisEnv" . | nindent 12 }}
           {{- if .Values.thumbnailStorage.enabled }}
           volumeMounts:
             - name: thumbnails

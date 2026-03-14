@@ -12,6 +12,7 @@ ARG CACHEBUST=1
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o api-server cmd/api-server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o thumbnail-worker cmd/thumbnail-worker/main.go
 
 # ===== FINAL STAGE =====
 FROM alpine:3.19
@@ -24,6 +25,7 @@ RUN adduser -D -s /bin/sh iptv && \
 WORKDIR /app
 
 COPY --from=builder /app/api-server ./bin/
+COPY --from=builder /app/thumbnail-worker ./bin/
 COPY migrations/ ./migrations/
 
 RUN chown -R iptv:iptv /app && \
