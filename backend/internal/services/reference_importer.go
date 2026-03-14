@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,6 +33,8 @@ func NewReferenceImporter(logger *logrus.Logger, db *sql.DB) *ReferenceImporter 
 	}
 }
 
+const logosJSONURL = "https://iptv-org.github.io/api/logos.json"
+
 type csvChannel struct {
 	ID         string
 	Name       string
@@ -45,6 +48,15 @@ type csvChannel struct {
 	Closed     string
 	ReplacedBy string
 	Website    string
+	LogoURL    string
+}
+
+type logoEntry struct {
+	Channel string  `json:"channel"`
+	Feed    *string `json:"feed"`
+	URL     string  `json:"url"`
+	Width   int     `json:"width"`
+	Height  int     `json:"height"`
 }
 
 func (ri *ReferenceImporter) Import(ctx context.Context) (int, error) {
@@ -72,7 +84,23 @@ func (ri *ReferenceImporter) Import(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("failed to parse CSV: %w", err)
 	}
 
-	ri.logger.Infof("Parsed %d reference channels, upserting to DB...", len(channels))
+	ri.logger.Infof("Parsed %d reference channels, fetching logos...", len(channels))
+
+	logoMap, err := ri.fetchLogos(ctx)
+	if err != nil {
+		ri.logger.Warnf("Failed to fetch logos (continuing without): %v", err)
+	} else {
+		matched := 0
+		for _, ch := range channels {
+			if url, ok := logoMap[ch.ID]; ok {
+				ch.LogoURL = url
+				matched++
+			}
+		}
+		ri.logger.Infof("Matched %d/%d channels with logos", matched, len(channels))
+	}
+
+	ri.logger.Infof("Upserting to DB...")
 
 	count, err := ri.upsertBatch(ctx, channels)
 	if err != nil {
@@ -81,6 +109,42 @@ func (ri *ReferenceImporter) Import(ctx context.Context) (int, error) {
 
 	ri.logger.Infof("Imported %d reference channels", count)
 	return count, nil
+}
+
+func (ri *ReferenceImporter) fetchLogos(ctx context.Context) (map[string]string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", logosJSONURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := ri.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download logos.json: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
+
+	var logos []logoEntry
+	if err := json.NewDecoder(resp.Body).Decode(&logos); err != nil {
+		return nil, fmt.Errorf("failed to decode logos.json: %w", err)
+	}
+
+	result := make(map[string]string, len(logos))
+	for _, l := range logos {
+		if l.URL == "" || l.Channel == "" {
+			continue
+		}
+		if _, exists := result[l.Channel]; exists {
+			continue
+		}
+		result[l.Channel] = l.URL
+	}
+
+	ri.logger.Infof("Loaded %d unique logos from iptv-org", len(result))
+	return result, nil
 }
 
 func (ri *ReferenceImporter) parseCSV(reader io.Reader) ([]*csvChannel, error) {
@@ -180,25 +244,26 @@ func (ri *ReferenceImporter) upsertChunk(ctx context.Context, batch []*csvChanne
 
 	var sb strings.Builder
 	sb.WriteString(`INSERT INTO iptv_reference_channels
-		(id, name, alt_names, network, owners, country, categories, is_nsfw, launched, closed, replaced_by, website, updated_at)
+		(id, name, alt_names, network, owners, country, categories, is_nsfw, launched, closed, replaced_by, website, logo_url, updated_at)
 		VALUES `)
 
-	args := make([]interface{}, 0, len(batch)*12)
+	args := make([]interface{}, 0, len(batch)*13)
 	for i, ch := range batch {
 		if i > 0 {
 			sb.WriteString(",")
 		}
-		base := i * 12
-		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,NOW())",
+		base := i * 13
+		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,NOW())",
 			base+1, base+2, base+3, base+4, base+5, base+6,
-			base+7, base+8, base+9, base+10, base+11, base+12)
+			base+7, base+8, base+9, base+10, base+11, base+12, base+13)
 
 		args = append(args,
 			ch.ID, ch.Name, pq.Array(ch.AltNames),
 			nullStr(ch.Network), nullStr(ch.Owners), ch.Country,
 			pq.Array(ch.Categories), ch.IsNSFW,
 			nullStr(ch.Launched), nullStr(ch.Closed),
-			nullStr(ch.ReplacedBy), nullStr(ch.Website))
+			nullStr(ch.ReplacedBy), nullStr(ch.Website),
+			nullStr(ch.LogoURL))
 	}
 
 	sb.WriteString(` ON CONFLICT (id) DO UPDATE SET
@@ -213,6 +278,7 @@ func (ri *ReferenceImporter) upsertChunk(ctx context.Context, batch []*csvChanne
 		closed = EXCLUDED.closed,
 		replaced_by = EXCLUDED.replaced_by,
 		website = EXCLUDED.website,
+		logo_url = COALESCE(EXCLUDED.logo_url, iptv_reference_channels.logo_url),
 		updated_at = NOW()`)
 
 	_, err := ri.db.ExecContext(ctx, sb.String(), args...)
