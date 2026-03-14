@@ -23,10 +23,7 @@ class Channel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Channel &&
-          runtimeType == other.runtimeType &&
-          name == other.name &&
-          url == other.url;
+      other is Channel && runtimeType == other.runtimeType && name == other.name && url == other.url;
 
   @override
   int get hashCode => name.hashCode ^ url.hashCode;

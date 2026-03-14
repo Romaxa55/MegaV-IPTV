@@ -47,11 +47,7 @@ class MediaKitEngine extends PlayerEngine {
 
   @override
   Future<void> initialize() async {
-    _player = Player(
-      configuration: const PlayerConfiguration(
-        bufferSize: 2 * 1024 * 1024,
-      ),
-    );
+    _player = Player(configuration: const PlayerConfiguration(bufferSize: 2 * 1024 * 1024));
 
     _videoController = VideoController(_player);
 
@@ -139,18 +135,11 @@ class MediaKitEngine extends PlayerEngine {
   }
 
   @override
-  Widget buildVideoWidget({
-    BoxFit fit = BoxFit.contain,
-    double? width,
-    double? height,
-  }) {
+  Widget buildVideoWidget({BoxFit fit = BoxFit.contain, double? width, double? height}) {
     return SizedBox(
       width: width,
       height: height,
-      child: Video(
-        controller: _videoController,
-        fit: fit,
-      ),
+      child: Video(controller: _videoController, fit: fit),
     );
   }
 }

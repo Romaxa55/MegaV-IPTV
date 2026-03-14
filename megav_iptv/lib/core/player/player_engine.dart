@@ -1,13 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-enum PlayerState {
-  idle,
-  loading,
-  playing,
-  paused,
-  error,
-  stopped,
-}
+enum PlayerState { idle, loading, playing, paused, error, stopped }
 
 abstract class PlayerEngine {
   Stream<PlayerState> get stateStream;
@@ -25,9 +18,5 @@ abstract class PlayerEngine {
   Future<void> setVolume(double volume);
   Future<void> dispose();
 
-  Widget buildVideoWidget({
-    BoxFit fit = BoxFit.contain,
-    double? width,
-    double? height,
-  });
+  Widget buildVideoWidget({BoxFit fit = BoxFit.contain, double? width, double? height});
 }

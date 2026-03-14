@@ -4,10 +4,7 @@ class ChannelGroup {
   final String name;
   final List<Channel> channels;
 
-  const ChannelGroup({
-    required this.name,
-    required this.channels,
-  });
+  const ChannelGroup({required this.name, required this.channels});
 
   int get channelCount => channels.length;
 

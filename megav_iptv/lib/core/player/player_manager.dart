@@ -25,8 +25,7 @@ class PlayerManager {
   static const int _maxRetries = 3;
   static const String _decoderPrefsPrefix = 'decoder_';
 
-  PlayerManager({DecoderConfig? config})
-      : _config = config ?? const DecoderConfig();
+  PlayerManager({DecoderConfig? config}) : _config = config ?? const DecoderConfig();
 
   Stream<PlayerState> get stateStream => _stateController.stream;
   Stream<String?> get errorStream => _errorController.stream;
@@ -107,12 +106,10 @@ class PlayerManager {
   }
 
   /// Save the working decoder for a channel.
-  Future<void> _saveWorkingDecoder(
-      String channelId, DecoderMode mode) async {
+  Future<void> _saveWorkingDecoder(String channelId, DecoderMode mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_decoderPrefsPrefix$channelId', mode.name);
-    debugPrint(
-        'PlayerManager: Saved decoder ${mode.name} for channel $channelId');
+    debugPrint('PlayerManager: Saved decoder ${mode.name} for channel $channelId');
   }
 
   /// Play a channel via media_kit engine.
@@ -124,8 +121,7 @@ class PlayerManager {
     if (channelId != null && _config.decoderMode == DecoderMode.auto) {
       final saved = await _loadSavedDecoder(channelId);
       if (saved != null && saved != _config.decoderMode) {
-        debugPrint(
-            'PlayerManager: Using saved decoder ${saved.name} for $channelId');
+        debugPrint('PlayerManager: Using saved decoder ${saved.name} for $channelId');
         _config = _config.copyWith(decoderMode: saved);
         await _mediaKitEngine?.updateConfig(_config);
       }

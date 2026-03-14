@@ -2,6 +2,8 @@ class EpgProgram {
   final String channelId;
   final String title;
   final String? description;
+  final String? category;
+  final String? icon;
   final DateTime start;
   final DateTime end;
 
@@ -9,6 +11,8 @@ class EpgProgram {
     required this.channelId,
     required this.title,
     this.description,
+    this.category,
+    this.icon,
     required this.start,
     required this.end,
   });
@@ -26,4 +30,27 @@ class EpgProgram {
     if (now.isAfter(end)) return 1;
     return now.difference(start).inSeconds / duration.inSeconds;
   }
+
+  Map<String, dynamic> toMap() => {
+    'channel_id': channelId,
+    'title': title,
+    'description': description,
+    'category': category,
+    'icon': icon,
+    'start': start.millisecondsSinceEpoch,
+    'end_time': end.millisecondsSinceEpoch,
+  };
+
+  factory EpgProgram.fromMap(Map<String, dynamic> map) => EpgProgram(
+    channelId: map['channel_id'] as String,
+    title: map['title'] as String,
+    description: map['description'] as String?,
+    category: map['category'] as String?,
+    icon: map['icon'] as String?,
+    start: DateTime.fromMillisecondsSinceEpoch(map['start'] as int),
+    end: DateTime.fromMillisecondsSinceEpoch(map['end_time'] as int),
+  );
+
+  @override
+  String toString() => 'EpgProgram(channel: $channelId, title: $title, ${isNow ? "NOW" : ""})';
 }

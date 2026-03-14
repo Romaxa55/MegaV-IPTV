@@ -1,171 +1,143 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:responsive_builder/responsive_builder.dart';
 
+import '../../core/playlist/models/channel.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
-import 'widgets/channel_card.dart';
-import 'widgets/group_sidebar.dart';
+import 'widgets/content_row.dart';
+import 'widgets/hero_section.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groupsAsync = ref.watch(groupsProvider);
-    final filteredAsync = ref.watch(filteredChannelsProvider);
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _focusedRow = -1; // -1 = hero
+  int _focusedCol = 0;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode()..requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _openChannel(Channel channel, int indexInGroup) {
+    final allChannels = ref.read(channelsProvider).value ?? [];
+    final globalIndex = allChannels.indexOf(channel);
+    ref.read(currentChannelProvider.notifier).state = channel;
+    ref.read(currentChannelIndexProvider.notifier).state = globalIndex >= 0 ? globalIndex : 0;
+    context.push('/player');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final channelsAsync = ref.watch(channelsProvider);
+    final featured = ref.watch(featuredChannelsProvider);
+    final groups = ref.watch(channelsByGroupProvider);
+    final groupNames = groups.keys.toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'MegaV IPTV',
-          style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
-      body: groupsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+      backgroundColor: AppColors.background,
+      body: channelsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (error, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.error_outline, size: 48.sp, color: AppColors.error),
               SizedBox(height: 16.h),
-              Text('Error: $error',
-                  style: TextStyle(fontSize: 14.sp, color: AppColors.error)),
-              SizedBox(height: 16.h),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(channelsProvider),
-                child: const Text('Retry'),
+              Text(
+                'Error: $error',
+                style: TextStyle(fontSize: 14.sp, color: AppColors.error),
               ),
+              SizedBox(height: 16.h),
+              ElevatedButton(onPressed: () => ref.invalidate(channelsProvider), child: const Text('Retry')),
             ],
           ),
         ),
-        data: (groups) => ResponsiveBuilder(
-          builder: (context, sizingInfo) {
-            if (sizingInfo.deviceScreenType == DeviceScreenType.mobile) {
-              return _buildMobileLayout(context, ref, groups, filteredAsync);
-            }
-            return _buildTvLayout(context, ref, groups, filteredAsync);
-          },
+        data: (_) => KeyboardListener(
+          focusNode: _focusNode,
+          onKeyEvent: (event) => _handleKeyEvent(event, groupNames, groups),
+          child: Column(
+            children: [
+              HeroSection(featuredChannels: featured, onPlay: (ch) => _openChannel(ch, 0)),
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.only(bottom: 32.h),
+                  itemCount: groupNames.length,
+                  itemBuilder: (context, rowIdx) {
+                    final name = groupNames[rowIdx];
+                    final channels = groups[name]!;
+                    return ContentRow(
+                      title: name,
+                      channels: channels,
+                      isFocusedRow: _focusedRow == rowIdx,
+                      focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
+                      onChannelTap: _openChannel,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMobileLayout(
-    BuildContext context,
-    WidgetRef ref,
-    dynamic groups,
-    AsyncValue filteredAsync,
-  ) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 50.h,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: 8.w),
-            itemCount: groups.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                final isSelected = ref.watch(selectedGroupProvider) == null;
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4.w),
-                  child: ChoiceChip(
-                    label: Text('All', style: TextStyle(fontSize: 12.sp)),
-                    selected: isSelected,
-                    selectedColor: AppColors.primary,
-                    onSelected: (_) =>
-                        ref.read(selectedGroupProvider.notifier).state = null,
-                  ),
-                );
-              }
-              final group = groups[index - 1];
-              final isSelected =
-                  ref.watch(selectedGroupProvider) == group.name;
-              return Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4.w),
-                child: ChoiceChip(
-                  label: Text('${group.name} (${group.channelCount})',
-                      style: TextStyle(fontSize: 12.sp)),
-                  selected: isSelected,
-                  selectedColor: AppColors.primary,
-                  onSelected: (_) => ref
-                      .read(selectedGroupProvider.notifier)
-                      .state = isSelected ? null : group.name,
-                ),
-              );
-            },
-          ),
-        ),
-        Expanded(
-          child: filteredAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
-            data: (channels) => ListView.builder(
-              padding: EdgeInsets.all(8.w),
-              itemCount: channels.length,
-              itemBuilder: (context, index) => ChannelCard(
-                channel: channels[index],
-                onTap: () => _openChannel(context, ref, channels, index),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  void _handleKeyEvent(KeyEvent event, List<String> groupNames, Map<String, List<Channel>> groups) {
+    if (event is! KeyDownEvent) return;
 
-  Widget _buildTvLayout(
-    BuildContext context,
-    WidgetRef ref,
-    dynamic groups,
-    AsyncValue filteredAsync,
-  ) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 280.w,
-          child: GroupSidebar(groups: groups),
-        ),
-        VerticalDivider(width: 1, color: AppColors.cardBorder),
-        Expanded(
-          child: filteredAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
-            data: (channels) => GridView.builder(
-              padding: EdgeInsets.all(16.w),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 2.5,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 12.h,
-              ),
-              itemCount: channels.length,
-              itemBuilder: (context, index) => ChannelCard(
-                channel: channels[index],
-                isGrid: true,
-                onTap: () => _openChannel(context, ref, channels, index),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _openChannel(
-      BuildContext context, WidgetRef ref, List channels, int index) {
-    ref.read(currentChannelProvider.notifier).state = channels[index];
-    ref.read(currentChannelIndexProvider.notifier).state = index;
-    context.push('/player');
+    setState(() {
+      switch (event.logicalKey) {
+        case LogicalKeyboardKey.arrowUp:
+          if (_focusedRow <= 0) {
+            _focusedRow = -1;
+          } else {
+            _focusedRow--;
+          }
+        case LogicalKeyboardKey.arrowDown:
+          if (_focusedRow == -1) {
+            _focusedRow = 0;
+            _focusedCol = 0;
+          } else if (_focusedRow < groupNames.length - 1) {
+            _focusedRow++;
+          }
+        case LogicalKeyboardKey.arrowLeft:
+          if (_focusedRow >= 0) {
+            _focusedCol = (_focusedCol - 1).clamp(0, 999);
+          }
+        case LogicalKeyboardKey.arrowRight:
+          if (_focusedRow >= 0) {
+            final name = groupNames[_focusedRow];
+            final maxCol = (groups[name]?.length ?? 1) - 1;
+            _focusedCol = (_focusedCol + 1).clamp(0, maxCol);
+          }
+        case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
+          if (_focusedRow >= 0) {
+            final name = groupNames[_focusedRow];
+            final channels = groups[name]!;
+            final col = _focusedCol.clamp(0, channels.length - 1);
+            _openChannel(channels[col], col);
+          } else if (ref.read(featuredChannelsProvider).isNotEmpty) {
+            _openChannel(ref.read(featuredChannelsProvider).first, 0);
+          }
+        default:
+          break;
+      }
+    });
   }
 }

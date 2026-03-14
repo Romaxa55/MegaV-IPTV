@@ -35,21 +35,20 @@ class M3uParser {
           currentLanguage = attrMap['tvg-language'];
 
           final commaIndex = attrs.lastIndexOf(',');
-          currentName =
-              commaIndex >= 0 ? attrs.substring(commaIndex + 1).trim() : '';
+          currentName = commaIndex >= 0 ? attrs.substring(commaIndex + 1).trim() : '';
         }
-      } else if (line.isNotEmpty &&
-          !line.startsWith('#') &&
-          currentName != null) {
-        channels.add(Channel(
-          name: currentName.isNotEmpty ? currentName : 'Unknown',
-          url: line,
-          logoUrl: currentLogo,
-          groupTitle: currentGroup,
-          tvgId: currentTvgId,
-          tvgName: currentTvgName,
-          language: currentLanguage,
-        ));
+      } else if (line.isNotEmpty && !line.startsWith('#') && currentName != null) {
+        channels.add(
+          Channel(
+            name: currentName.isNotEmpty ? currentName : 'Unknown',
+            url: line,
+            logoUrl: currentLogo,
+            groupTitle: currentGroup,
+            tvgId: currentTvgId,
+            tvgName: currentTvgName,
+            language: currentLanguage,
+          ),
+        );
         currentName = null;
         currentLogo = null;
         currentGroup = null;
@@ -70,9 +69,7 @@ class M3uParser {
       groupMap.putIfAbsent(groupName, () => []).add(channel);
     }
 
-    return groupMap.entries
-        .map((e) => ChannelGroup(name: e.key, channels: e.value))
-        .toList()
+    return groupMap.entries.map((e) => ChannelGroup(name: e.key, channels: e.value)).toList()
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 }

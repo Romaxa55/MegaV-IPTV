@@ -15,9 +15,5 @@ void main() {
     DeviceOrientation.portraitUp,
   ]);
 
-  runApp(
-    const ProviderScope(
-      child: MegaVApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MegaVApp()));
 }

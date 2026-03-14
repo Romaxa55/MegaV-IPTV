@@ -10,7 +10,12 @@ import '../../core/player/player_manager.dart';
 import '../../core/playlist/models/channel.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
+import 'widgets/channel_switch_osd.dart';
+import 'widgets/channels_sidebar.dart';
+import 'widgets/epg_overlay.dart';
+import 'widgets/info_overlay.dart';
 import 'widgets/player_overlay.dart';
+import 'widgets/similar_overlay.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
@@ -21,9 +26,16 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final PlayerManager _playerManager;
-  bool _showOverlay = true;
-  Timer? _overlayTimer;
+  bool _showControls = true;
+  PlayerOverlayMode _overlay = PlayerOverlayMode.none;
+  Timer? _hideTimer;
   bool _openedViaMedia3 = false;
+
+  Channel? _switchPreview;
+  Timer? _switchTimer;
+
+  bool _showBriefOSD = false;
+  Timer? _osdTimer;
 
   @override
   void initState() {
@@ -34,13 +46,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _init() async {
     await _playerManager.initialize();
-
     final channel = ref.read(currentChannelProvider);
-    if (channel != null) {
-      await _openChannel(channel);
-    }
-
-    _startOverlayTimer();
+    if (channel != null) await _openChannel(channel);
+    _resetHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
@@ -61,44 +69,64 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       });
     } else {
       _openedViaMedia3 = false;
-      await _playerManager.playChannel(
-        channel.url,
-        channelId: channel.tvgId ?? channel.name,
-      );
+      await _playerManager.playChannel(channel.url, channelId: channel.tvgId ?? channel.name);
     }
+    _showBriefOSDFor();
   }
 
-  void _startOverlayTimer() {
-    _overlayTimer?.cancel();
-    _overlayTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) setState(() => _showOverlay = false);
+  void _resetHideTimer() {
+    setState(() => _showControls = true);
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _overlay == PlayerOverlayMode.none) {
+        setState(() => _showControls = false);
+      }
     });
   }
 
-  void _toggleOverlay() {
-    setState(() => _showOverlay = !_showOverlay);
-    if (_showOverlay) _startOverlayTimer();
+  void _showBriefOSDFor() {
+    setState(() => _showBriefOSD = true);
+    _osdTimer?.cancel();
+    _osdTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showBriefOSD = false);
+    });
   }
 
-  Future<void> _switchChannel(int delta) async {
+  void _toggleOverlay(PlayerOverlayMode mode) {
+    setState(() {
+      _overlay = _overlay == mode ? PlayerOverlayMode.none : mode;
+    });
+    _resetHideTimer();
+  }
+
+  void _quickSwitch(int delta) {
     final channels = ref.read(filteredChannelsProvider);
     final currentIndex = ref.read(currentChannelIndexProvider);
 
-    channels.whenData((list) async {
-      final newIndex = (currentIndex + delta).clamp(0, list.length - 1);
-      if (newIndex != currentIndex) {
-        ref.read(currentChannelIndexProvider.notifier).state = newIndex;
-        ref.read(currentChannelProvider.notifier).state = list[newIndex];
-        await _openChannel(list[newIndex]);
-        setState(() => _showOverlay = true);
-        _startOverlayTimer();
-      }
+    channels.whenData((list) {
+      if (list.isEmpty) return;
+      final idx = currentIndex.clamp(0, list.length - 1);
+      final nextIdx = (idx + delta).clamp(0, list.length - 1);
+      if (nextIdx == idx) return;
+
+      final next = list[nextIdx];
+      setState(() => _switchPreview = next);
+
+      _switchTimer?.cancel();
+      _switchTimer = Timer(const Duration(milliseconds: 1500), () async {
+        ref.read(currentChannelIndexProvider.notifier).state = nextIdx;
+        ref.read(currentChannelProvider.notifier).state = next;
+        await _openChannel(next);
+        if (mounted) setState(() => _switchPreview = null);
+      });
     });
   }
 
   @override
   void dispose() {
-    _overlayTimer?.cancel();
+    _hideTimer?.cancel();
+    _osdTimer?.cancel();
+    _switchTimer?.cancel();
     _playerManager.stop();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -122,10 +150,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 16.sp),
               ),
               SizedBox(height: 24.h),
-              ElevatedButton(
-                onPressed: () => context.pop(),
-                child: const Text('Back'),
-              ),
+              ElevatedButton(onPressed: () => context.pop(), child: const Text('Back')),
             ],
           ),
         ),
@@ -138,39 +163,36 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         focusNode: FocusNode()..requestFocus(),
         onKeyEvent: _handleKeyEvent,
         child: GestureDetector(
-          onTap: _toggleOverlay,
+          onTap: () {
+            if (_overlay != PlayerOverlayMode.none) {
+              setState(() => _overlay = PlayerOverlayMode.none);
+            } else {
+              _resetHideTimer();
+            }
+          },
           child: Stack(
             fit: StackFit.expand,
             children: [
               if (_playerManager.mediaKitEngine != null)
-                _playerManager.mediaKitEngine!.buildVideoWidget(
-                  fit: BoxFit.contain,
-                ),
+                _playerManager.mediaKitEngine!.buildVideoWidget(fit: BoxFit.contain),
+
               StreamBuilder<PlayerState>(
                 stream: _playerManager.stateStream,
                 builder: (context, snapshot) {
                   final state = snapshot.data ?? PlayerState.idle;
                   if (state == PlayerState.loading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    );
+                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                   }
                   if (state == PlayerState.error) {
                     return Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.error_outline,
-                              color: AppColors.error, size: 48.sp),
+                          Icon(Icons.error_outline, color: AppColors.error, size: 48.sp),
                           SizedBox(height: 12.h),
                           Text(
                             'Playback error. Retrying...',
-                            style: TextStyle(
-                              color: AppColors.error,
-                              fontSize: 16.sp,
-                            ),
+                            style: TextStyle(color: AppColors.error, fontSize: 16.sp),
                           ),
                         ],
                       ),
@@ -179,13 +201,62 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   return const SizedBox.shrink();
                 },
               ),
-              if (_showOverlay && channel != null)
-                PlayerOverlay(
+
+              // Channel switch preview OSD
+              if (_switchPreview != null) ChannelSwitchPreview(channel: _switchPreview!),
+
+              // Brief OSD
+              if (_showBriefOSD &&
+                  !_showControls &&
+                  _overlay == PlayerOverlayMode.none &&
+                  _switchPreview == null &&
+                  channel != null)
+                BriefChannelOSD(channel: channel),
+
+              // Controls overlay
+              if (_showControls && channel != null)
+                AnimatedOpacity(
+                  opacity: 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: PlayerControlsOverlay(
+                    channelName: channel.name,
+                    groupName: channel.groupTitle,
+                    tvgId: channel.tvgId,
+                    logoUrl: channel.logoUrl,
+                    onBack: () => context.pop(),
+                    onChannelUp: () => _quickSwitch(1),
+                    onChannelDown: () => _quickSwitch(-1),
+                    activeOverlay: _overlay,
+                    onToggleOverlay: _toggleOverlay,
+                  ),
+                ),
+
+              // EPG overlay
+              if (_overlay == PlayerOverlayMode.epg && channel != null)
+                EpgOverlay(
                   channelName: channel.name,
-                  groupName: channel.groupTitle,
-                  onBack: () => context.pop(),
-                  onChannelUp: () => _switchChannel(-1),
-                  onChannelDown: () => _switchChannel(1),
+                  tvgId: channel.tvgId,
+                  onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
+                ),
+
+              // Channels sidebar
+              if (_overlay == PlayerOverlayMode.channels && channel != null)
+                ChannelsSidebar(
+                  currentChannel: channel,
+                  onSelectChannel: _selectChannel,
+                  onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
+                ),
+
+              // Info overlay
+              if (_overlay == PlayerOverlayMode.info && channel != null)
+                InfoOverlay(channel: channel, onClose: () => setState(() => _overlay = PlayerOverlayMode.none)),
+
+              // Similar overlay
+              if (_overlay == PlayerOverlayMode.similar && channel != null)
+                SimilarOverlay(
+                  currentChannel: channel,
+                  onSelectChannel: _selectChannel,
+                  onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
                 ),
             ],
           ),
@@ -194,31 +265,47 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  void _selectChannel(Channel ch) {
+    final channels = ref.read(channelsProvider).value ?? [];
+    final idx = channels.indexOf(ch);
+    ref.read(currentChannelProvider.notifier).state = ch;
+    ref.read(currentChannelIndexProvider.notifier).state = idx >= 0 ? idx : 0;
+    _openChannel(ch);
+    setState(() => _overlay = PlayerOverlayMode.none);
+  }
+
   void _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return;
+    _resetHideTimer();
 
     switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowUp:
-      case LogicalKeyboardKey.channelUp:
-        _switchChannel(-1);
-        break;
-      case LogicalKeyboardKey.arrowDown:
-      case LogicalKeyboardKey.channelDown:
-        _switchChannel(1);
-        break;
-      case LogicalKeyboardKey.select:
-      case LogicalKeyboardKey.enter:
-        _toggleOverlay();
-        break;
       case LogicalKeyboardKey.escape:
       case LogicalKeyboardKey.goBack:
-        context.pop();
-        break;
-      default:
-        if (!_showOverlay) {
-          setState(() => _showOverlay = true);
-          _startOverlayTimer();
+        if (_overlay != PlayerOverlayMode.none) {
+          setState(() => _overlay = PlayerOverlayMode.none);
+        } else {
+          context.pop();
         }
+      case LogicalKeyboardKey.arrowUp:
+        if (_overlay == PlayerOverlayMode.none) _quickSwitch(-1);
+      case LogicalKeyboardKey.arrowDown:
+      case LogicalKeyboardKey.channelDown:
+        if (_overlay == PlayerOverlayMode.none) _quickSwitch(1);
+      case LogicalKeyboardKey.channelUp:
+        if (_overlay == PlayerOverlayMode.none) _quickSwitch(-1);
+      case LogicalKeyboardKey.select:
+      case LogicalKeyboardKey.enter:
+        _resetHideTimer();
+      case LogicalKeyboardKey.keyE:
+        _toggleOverlay(PlayerOverlayMode.epg);
+      case LogicalKeyboardKey.keyI:
+        _toggleOverlay(PlayerOverlayMode.info);
+      case LogicalKeyboardKey.keyL:
+        _toggleOverlay(PlayerOverlayMode.channels);
+      case LogicalKeyboardKey.keyR:
+        _toggleOverlay(PlayerOverlayMode.similar);
+      default:
+        break;
     }
   }
 }

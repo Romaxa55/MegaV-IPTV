@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: dart-format
         name: dart format + auto stage
-        entry: bash -c 'dart format --line-length=120 lib/ && CHANGED=$(git diff --name-only -- "*.dart"); [ -n "$CHANGED" ] && echo "$CHANGED" | xargs git add || true'
+        entry: bash -c 'cd megav_iptv && dart format --line-length=120 lib/ && cd .. && CHANGED=$(git diff --name-only -- "*.dart"); [ -n "$CHANGED" ] && echo "$CHANGED" | xargs git add || true'
         language: system
         files: \.dart$
         pass_filenames: false

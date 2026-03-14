@@ -16,11 +16,7 @@ class Media3Engine {
   }) {
     final items = (playlist ?? [channel]).map(_toMediaItem).toList();
 
-    _controller.openPlayer(
-      context: context,
-      playlist: items,
-      initialIndex: initialIndex,
-    );
+    _controller.openPlayer(context: context, playlist: items, initialIndex: initialIndex);
   }
 
   static PlaylistMediaItem _toMediaItem(Channel channel) {

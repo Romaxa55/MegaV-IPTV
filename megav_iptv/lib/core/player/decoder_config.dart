@@ -12,12 +12,12 @@ enum DecoderMode {
   final bool usesMedia3;
 
   String get description => switch (this) {
-        DecoderMode.auto => 'media_kit HW -> SW fallback',
-        DecoderMode.system => 'Media3 native (AFR, HDR)',
-        DecoderMode.hardware => 'libmpv hwdec=mediacodec',
-        DecoderMode.hardwarePlus => 'libmpv hwdec=mediacodec-copy',
-        DecoderMode.software => 'libmpv hwdec=no (FFmpeg)',
-      };
+    DecoderMode.auto => 'media_kit HW -> SW fallback',
+    DecoderMode.system => 'Media3 native (AFR, HDR)',
+    DecoderMode.hardware => 'libmpv hwdec=mediacodec',
+    DecoderMode.hardwarePlus => 'libmpv hwdec=mediacodec-copy',
+    DecoderMode.software => 'libmpv hwdec=no (FFmpeg)',
+  };
 }
 
 enum BufferMode {
@@ -45,11 +45,7 @@ class DecoderConfig {
 
   bool get usesMedia3 => decoderMode.usesMedia3;
 
-  DecoderConfig copyWith({
-    DecoderMode? decoderMode,
-    BufferMode? bufferMode,
-    String? userAgent,
-  }) {
+  DecoderConfig copyWith({DecoderMode? decoderMode, BufferMode? bufferMode, String? userAgent}) {
     return DecoderConfig(
       decoderMode: decoderMode ?? this.decoderMode,
       bufferMode: bufferMode ?? this.bufferMode,
@@ -58,15 +54,13 @@ class DecoderConfig {
   }
 
   Map<String, String> get mpvProperties => {
-        'cache': 'no',
-        'profile': 'low-latency',
-        'hwdec': decoderMode.hwdecValue.isEmpty
-            ? 'auto'
-            : decoderMode.hwdecValue,
-        'vd-lavc-threads': '2',
-        'rtsp-transport': 'udp',
-        'demuxer-lavf-probesize': '2097152',
-        'demuxer-lavf-analyzeduration': '2',
-        'http-header-fields': 'User-Agent: $userAgent',
-      };
+    'cache': 'no',
+    'profile': 'low-latency',
+    'hwdec': decoderMode.hwdecValue.isEmpty ? 'auto' : decoderMode.hwdecValue,
+    'vd-lavc-threads': '2',
+    'rtsp-transport': 'udp',
+    'demuxer-lavf-probesize': '2097152',
+    'demuxer-lavf-analyzeduration': '2',
+    'http-header-fields': 'User-Agent: $userAgent',
+  };
 }

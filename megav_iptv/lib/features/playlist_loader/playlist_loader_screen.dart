@@ -10,8 +10,7 @@ class PlaylistLoaderScreen extends ConsumerStatefulWidget {
   const PlaylistLoaderScreen({super.key});
 
   @override
-  ConsumerState<PlaylistLoaderScreen> createState() =>
-      _PlaylistLoaderScreenState();
+  ConsumerState<PlaylistLoaderScreen> createState() => _PlaylistLoaderScreenState();
 }
 
 class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
@@ -21,9 +20,7 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
   @override
   void initState() {
     super.initState();
-    _urlController = TextEditingController(
-      text: ref.read(playlistUrlProvider),
-    );
+    _urlController = TextEditingController(text: ref.read(playlistUrlProvider));
   }
 
   @override
@@ -43,16 +40,15 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
     try {
       await ref.read(channelsProvider.future);
       if (mounted) {
+        // Trigger EPG loading in background (non-blocking)
+        ref.read(epgRefreshProvider);
         context.go('/home');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading playlist: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading playlist: $e'), backgroundColor: AppColors.error));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -69,27 +65,16 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.live_tv_rounded,
-                  size: 80.sp,
-                  color: AppColors.primary,
-                ),
+                Icon(Icons.live_tv_rounded, size: 80.sp, color: AppColors.primary),
                 SizedBox(height: 24.h),
                 Text(
                   'MegaV IPTV',
-                  style: TextStyle(
-                    fontSize: 36.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 36.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
                 SizedBox(height: 8.h),
                 Text(
                   'Enter playlist URL to start',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 16.sp, color: AppColors.textSecondary),
                 ),
                 SizedBox(height: 48.h),
                 SizedBox(
@@ -101,10 +86,7 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
                     decoration: InputDecoration(
                       hintText: 'https://example.com/playlist.m3u',
                       prefixIcon: const Icon(Icons.link),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => _urlController.clear(),
-                      ),
+                      suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () => _urlController.clear()),
                     ),
                     onSubmitted: (_) => _loadPlaylist(),
                   ),
@@ -119,15 +101,9 @@ class _PlaylistLoaderScreenState extends ConsumerState<PlaylistLoaderScreen> {
                         ? SizedBox(
                             width: 24.w,
                             height: 24.h,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                            child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : Text(
-                            'Load Playlist',
-                            style: TextStyle(fontSize: 16.sp),
-                          ),
+                        : Text('Load Playlist', style: TextStyle(fontSize: 16.sp)),
                   ),
                 ),
               ],
