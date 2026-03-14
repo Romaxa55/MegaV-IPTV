@@ -10,6 +10,7 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=20000']
       - id: check-merge-conflict
+      - id: detect-private-key
 
   # Dart formatting
   - repo: local
@@ -34,3 +35,7 @@ repos:
                 .*/generated/.*|
                 .*/l10n/.*
             )$
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.23.3
+    hooks:
+      - id: gitleaks
