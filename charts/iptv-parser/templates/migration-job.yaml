@@ -19,7 +19,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "iptv-parser.serviceAccountName" . }}
+      serviceAccountName: default
       restartPolicy: Never
       containers:
         - name: migration
