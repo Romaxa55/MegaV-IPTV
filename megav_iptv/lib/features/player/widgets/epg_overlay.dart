@@ -44,11 +44,12 @@ class _EpgOverlayState extends ConsumerState<EpgOverlay> with SingleTickerProvid
     }
     final repo = ref.read(epgRepositoryProvider);
     final programs = await repo.getProgramsForChannel(widget.tvgId!);
-    if (mounted)
+    if (mounted) {
       setState(() {
         _programs = programs;
         _loading = false;
       });
+    }
   }
 
   @override
