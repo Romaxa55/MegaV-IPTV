@@ -58,6 +58,12 @@ func main() {
 		logger.Fatalf("Failed to build index: %v", err)
 	}
 
+	if n, err := enricher.BackfillLogos(ctx); err != nil {
+		logger.Warnf("Logo backfill error: %v", err)
+	} else {
+		logger.Infof("Backfilled %d logos from playlists", n)
+	}
+
 	rematched, err := rematchUnmatched(ctx, logger, repo, enricher)
 	if err != nil {
 		logger.Warnf("Re-match error: %v", err)

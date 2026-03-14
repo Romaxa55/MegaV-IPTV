@@ -82,6 +82,35 @@ func (ce *ChannelEnricher) BuildIndex(ctx context.Context) error {
 	return nil
 }
 
+func (ce *ChannelEnricher) BackfillLogos(ctx context.Context) (int64, error) {
+	ce.logger.Info("Backfilling logos from playlist channels...")
+
+	result, err := ce.db.ExecContext(ctx, `
+		WITH stream_logos AS (
+			SELECT DISTINCT ON (s.channel_id)
+				s.channel_id,
+				c.logo_url
+			FROM iptv_streams s
+			JOIN iptv_channels c ON c.url = s.url
+			WHERE s.channel_id IS NOT NULL
+				AND c.logo_url IS NOT NULL
+				AND c.logo_url != ''
+			ORDER BY s.channel_id, s.uptime_pct DESC NULLS LAST
+		)
+		UPDATE iptv_reference_channels rc
+		SET logo_url = sl.logo_url
+		FROM stream_logos sl
+		WHERE rc.id = sl.channel_id
+			AND rc.logo_url IS NULL`)
+	if err != nil {
+		return 0, fmt.Errorf("backfill logos: %w", err)
+	}
+
+	n, _ := result.RowsAffected()
+	ce.logger.Infof("Backfilled %d channel logos from playlists", n)
+	return n, nil
+}
+
 type MatchResult struct {
 	ReferenceID    string
 	Method         string // "tvg_id", "exact_name", "alt_name", "normalized"
