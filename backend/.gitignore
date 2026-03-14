@@ -1,0 +1,4 @@
+backend/api-server
+backend/epg-parser
+backend/m3u-parser
+backend/thumbnail-worker
