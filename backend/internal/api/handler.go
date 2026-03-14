@@ -221,11 +221,13 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 			if age > thumbnailStaleDuration {
 				h.enqueueThumbnail(id)
 			}
-			c.Header("Content-Type", "image/jpeg")
-			c.Header("Cache-Control", "public, max-age=300")
-			c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
-			c.File(thumbPath)
-			return
+			data, err := os.ReadFile(thumbPath)
+			if err == nil && len(data) > 0 {
+				c.Header("Cache-Control", "public, max-age=300")
+				c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
+				c.Data(http.StatusOK, "image/jpeg", data)
+				return
+			}
 		}
 	}
 
