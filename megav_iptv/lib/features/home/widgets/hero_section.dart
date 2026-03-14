@@ -10,7 +10,10 @@ import '../../../core/playlist/models/epg_program.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 
-import 'glass_button.dart';
+import 'hero_backdrop.dart';
+import 'hero_badges.dart';
+import 'hero_dots.dart';
+import 'hero_top_bar.dart';
 
 class HeroSection extends ConsumerStatefulWidget {
   final List<Channel> featuredChannels;
@@ -50,7 +53,6 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
     _startAutoRotate();
   }
 
-  /// Navigate hero left/right (available for keyboard binding)
   void goToPrev() => _goTo(_heroIndex > 0 ? _heroIndex - 1 : widget.featuredChannels.length - 1);
   void goToNext() => _goTo((_heroIndex + 1) % widget.featuredChannels.length);
 
@@ -62,9 +64,7 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.featuredChannels.isEmpty) {
-      return SizedBox(height: 0.3.sh);
-    }
+    if (widget.featuredChannels.isEmpty) return SizedBox(height: 0.3.sh);
 
     final channel = widget.featuredChannels[_heroIndex];
     final heroHeight = 0.56.sh;
@@ -74,12 +74,12 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          _HeroBackdrop(channel: channel),
+          HeroBackdrop(channel: channel),
           _buildGradients(),
-          _HeroTopBar(onSettings: () => context.push('/settings')),
+          HeroTopBar(onSettings: () => context.push('/settings')),
           _HeroContent(channel: channel, onPlay: () => widget.onPlay(channel)),
           if (widget.featuredChannels.length > 1)
-            _HeroDots(count: widget.featuredChannels.length.clamp(0, 8), activeIndex: _heroIndex, onTap: _goTo),
+            HeroDots(count: widget.featuredChannels.length.clamp(0, 8), activeIndex: _heroIndex, onTap: _goTo),
         ],
       ),
     );
@@ -129,105 +129,11 @@ class _HeroSectionState extends ConsumerState<HeroSection> {
   }
 }
 
-class _HeroBackdrop extends StatelessWidget {
-  final Channel channel;
-  const _HeroBackdrop({required this.channel});
+// --- Backdrop extracted to hero_backdrop.dart ---
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 1200),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(
-              begin: 1.05,
-              end: 1.0,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-            child: child,
-          ),
-        );
-      },
-      child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
-          ? Image.network(
-              channel.logoUrl!,
-              key: ValueKey(channel.url),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (ctx, err, st) => _placeholder(),
-            )
-          : _placeholder(key: ValueKey(channel.url)),
-    );
-  }
+// --- Top Bar removed and extracted to hero_top_bar.dart ---
 
-  Widget _placeholder({Key? key}) {
-    return Container(
-      key: key,
-      color: AppColors.surface,
-      child: Center(
-        child: Icon(Icons.tv, size: 80.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
-      ),
-    );
-  }
-}
-
-class _HeroTopBar extends StatelessWidget {
-  final VoidCallback onSettings;
-  const _HeroTopBar({required this.onSettings});
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 20.h),
-          child: Row(
-            children: [
-              Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12.r),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.tv, size: 20.sp, color: Colors.white),
-              ),
-              SizedBox(width: 12.w),
-              Text(
-                'MegaV',
-                style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.95), letterSpacing: 1.5),
-              ),
-              Text(
-                ' IPTV',
-                style: TextStyle(fontSize: 10.sp, color: Colors.white.withValues(alpha: 0.3), letterSpacing: 2),
-              ),
-              const Spacer(),
-              GlassButton(icon: Icons.settings, onTap: onSettings),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+// --- Hero Content ---
 class _HeroContent extends ConsumerWidget {
   final Channel channel;
   final VoidCallback onPlay;
@@ -240,9 +146,12 @@ class _HeroContent extends ConsumerWidget {
     final nowAsync = tvgId != null && tvgId.isNotEmpty
         ? ref.watch(currentProgramProvider(tvgId))
         : const AsyncValue<EpgProgram?>.data(null);
+    final nextAsync = tvgId != null && tvgId.isNotEmpty
+        ? ref.watch(nextProgramProvider(tvgId))
+        : const AsyncValue<EpgProgram?>.data(null);
 
     return Positioned(
-      bottom: 48.h,
+      bottom: 40.h,
       left: 32.w,
       right: 32.w,
       child: AnimatedSwitcher(
@@ -259,46 +168,101 @@ class _HeroContent extends ConsumerWidget {
             ),
           );
         },
-        child: Column(
+        child: Row(
           key: ValueKey(channel.url),
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            _buildBadges(nowAsync),
-            SizedBox(height: 12.h),
-            Text(
-              channel.name,
-              style: TextStyle(
-                fontSize: 36.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: const [Shadow(blurRadius: 20, color: Colors.black54)],
-              ),
-            ),
-            if (channel.groupTitle != null) ...[
-              SizedBox(height: 4.h),
-              Text(
-                channel.groupTitle!,
-                style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.4)),
-              ),
-            ],
-            SizedBox(height: 8.h),
-            nowAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (e, st) => const SizedBox.shrink(),
-              data: (prog) => _buildProgramInfo(prog),
-            ),
-            SizedBox(height: 16.h),
-            _buildActions(onPlay),
+            Expanded(child: _buildLeftContent(nowAsync)),
+            SizedBox(width: 24.w),
+            _buildMiniEpg(tvgId, nowAsync, nextAsync),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildLeftContent(AsyncValue<EpgProgram?> nowAsync) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Badges
+        _buildBadges(nowAsync),
+        SizedBox(height: 10.h),
+        // Title (channel name or EPG program title)
+        nowAsync.when(
+          loading: () => _channelTitle(),
+          error: (e, st) => _channelTitle(),
+          data: (prog) {
+            if (prog != null && prog.isNow) {
+              return Text(
+                prog.title,
+                style: TextStyle(
+                  fontSize: TS.t4xl.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [Shadow(blurRadius: 20, color: Colors.black54)],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              );
+            }
+            return _channelTitle();
+          },
+        ),
+        // Subtitle (group)
+        if (channel.groupTitle != null) ...[
+          SizedBox(height: 2.h),
+          Text(
+            channel.groupTitle!,
+            style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.25)),
+          ),
+        ],
+        SizedBox(height: 6.h),
+        // Rating + meta row
+        _buildMetaRow(nowAsync),
+        SizedBox(height: 6.h),
+        // Description
+        nowAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => const SizedBox.shrink(),
+          data: (prog) {
+            if (prog?.description == null || prog!.description!.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Text(
+                prog.description!,
+                style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.4)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
+        ),
+        // Progress bar
+        _buildProgressBar(nowAsync),
+        SizedBox(height: 14.h),
+        // CTA button
+        _buildActions(),
+      ],
+    );
+  }
+
+  Widget _channelTitle() {
+    return Text(
+      channel.name,
+      style: TextStyle(
+        fontSize: TS.t4xl.sp,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+        shadows: const [Shadow(blurRadius: 20, color: Colors.black54)],
+      ),
+    );
+  }
+
   Widget _buildBadges(AsyncValue<EpgProgram?> nowAsync) {
     return Wrap(
-      spacing: 8.w,
+      spacing: 6.w,
       runSpacing: 4.h,
       children: [
         nowAsync.when(
@@ -306,87 +270,142 @@ class _HeroContent extends ConsumerWidget {
           error: (e, st) => const SizedBox.shrink(),
           data: (prog) {
             if (prog != null && prog.isNow) {
-              return _Badge(text: 'В ЭФИРЕ', color: AppColors.liveBadge, showPulse: true);
+              return HeroBadge(text: 'В ЭФИРЕ', color: AppColors.liveBadge.withValues(alpha: 0.9), showPulse: true);
             }
             return const SizedBox.shrink();
           },
         ),
-        _Badge(
+        HeroBadge(
           text: channel.groupTitle ?? 'TV',
-          color: Colors.white.withValues(alpha: 0.1),
-          textColor: Colors.white.withValues(alpha: 0.6),
+          color: Colors.white.withValues(alpha: 0.15),
+          textColor: Colors.white.withValues(alpha: 0.8),
+          icon: Icons.live_tv,
+        ),
+        nowAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => const SizedBox.shrink(),
+          data: (prog) {
+            if (prog?.category != null && prog!.category!.isNotEmpty) {
+              return HeroBadge(
+                text: prog.category!,
+                color: Colors.white.withValues(alpha: 0.1),
+                textColor: Colors.white.withValues(alpha: 0.6),
+              );
+            }
+            return const SizedBox.shrink();
+          },
         ),
       ],
     );
   }
 
-  Widget _buildProgramInfo(EpgProgram? prog) {
-    if (prog == null) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          prog.title,
-          style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.7)),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (prog.isNow) ...[
-          SizedBox(height: 8.h),
-          SizedBox(
-            width: 400.w,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.timer_outlined, size: 12.sp, color: Colors.white.withValues(alpha: 0.25)),
-                    SizedBox(width: 6.w),
-                    Text(
-                      '${_formatTime(prog.start)} — ${_formatTime(prog.end)}',
-                      style: TextStyle(fontSize: 11.sp, color: Colors.white.withValues(alpha: 0.35)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4.h),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4.r),
-                  child: SizedBox(
-                    height: 6.h,
-                    child: Stack(
-                      children: [
-                        Container(
+  Widget _buildMetaRow(AsyncValue<EpgProgram?> nowAsync) {
+    return nowAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, st) => const SizedBox.shrink(),
+      data: (prog) {
+        if (prog == null) return const SizedBox.shrink();
+        return Row(
+          children: [
+            Icon(Icons.star_rounded, size: TS.sm.sp, color: AppColors.ratingGold),
+            SizedBox(width: 3.w),
+            Text(
+              '7.8',
+              style: TextStyle(fontSize: TS.sm.sp, color: AppColors.ratingGold),
+            ),
+            _dot(),
+            if (prog.category != null) ...[
+              Text(
+                prog.category!,
+                style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
+              ),
+              _dot(),
+            ],
+            Text(
+              _formatDuration(prog.duration),
+              style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _dot() => Padding(
+    padding: EdgeInsets.symmetric(horizontal: 6.w),
+    child: Text(
+      '•',
+      style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.15)),
+    ),
+  );
+
+  Widget _buildProgressBar(AsyncValue<EpgProgram?> nowAsync) {
+    return nowAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, st) => const SizedBox.shrink(),
+      data: (prog) {
+        if (prog == null || !prog.isNow) return const SizedBox.shrink();
+        final remaining = prog.end.difference(DateTime.now());
+        return SizedBox(
+          width: 400.w,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.timer_outlined, size: TS.xs.sp, color: Colors.white.withValues(alpha: 0.25)),
+                  SizedBox(width: 6.w),
+                  Text(
+                    '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
+                    style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.35)),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'ещё ${_formatDuration(remaining)}',
+                    style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 4.h),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4.r),
+                child: SizedBox(
+                  height: 6.h,
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: prog.progress,
+                        child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4.r),
+                            gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
                           ),
                         ),
-                        FractionallySizedBox(
-                          widthFactor: prog.progress,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4.r),
-                              gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildActions(VoidCallback onPlay) {
+  Widget _buildActions() {
     return Row(
       children: [
         Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12.r),
+          elevation: 4,
+          shadowColor: Colors.white.withValues(alpha: 0.1),
           child: InkWell(
             onTap: onPlay,
             borderRadius: BorderRadius.circular(12.r),
@@ -395,11 +414,11 @@ class _HeroContent extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.play_arrow, size: 18.sp, color: AppColors.background),
+                  Icon(Icons.play_arrow, size: TS.lg.sp, color: AppColors.background),
                   SizedBox(width: 8.w),
                   Text(
                     'Смотреть',
-                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: AppColors.background),
+                    style: TextStyle(fontSize: TS.sm.sp, fontWeight: FontWeight.w600, color: AppColors.background),
                   ),
                 ],
               ),
@@ -410,114 +429,133 @@ class _HeroContent extends ConsumerWidget {
     );
   }
 
-  String _formatTime(DateTime dt) {
-    final local = dt.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-  }
-}
+  // Mini EPG sidebar (right side in hero, "Далее на канале")
+  Widget _buildMiniEpg(String? tvgId, AsyncValue<EpgProgram?> nowAsync, AsyncValue<EpgProgram?> nextAsync) {
+    if (tvgId == null || tvgId.isEmpty) return const SizedBox.shrink();
 
-class _HeroDots extends StatelessWidget {
-  final int count;
-  final int activeIndex;
-  final void Function(int) onTap;
-
-  const _HeroDots({required this.count, required this.activeIndex, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 24.h,
-      right: 32.w,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(count, (i) {
-          final isActive = i == activeIndex;
-          return GestureDetector(
-            onTap: () => onTap(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: EdgeInsets.symmetric(horizontal: 3.w),
-              width: isActive ? 24.w : 6.w,
-              height: 6.h,
-              decoration: BoxDecoration(
-                color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4.r),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String text;
-  final Color color;
-  final Color? textColor;
-  final bool showPulse;
-
-  const _Badge({required this.text, required this.color, this.textColor, this.showPulse = false});
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      width: 220.w,
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: color == AppColors.liveBadge ? 0.9 : null),
-        borderRadius: BorderRadius.circular(8.r),
-        boxShadow: color == AppColors.liveBadge
-            ? [BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8)]
-            : null,
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (showPulse) ...[_PulsingDot(), SizedBox(width: 6.w)],
-          Text(
-            text,
-            style: TextStyle(fontSize: 11.sp, color: textColor ?? Colors.white, letterSpacing: 0.5),
+          Row(
+            children: [
+              Icon(Icons.calendar_today, size: TS.t11.sp, color: AppColors.primary),
+              SizedBox(width: 6.w),
+              Text(
+                'Далее на канале',
+                style: TextStyle(fontSize: TS.t11.sp, color: Colors.white.withValues(alpha: 0.6)),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          nowAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (e, st) => const SizedBox.shrink(),
+            data: (prog) {
+              if (prog == null)
+                return Text(
+                  'Нет данных',
+                  style: TextStyle(fontSize: TS.t11.sp, color: Colors.white.withValues(alpha: 0.2)),
+                );
+              return _MiniEpgItem(program: prog, isCurrent: true);
+            },
+          ),
+          SizedBox(height: 4.h),
+          nextAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (e, st) => const SizedBox.shrink(),
+            data: (prog) {
+              if (prog == null) return const SizedBox.shrink();
+              return _MiniEpgItem(program: prog, isCurrent: false);
+            },
           ),
         ],
       ),
     );
   }
-}
 
-class _PulsingDot extends StatefulWidget {
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+  String _fmtTime(DateTime dt) {
+    final l = dt.toLocal();
+    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  String _formatDuration(Duration d) {
+    if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes.remainder(60)} мин';
+    return '${d.inMinutes} мин';
   }
+}
+
+class _MiniEpgItem extends StatelessWidget {
+  final EpgProgram program;
+  final bool isCurrent;
+
+  const _MiniEpgItem({required this.program, required this.isCurrent});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(
-          opacity: 0.4 + 0.6 * _controller.value,
-          child: Container(
-            width: 6.w,
-            height: 6.w,
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 3.h),
+      child: Row(
+        children: [
+          if (isCurrent)
+            Container(
+              width: 3.w,
+              height: 24.h,
+              margin: EdgeInsets.only(right: 8.w),
+              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2.r)),
+            ),
+          if (!isCurrent) SizedBox(width: 11.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  program.title,
+                  style: TextStyle(
+                    fontSize: TS.t11.sp,
+                    color: isCurrent ? Colors.white.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.4),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _fmtTime(program.start),
+                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.2)),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          if (isCurrent && program.isNow)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+              decoration: BoxDecoration(
+                color: AppColors.liveBadge.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+              child: Text(
+                'LIVE',
+                style: TextStyle(fontSize: TS.t8.sp, color: AppColors.liveBadge),
+              ),
+            ),
+        ],
+      ),
     );
   }
+
+  String _fmtTime(DateTime dt) {
+    final l = dt.toLocal();
+    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+  }
 }
+
+// --- Dots extracted to hero_dots.dart ---
+
+// --- Badges extracted to hero_badges.dart ---

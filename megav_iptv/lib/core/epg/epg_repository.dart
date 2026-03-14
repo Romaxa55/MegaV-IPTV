@@ -14,6 +14,7 @@ class EpgRepository {
 
   String sourceUrl = 'https://iptvx.one/epg/epg.xml.gz';
   static const _refreshInterval = Duration(hours: 6);
+  static const _programChunkSize = 1000;
 
   void startPeriodicRefresh() {
     _refreshTimer?.cancel();
@@ -43,18 +44,43 @@ class EpgRepository {
       }
 
       final gzippedData = Uint8List.fromList(response.bodyBytes);
-      debugPrint('EPG: Downloaded ${(gzippedData.length / 1024 / 1024).toStringAsFixed(1)} MB, parsing...');
+      debugPrint(
+        'EPG: Downloaded ${(gzippedData.length / 1024 / 1024).toStringAsFixed(1)} MB, '
+        'parsing with streaming parser...',
+      );
 
       final result = await parseXmltvInIsolate(gzippedData);
-      debugPrint('EPG: Parsed ${result.channels.length} channels, ${result.programs.length} programs');
+      debugPrint(
+        'EPG: Parsed ${result.channels.length} channels, '
+        '${result.programs.length} programs',
+      );
 
-      await _db.clearAllPrograms();
+      // Soft-delete workflow:
+      // 1) Mark existing records as deleted
+      await _db.markAllDeleted();
+
+      // 2) Upsert channels (reactivates existing, inserts new)
       await _db.upsertChannels(result.channels);
-      await _db.upsertPrograms(result.programs);
-      await _db.setLastUpdated(DateTime.now());
+
+      // 3) Insert programs in chunks of 1000 to avoid huge memory spikes
+      for (var i = 0; i < result.programs.length; i += _programChunkSize) {
+        final end = (i + _programChunkSize).clamp(0, result.programs.length);
+        await _db.insertProgramsBatch(result.programs.sublist(i, end));
+      }
+
+      // 4) Purge orphaned records still marked as deleted
+      await _db.purgeDeleted();
+
+      // 5) Clean up programs older than 24h
       await _db.clearOldPrograms();
 
-      debugPrint('EPG: Database updated successfully');
+      await _db.setLastUpdated(DateTime.now());
+
+      final counts = await _db.getCounts();
+      debugPrint(
+        'EPG: Database updated — ${counts.channels} channels, '
+        '${counts.programs} programs',
+      );
     } catch (e, st) {
       debugPrint('EPG: Refresh error: $e\n$st');
       rethrow;
@@ -75,7 +101,13 @@ class EpgRepository {
     return _db.getProgramsForChannel(channelId, from: from, to: to);
   }
 
+  Future<List<EpgProgram>> searchPrograms(String query, {int limit = 50}) {
+    return _db.searchPrograms(query, limit: limit);
+  }
+
   Future<DateTime?> getLastUpdated() => _db.getLastUpdated();
+
+  Future<({int channels, int programs})> getCounts() => _db.getCounts();
 
   Future<void> dispose() async {
     _refreshTimer?.cancel();

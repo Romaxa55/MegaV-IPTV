@@ -31,4 +31,25 @@ class AppColors {
   static Color get glassBg => Colors.white.withValues(alpha: 0.03);
   static Color get glassBorder => Colors.white.withValues(alpha: 0.06);
   static Color get glassButtonBg => Colors.white.withValues(alpha: 0.10);
+
+  static const Color ratingGold = Color(0xFFF59E0B);
+  static const Color indigo300 = Color(0xFFA5B4FC);
+}
+
+/// Tailwind-aligned typography scale (px values, use with .sp)
+class TS {
+  TS._();
+  static const double t7 = 7;
+  static const double t8 = 8;
+  static const double t9 = 9;
+  static const double t10 = 10;
+  static const double t11 = 11;
+  static const double xs = 12;
+  static const double sm = 14;
+  static const double base = 16;
+  static const double lg = 18;
+  static const double xl = 20;
+  static const double t2xl = 24;
+  static const double t3xl = 30;
+  static const double t4xl = 36;
 }
