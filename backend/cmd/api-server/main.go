@@ -29,6 +29,7 @@ func main() {
 		debug        = flag.Bool("debug", cfg.Debug, "Enable debug logging")
 		thumbnailDir = flag.String("thumbnail-dir", "/app/thumbnails", "Thumbnail storage directory")
 		syncOnStart  = flag.Bool("sync", false, "Sync playlist and EPG on startup")
+		migrateOnly  = flag.Bool("migrate-only", false, "Run migrations and exit")
 	)
 	flag.Parse()
 
@@ -51,6 +52,11 @@ func main() {
 
 	if err := repo.RunMigrations("migrations"); err != nil {
 		logger.WithError(err).Warn("Migrations failed (may already be applied)")
+	}
+
+	if *migrateOnly {
+		logger.Info("Migrations complete, exiting (migrate-only mode)")
+		return
 	}
 
 	if cfg.PlaylistURL != "" || cfg.EpgURL != "" {
