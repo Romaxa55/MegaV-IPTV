@@ -9,11 +9,11 @@ metadata:
 spec:
   schedule: {{ .Values.epgParser.schedule | quote }}
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 0
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
-      ttlSecondsAfterFinished: 120
+      ttlSecondsAfterFinished: 300
       template:
         metadata:
           labels:

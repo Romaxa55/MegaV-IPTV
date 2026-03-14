@@ -16,7 +16,7 @@ import (
 )
 
 const thumbnailStaleDuration = 6 * time.Hour
-const thumbnailGeneratingTTL = 60 * time.Second
+const thumbnailGeneratingTTL = 5 * time.Minute
 
 type Handler struct {
 	repo         *repositories.IPTVRepository
@@ -221,6 +221,7 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 			if age > thumbnailStaleDuration {
 				h.enqueueThumbnail(id)
 			}
+			c.Header("Content-Type", "image/jpeg")
 			c.Header("Cache-Control", "public, max-age=300")
 			c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
 			c.File(thumbPath)
@@ -228,7 +229,9 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 		}
 	}
 
-	h.enqueueThumbnail(id)
+	if h.enqueueThumbnail(id) {
+		h.logger.Debugf("Enqueued thumbnail generation for %s", id)
+	}
 
 	logoURL, err := h.repo.GetChannelLogoURL(id)
 	if err == nil && logoURL != "" {
@@ -239,22 +242,23 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 	c.JSON(http.StatusNotFound, gin.H{"error": "thumbnail not available yet"})
 }
 
-func (h *Handler) enqueueThumbnail(channelID string) {
+func (h *Handler) enqueueThumbnail(channelID string) bool {
 	if h.redisClient == nil || h.thumbQueue == nil {
-		return
+		return false
 	}
 
 	ctx := context.Background()
 	genKey := "iptv:thumb:generating:" + channelID
+
 	set, err := h.redisClient.SetNX(ctx, genKey, "1", thumbnailGeneratingTTL).Result()
 	if err != nil || !set {
-		return
+		return false
 	}
 
 	streamURL, err := h.repo.GetBestStreamURL(channelID)
 	if err != nil || streamURL == "" {
 		h.redisClient.Del(ctx, genKey)
-		return
+		return false
 	}
 
 	item := &queue.ThumbnailItem{
@@ -265,5 +269,7 @@ func (h *Handler) enqueueThumbnail(channelID string) {
 	if err := h.thumbQueue.EnqueueThumbnail(ctx, item); err != nil {
 		h.logger.WithError(err).Warnf("Failed to enqueue thumbnail for %s", channelID)
 		h.redisClient.Del(ctx, genKey)
+		return false
 	}
+	return true
 }
