@@ -12,12 +12,12 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
 
-  # Dart formatting
+  # Dart formatting & fixing
   - repo: local
     hooks:
-      - id: dart-format
-        name: dart format + auto stage
-        entry: bash -c 'cd megav_iptv && dart format --line-length=120 lib/ && cd .. && CHANGED=$(git diff --name-only -- "*.dart"); [ -n "$CHANGED" ] && echo "$CHANGED" | xargs git add || true'
+      - id: dart-fix-and-format
+        name: dart fix + format + auto stage
+        entry: bash -c 'cd megav_iptv && dart fix --apply lib/ && dart format --line-length=120 lib/ && cd .. && CHANGED=$(git diff --name-only -- "*.dart"); [ -n "$CHANGED" ] && echo "$CHANGED" | xargs git add || true'
         language: system
         files: \.dart$
         pass_filenames: false

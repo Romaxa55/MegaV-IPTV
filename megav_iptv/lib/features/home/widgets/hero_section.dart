@@ -460,11 +460,12 @@ class _HeroContent extends ConsumerWidget {
             loading: () => const SizedBox.shrink(),
             error: (e, st) => const SizedBox.shrink(),
             data: (prog) {
-              if (prog == null)
+              if (prog == null) {
                 return Text(
                   'Нет данных',
                   style: TextStyle(fontSize: TS.t11.sp, color: Colors.white.withValues(alpha: 0.2)),
                 );
+              }
               return _MiniEpgItem(program: prog, isCurrent: true);
             },
           ),
