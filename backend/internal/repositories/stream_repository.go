@@ -233,3 +233,26 @@ func (r *IPTVRepository) GetUnmatchedCount() (int, error) {
 	err := r.db.QueryRow(`SELECT COUNT(*) FROM iptv_unmatched_streams`).Scan(&count)
 	return count, err
 }
+
+func (r *IPTVRepository) GetWorkingStreamsForThumbnail(limit int) ([]*models.Stream, error) {
+	rows, err := r.db.Query(`
+		SELECT DISTINCT ON (s.channel_id) s.id, s.channel_id, s.url
+		FROM iptv_streams s
+		WHERE s.is_working = true AND s.channel_id IS NOT NULL
+		ORDER BY s.channel_id, s.uptime_pct DESC, s.response_time_ms ASC NULLS LAST
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var streams []*models.Stream
+	for rows.Next() {
+		s := &models.Stream{}
+		if err := rows.Scan(&s.ID, &s.ChannelID, &s.URL); err != nil {
+			return nil, err
+		}
+		streams = append(streams, s)
+	}
+	return streams, nil
+}

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -20,17 +22,29 @@ func main() {
 
 	var (
 		debug   = flag.Bool("debug", cfg.Debug, "Enable debug logging")
-		workers = flag.Int("workers", cfg.Workers, "Number of concurrent workers")
-		batch   = flag.Int("batch", 1000, "Number of channels to check per run")
+		workers = flag.Int("workers", 100, "Number of concurrent check workers")
+		batch   = flag.Int("batch", 2000, "Number of streams to check per run")
 	)
 	flag.Parse()
 
+	if v := os.Getenv("CHECK_WORKERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			*workers = n
+		}
+	}
+	if v := os.Getenv("CHECK_BATCH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			*batch = n
+		}
+	}
+
 	logger := logrus.New()
+	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	if *debug {
 		logger.SetLevel(logrus.DebugLevel)
 	}
 
-	logger.Info("IPTV Channel Checker starting")
+	logger.Info("IPTV Stream Checker starting")
 
 	repo, err := repositories.NewIPTVRepository(cfg.DatabaseURL, logger)
 	if err != nil {
@@ -40,49 +54,57 @@ func main() {
 
 	checker := services.NewCheckerService(logger, cfg.FFprobeBin, cfg.Timeout)
 
-	channels, err := repo.GetChannelsForCheck(*batch)
+	streams, err := repo.GetStreamsForCheck(*batch)
 	if err != nil {
-		logger.WithError(err).Fatal("Failed to get channels for check")
+		logger.WithError(err).Fatal("Failed to get streams for check")
 	}
 
-	if len(channels) == 0 {
-		logger.Info("No channels to check")
+	if len(streams) == 0 {
+		logger.Info("No streams to check")
 		return
 	}
 
-	logger.Infof("Checking %d channels with %d workers", len(channels), *workers)
+	logger.Infof("Checking %d streams with %d workers", len(streams), *workers)
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, *workers)
 	var working, failed atomic.Int64
+	var checked atomic.Int64
+	total := int64(len(streams))
 
-	for _, ch := range channels {
+	for _, s := range streams {
 		wg.Add(1)
 		sem <- struct{}{}
 
-		go func(channelID, url string) {
+		go func(streamID int, streamURL string) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			result := checker.CheckChannel(ctx, channelID, url)
-			if err := repo.UpdateChannelCheckResult(
-				channelID, result.IsWorking,
+			result := checker.CheckStreamFull(ctx, streamID, streamURL)
+
+			if err := repo.UpdateStreamCheckResult(
+				streamID, result.IsWorking, result.ResponseTimeMs,
 				result.VideoCodec, result.AudioCodec, result.Resolution,
 			); err != nil {
-				logger.WithError(err).Warnf("Failed to update check result for %s", channelID)
+				logger.WithError(err).Debugf("Failed to update check for stream %d", streamID)
 			}
 
+			n := checked.Add(1)
 			if result.IsWorking {
 				working.Add(1)
 			} else {
 				failed.Add(1)
 			}
-		}(ch.ID, ch.URL)
+
+			if n%200 == 0 || n == total {
+				logger.Infof("Progress: %d/%d (working: %d, failed: %d)", n, total, working.Load(), failed.Load())
+			}
+		}(s.ID, s.URL)
 	}
 
 	wg.Wait()
 
-	logger.Infof("Channel check complete. Working: %d, Failed: %d, Total: %d",
-		working.Load(), failed.Load(), len(channels))
+	logger.Infof("Stream check complete. Working: %d, Failed: %d, Total: %d",
+		working.Load(), failed.Load(), len(streams))
 }

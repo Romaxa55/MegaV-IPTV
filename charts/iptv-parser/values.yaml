@@ -67,20 +67,20 @@ epgParser:
       cpu: 500m
       memory: 1Gi
 
-# --- Channel Checker CronJob ---
+# --- Stream Checker CronJob ---
 channelChecker:
   enabled: true
-  schedule: "*/30 * * * *"
-  workers: 50
-  batch: 1000
+  schedule: "*/15 * * * *"
+  workers: 100
+  batch: 2000
   debug: false
   resources:
     requests:
-      cpu: 200m
-      memory: 128Mi
+      cpu: 500m
+      memory: 256Mi
     limits:
-      cpu: 1000m
-      memory: 512Mi
+      cpu: 2000m
+      memory: 1Gi
 
 # --- Thumbnail Worker Deployment ---
 thumbnailWorker:

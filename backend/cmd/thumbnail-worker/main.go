@@ -33,6 +33,7 @@ func main() {
 	flag.Parse()
 
 	logger := logrus.New()
+	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 	if *debug {
 		logger.SetLevel(logrus.DebugLevel)
 	}
@@ -48,11 +49,10 @@ func main() {
 	thumbService := services.NewThumbnailService(logger, cfg.FFmpegBin, *outputDir, 15*time.Second)
 
 	if *mode == "batch" {
-		runBatch(repo, thumbService, logger, *batch, *workers)
+		runBatchStreams(repo, thumbService, logger, *batch, *workers)
 		return
 	}
 
-	// Queue mode (long-running)
 	redisQueue, err := queue.NewRedisQueue(cfg.RedisURL, logger)
 	if err != nil {
 		logger.WithError(err).Fatal("Failed to connect to Redis queue")
@@ -111,32 +111,35 @@ func main() {
 	logger.Info("Thumbnail worker stopped")
 }
 
-func runBatch(repo *repositories.IPTVRepository, thumbService *services.ThumbnailService, logger *logrus.Logger, batchSize, workers int) {
-	channels, err := repo.GetWorkingChannelsForThumbnail(batchSize)
+func runBatchStreams(repo *repositories.IPTVRepository, thumbService *services.ThumbnailService, logger *logrus.Logger, batchSize, workers int) {
+	streams, err := repo.GetWorkingStreamsForThumbnail(batchSize)
 	if err != nil {
-		logger.WithError(err).Fatal("Failed to get channels for thumbnails")
+		logger.WithError(err).Fatal("Failed to get streams for thumbnails")
 	}
 
-	if len(channels) == 0 {
-		logger.Info("No channels need thumbnail updates")
+	if len(streams) == 0 {
+		logger.Info("No streams need thumbnail updates")
 		return
 	}
 
-	logger.Infof("Generating thumbnails for %d channels with %d workers", len(channels), workers)
+	logger.Infof("Generating thumbnails for %d streams with %d workers", len(streams), workers)
 
 	ctx := context.Background()
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, workers)
 
-	for _, ch := range channels {
+	for _, s := range streams {
+		if s.ChannelID == nil {
+			continue
+		}
 		wg.Add(1)
 		sem <- struct{}{}
 
-		go func(channelID, url string) {
+		go func(channelID, streamURL string) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			_, err := thumbService.GenerateThumbnail(ctx, channelID, url)
+			_, err := thumbService.GenerateThumbnail(ctx, channelID, streamURL)
 			if err != nil {
 				logger.Debugf("Failed thumbnail for %s: %v", channelID, err)
 				return
@@ -144,7 +147,7 @@ func runBatch(repo *repositories.IPTVRepository, thumbService *services.Thumbnai
 
 			thumbnailURL := fmt.Sprintf("/api/channels/%s/thumbnail", channelID)
 			repo.UpdateChannelThumbnail(channelID, thumbnailURL)
-		}(ch.ID, ch.URL)
+		}(*s.ChannelID, s.URL)
 	}
 
 	wg.Wait()
