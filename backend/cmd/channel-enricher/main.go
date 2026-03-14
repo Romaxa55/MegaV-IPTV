@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/romaxa55/iptv-parser/internal/config"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
 	"github.com/romaxa55/iptv-parser/internal/services"
 	"github.com/sirupsen/logrus"
@@ -15,12 +16,16 @@ func main() {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		logger.Fatal("DATABASE_URL is required")
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Fatalf("Failed to load config: %v", err)
 	}
 
-	repo, err := repositories.NewIPTVRepository(dbURL, logger)
+	if cfg.Debug {
+		logger.SetLevel(logrus.DebugLevel)
+	}
+
+	repo, err := repositories.NewIPTVRepository(cfg.DatabaseURL, logger)
 	if err != nil {
 		logger.Fatalf("Failed to connect to DB: %v", err)
 	}
@@ -41,7 +46,6 @@ func main() {
 
 	db := repo.GetDB()
 
-	// Step 1: Import/update reference channels from iptv-org
 	importer := services.NewReferenceImporter(logger, db)
 	count, err := importer.Import(ctx)
 	if err != nil {
@@ -49,13 +53,11 @@ func main() {
 	}
 	logger.Infof("Reference DB: %d channels", count)
 
-	// Step 2: Build matching index
 	enricher := services.NewChannelEnricher(logger, db)
 	if err := enricher.BuildIndex(ctx); err != nil {
 		logger.Fatalf("Failed to build index: %v", err)
 	}
 
-	// Step 3: Re-match unmatched streams
 	rematched, err := rematchUnmatched(ctx, logger, repo, enricher)
 	if err != nil {
 		logger.Warnf("Re-match error: %v", err)
@@ -67,7 +69,6 @@ func main() {
 }
 
 func rematchUnmatched(ctx context.Context, logger *logrus.Logger, repo *repositories.IPTVRepository, enricher *services.ChannelEnricher) (int, error) {
-	// TODO: query iptv_unmatched_streams, try to match again, move to iptv_streams if matched
 	_ = repo
 	return 0, nil
 }

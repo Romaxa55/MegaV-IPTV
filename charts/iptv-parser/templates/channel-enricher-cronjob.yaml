@@ -30,7 +30,7 @@ spec:
               image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
               command: ["./bin/channel-enricher"]
               env:
-                {{- include "iptv-parser.databaseEnv" . | nindent 16 }}
+                {{- include "iptv-parser.dbEnv" . | nindent 16 }}
               resources:
                 {{- toYaml .Values.channelEnricher.resources | nindent 16 }}
       backoffLimit: 2
