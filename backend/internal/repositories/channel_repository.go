@@ -246,3 +246,34 @@ func (r *IPTVRepository) UpdateChannelThumbnail(channelID string, thumbnailURL s
 		thumbnailURL, channelID)
 	return err
 }
+
+// --- Poster Cache ---
+
+type PosterCacheEntry struct {
+	TitleHash string
+	Title     string
+	PosterURL string
+	FilePath  string
+}
+
+func (r *IPTVRepository) GetPosterCache(titleHash string) (*PosterCacheEntry, error) {
+	e := &PosterCacheEntry{}
+	err := r.db.QueryRow(
+		"SELECT title_hash, title, poster_url, file_path FROM poster_cache WHERE title_hash = $1",
+		titleHash).Scan(&e.TitleHash, &e.Title, &e.PosterURL, &e.FilePath)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return e, err
+}
+
+func (r *IPTVRepository) UpsertPosterCache(titleHash, title, posterURL, filePath string) error {
+	_, err := r.db.Exec(`
+		INSERT INTO poster_cache (title_hash, title, poster_url, file_path)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (title_hash) DO UPDATE SET
+			poster_url = EXCLUDED.poster_url,
+			file_path = EXCLUDED.file_path`,
+		titleHash, title, posterURL, filePath)
+	return err
+}

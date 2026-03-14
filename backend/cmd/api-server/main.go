@@ -94,9 +94,9 @@ func main() {
 
 	thumbService := services.NewThumbnailService(logger, cfg.FFmpegBin, *thumbnailDir, 15*time.Second)
 
-	var posterService *services.PosterService
-	if cfg.KinopoiskAPIKey != "" && thumbQueue != nil {
-		posterService = services.NewPosterService(cfg.KinopoiskAPIKey, thumbQueue.GetClient(), repo, logger)
+	posterDir := *thumbnailDir + "/posters"
+	posterService := services.NewPosterService(cfg.KinopoiskAPIKey, repo, logger, posterDir)
+	if posterService.Enabled() {
 		logger.Info("Kinopoisk poster service enabled")
 	}
 
@@ -135,6 +135,7 @@ func main() {
 		apiGroup.GET("/epg/movies", handler.GetMoviesNowPlaying)
 		apiGroup.GET("/epg/upcoming", handler.GetUpcomingAll)
 		apiGroup.GET("/epg/featured", handler.GetFeaturedNowPlaying)
+		apiGroup.GET("/posters/:hash", handler.GetPoster)
 		apiGroup.GET("/playlist.m3u", handler.GetM3UPlaylist)
 		apiGroup.GET("/categories", handler.GetCategories)
 		apiGroup.GET("/health", handler.HealthCheck)

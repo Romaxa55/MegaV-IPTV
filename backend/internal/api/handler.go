@@ -226,7 +226,8 @@ func (h *Handler) GetMoviesNowPlaying(c *gin.Context) {
 	}
 
 	if h.posterService != nil {
-		h.posterService.EnrichMoviePosters(items)
+		baseURL := h.buildBaseURL(c)
+		h.posterService.EnrichMoviePosters(items, baseURL)
 	}
 
 	h.enrichNowPlayingThumbnails(c, items)
@@ -252,6 +253,25 @@ func (h *Handler) GetFeaturedChannels(c *gin.Context) {
 	h.enrichThumbnails(c, channels)
 
 	c.JSON(http.StatusOK, channels)
+}
+
+func (h *Handler) GetPoster(c *gin.Context) {
+	hash := c.Param("hash")
+	hash = strings.TrimSuffix(hash, ".jpg")
+
+	if h.posterService == nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	path := h.posterService.GetPosterPath(hash)
+	if path == "" {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.File(path)
 }
 
 func (h *Handler) GetCategories(c *gin.Context) {
@@ -424,6 +444,16 @@ func (h *Handler) SyncAll(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Playlist and EPG synced"})
+}
+
+func (h *Handler) buildBaseURL(c *gin.Context) string {
+	scheme := "https"
+	if c.Request.TLS == nil {
+		if fwd := c.GetHeader("X-Forwarded-Proto"); fwd != "" {
+			scheme = fwd
+		}
+	}
+	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 }
 
 func (h *Handler) buildThumbnailURL(c *gin.Context, channelID int) string {

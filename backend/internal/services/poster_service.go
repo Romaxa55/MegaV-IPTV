@@ -1,45 +1,44 @@
 package services
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	posterCacheTTL  = 24 * time.Hour
-	posterCacheNone = "__none__"
-)
-
 type PosterService struct {
-	apiKey string
-	redis  *redis.Client
-	repo   *repositories.IPTVRepository
-	logger *logrus.Logger
-	client *http.Client
+	apiKey    string
+	repo      *repositories.IPTVRepository
+	logger    *logrus.Logger
+	client    *http.Client
+	outputDir string
 }
 
-func NewPosterService(apiKey string, redisClient *redis.Client, repo *repositories.IPTVRepository, logger *logrus.Logger) *PosterService {
+func NewPosterService(apiKey string, repo *repositories.IPTVRepository, logger *logrus.Logger, outputDir string) *PosterService {
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		logger.Warnf("Failed to create poster dir %s: %v", outputDir, err)
+	}
 	return &PosterService{
-		apiKey: apiKey,
-		redis:  redisClient,
-		repo:   repo,
-		logger: logger,
-		client: &http.Client{Timeout: 10 * time.Second},
+		apiKey:    apiKey,
+		repo:      repo,
+		logger:    logger,
+		client:    &http.Client{Timeout: 15 * time.Second},
+		outputDir: outputDir,
 	}
 }
 
 func (s *PosterService) Enabled() bool {
-	return s.apiKey != "" && s.redis != nil
+	return s.apiKey != ""
 }
 
 type kpSearchResponse struct {
@@ -56,16 +55,15 @@ type kpFilm struct {
 	PosterURLPreview string `json:"posterUrlPreview"`
 }
 
-func (s *PosterService) EnrichMoviePosters(items []*repositories.NowPlayingItem) {
-	if !s.Enabled() {
-		return
-	}
+func titleHash(title string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(title)))[:16]
+}
 
+// EnrichMoviePosters sets program.Icon to our local poster endpoint URL.
+// Looks up DB cache first, only hits Kinopoisk API on cache miss.
+func (s *PosterService) EnrichMoviePosters(items []*repositories.NowPlayingItem, baseURL string) {
 	for _, item := range items {
 		if item.Program == nil {
-			continue
-		}
-		if item.Program.Icon != nil && *item.Program.Icon != "" {
 			continue
 		}
 
@@ -74,35 +72,49 @@ func (s *PosterService) EnrichMoviePosters(items []*repositories.NowPlayingItem)
 			continue
 		}
 
-		posterURL := s.lookupPoster(title)
-		if posterURL != "" {
-			item.Program.Icon = &posterURL
-			s.repo.UpdateEpgProgramIcon(item.Program.ID, posterURL)
+		hash := titleHash(title)
+
+		cached, err := s.repo.GetPosterCache(hash)
+		if err != nil {
+			s.logger.WithError(err).Debug("poster cache lookup failed")
+		}
+
+		if cached != nil {
+			if cached.FilePath != "" {
+				localURL := fmt.Sprintf("%s/api/posters/%s.jpg", baseURL, hash)
+				item.Program.Icon = &localURL
+			}
+			continue
+		}
+
+		if !s.Enabled() {
+			continue
+		}
+
+		posterURL := s.searchKinopoisk(title)
+		if posterURL == "" {
+			s.repo.UpsertPosterCache(hash, title, "", "")
+			continue
+		}
+
+		filePath := s.downloadPoster(hash, posterURL)
+		s.repo.UpsertPosterCache(hash, title, posterURL, filePath)
+
+		if filePath != "" {
+			localURL := fmt.Sprintf("%s/api/posters/%s.jpg", baseURL, hash)
+			item.Program.Icon = &localURL
 		}
 	}
 }
 
-func (s *PosterService) lookupPoster(title string) string {
-	ctx := context.Background()
-	cacheKey := fmt.Sprintf("iptv:poster:%x", sha256.Sum256([]byte(title)))
-
-	cached, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
-		if cached == posterCacheNone {
-			return ""
-		}
-		return cached
+// GetPosterPath returns the file path for a poster by hash, or empty if not found.
+func (s *PosterService) GetPosterPath(hash string) string {
+	path := filepath.Join(s.outputDir, hash+".jpg")
+	info, err := os.Stat(path)
+	if err == nil && info.Size() > 0 {
+		return path
 	}
-
-	posterURL := s.searchKinopoisk(title)
-
-	if posterURL != "" {
-		s.redis.Set(ctx, cacheKey, posterURL, posterCacheTTL)
-	} else {
-		s.redis.Set(ctx, cacheKey, posterCacheNone, posterCacheTTL)
-	}
-
-	return posterURL
+	return ""
 }
 
 func (s *PosterService) searchKinopoisk(title string) string {
@@ -123,6 +135,10 @@ func (s *PosterService) searchKinopoisk(title string) string {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 429 {
+		s.logger.Warn("Kinopoisk API rate limit reached")
+		return ""
+	}
 	if resp.StatusCode != http.StatusOK {
 		s.logger.Debugf("Kinopoisk API returned %d for: %s", resp.StatusCode, title)
 		return ""
@@ -142,6 +158,36 @@ func (s *PosterService) searchKinopoisk(title string) string {
 		return film.PosterURL
 	}
 	return film.PosterURLPreview
+}
+
+func (s *PosterService) downloadPoster(hash, posterURL string) string {
+	resp, err := s.client.Get(posterURL)
+	if err != nil {
+		s.logger.WithError(err).Debugf("Failed to download poster: %s", posterURL)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	path := filepath.Join(s.outputDir, hash+".jpg")
+	f, err := os.Create(path)
+	if err != nil {
+		s.logger.WithError(err).Warnf("Failed to create poster file: %s", path)
+		return ""
+	}
+	defer f.Close()
+
+	written, err := io.Copy(f, resp.Body)
+	if err != nil || written == 0 {
+		os.Remove(path)
+		return ""
+	}
+
+	s.logger.Debugf("Downloaded poster %s (%d bytes)", hash, written)
+	return path
 }
 
 func cleanTitle(title string) string {
