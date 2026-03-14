@@ -72,16 +72,16 @@ epgParser:
 channelChecker:
   enabled: true
   schedule: "*/15 * * * *"
-  workers: 500
+  workers: 200
   batch: 5000
   debug: false
   resources:
     requests:
       cpu: 1000m
-      memory: 512Mi
+      memory: 1Gi
     limits:
       cpu: 4000m
-      memory: 2Gi
+      memory: 4Gi
 
 # --- Thumbnail Worker Deployment ---
 thumbnailWorker:
