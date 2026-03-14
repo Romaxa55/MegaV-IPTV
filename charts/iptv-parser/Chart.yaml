@@ -1,6 +1,6 @@
 apiVersion: v2
 name: iptv-parser
-description: IPTV Backend - M3U parser, EPG, channel checker, thumbnail generator, API server
+description: IPTV Backend - API server with playlist/EPG sync and thumbnail generator
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

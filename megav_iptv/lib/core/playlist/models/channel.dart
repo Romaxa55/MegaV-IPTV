@@ -1,43 +1,34 @@
 class Channel {
-  final String id;
+  final int id;
   final String name;
+  final String groupTitle;
+  final String streamUrl;
+  final int tvgRec;
   final String? logoUrl;
-  final String? country;
-  final List<String> categories;
-  final bool isNsfw;
-  final int streamCount;
-  final int workingCount;
-  final bool hasEpg;
   final String? thumbnailUrl;
+  final bool hasEpg;
 
   const Channel({
     required this.id,
     required this.name,
+    this.groupTitle = '',
+    this.streamUrl = '',
+    this.tvgRec = 0,
     this.logoUrl,
-    this.country,
-    this.categories = const [],
-    this.isNsfw = false,
-    this.streamCount = 0,
-    this.workingCount = 0,
-    this.hasEpg = false,
     this.thumbnailUrl,
+    this.hasEpg = false,
   });
 
-  String? get groupTitle => categories.isNotEmpty ? categories.first : null;
-
   factory Channel.fromJson(Map<String, dynamic> json) {
-    final cats = json['categories'];
     return Channel(
-      id: json['id'] as String,
+      id: json['id'] as int,
       name: json['name'] as String,
+      groupTitle: json['groupTitle'] as String? ?? '',
+      streamUrl: json['streamUrl'] as String? ?? '',
+      tvgRec: json['tvgRec'] as int? ?? 0,
       logoUrl: json['logoUrl'] as String?,
-      country: json['country'] as String?,
-      categories: cats is List ? cats.cast<String>() : const [],
-      isNsfw: json['isNsfw'] as bool? ?? false,
-      streamCount: json['streamCount'] as int? ?? 0,
-      workingCount: json['workingCount'] as int? ?? 0,
-      hasEpg: json['hasEpg'] as bool? ?? false,
       thumbnailUrl: json['thumbnailUrl'] as String?,
+      hasEpg: json['hasEpg'] as bool? ?? false,
     );
   }
 

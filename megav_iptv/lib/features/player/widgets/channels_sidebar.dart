@@ -234,7 +234,7 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        ch.groupTitle ?? '',
+                        ch.groupTitle,
                         style: TextStyle(fontSize: 10.sp, color: Colors.white.withValues(alpha: 0.2)),
                         maxLines: 1,
                       ),

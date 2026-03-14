@@ -10,7 +10,6 @@ class ApiClient {
 
   ApiClient({required this.baseUrl, http.Client? client}) : _client = client ?? http.Client();
 
-  /// Fetch all available channel categories with their channel counts
   Future<List<({String name, int count})>> getCategories() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/categories'));
     if (response.statusCode == 200) {
@@ -21,17 +20,14 @@ class ApiClient {
     throw Exception('Failed to load categories');
   }
 
-  /// Fetch channels with optional filters (category, country, search)
   Future<({List<Channel> channels, int total})> getChannels({
     String? category,
-    String? country,
     String? search,
     int limit = 20,
     int offset = 0,
   }) async {
     final params = <String, String>{'limit': limit.toString(), 'offset': offset.toString()};
     if (category != null) params['category'] = category;
-    if (country != null) params['country'] = country;
     if (search != null) params['search'] = search;
 
     final uri = Uri.parse('$baseUrl/api/channels').replace(queryParameters: params);
@@ -45,7 +41,6 @@ class ApiClient {
     throw Exception('Failed to load channels');
   }
 
-  /// Fetch featured channels for the home screen header
   Future<List<Channel>> getFeaturedChannels({int limit = 10}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/channels/featured?limit=$limit'));
     if (response.statusCode == 200) {
@@ -56,7 +51,6 @@ class ApiClient {
     throw Exception('Failed to load featured channels');
   }
 
-  /// Get all currently playing programs across all channels
   Future<List<NowPlayingItem>> getNowPlaying() async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/now'));
     if (response.statusCode == 200) {
@@ -67,7 +61,6 @@ class ApiClient {
     throw Exception('Failed to load now playing');
   }
 
-  /// Get upcoming programs within the next N minutes
   Future<List<NowPlayingItem>> getUpcomingAll({int withinMinutes = 180, int limit = 50}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/upcoming?within=$withinMinutes&limit=$limit'));
     if (response.statusCode == 200) {
@@ -78,7 +71,6 @@ class ApiClient {
     throw Exception('Failed to load upcoming');
   }
 
-  /// Get featured now playing (best quality channels with program icons)
   Future<List<NowPlayingItem>> getFeaturedNowPlaying({int limit = 10}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/epg/featured?limit=$limit'));
     if (response.statusCode == 200) {
@@ -89,8 +81,7 @@ class ApiClient {
     throw Exception('Failed to load featured now playing');
   }
 
-  /// Get current EPG program for a specific channel
-  Future<EpgProgram?> getCurrentProgram(String channelId) async {
+  Future<EpgProgram?> getCurrentProgram(int channelId) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/channels/$channelId/epg?limit=1'));
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -104,8 +95,7 @@ class ApiClient {
     throw Exception('Failed to load current program');
   }
 
-  /// Get upcoming EPG programs for a specific channel
-  Future<List<EpgProgram>> getUpcomingPrograms(String channelId, {int limit = 10}) async {
+  Future<List<EpgProgram>> getUpcomingPrograms(int channelId, {int limit = 10}) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/channels/$channelId/epg?limit=$limit'));
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -114,8 +104,7 @@ class ApiClient {
     throw Exception('Failed to load upcoming programs');
   }
 
-  /// Get the best stream URL for a channel
-  Future<String?> getBestStreamUrl(String channelId) async {
+  Future<String?> getBestStreamUrl(int channelId) async {
     final response = await _client.get(Uri.parse('$baseUrl/api/channels/$channelId/streams'));
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -125,8 +114,7 @@ class ApiClient {
     return null;
   }
 
-  /// Build thumbnail URL for a channel
-  String thumbnailUrl(String channelId) => '$baseUrl/api/channels/$channelId/thumbnail.jpg';
+  String thumbnailUrl(int channelId) => '$baseUrl/api/channels/$channelId/thumbnail.jpg';
 
   void dispose() {
     _client.close();

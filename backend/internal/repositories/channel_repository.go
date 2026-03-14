@@ -4,29 +4,174 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/romaxa55/iptv-parser/internal/models"
 )
 
-func (r *IPTVRepository) UpsertChannel(ch *models.Channel) error {
-	query := `
-		INSERT INTO iptv_channels (id, name, url, logo_url, group_title, country, language, tvg_id, source_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-		ON CONFLICT (id) DO UPDATE SET
-			name = EXCLUDED.name,
-			url = EXCLUDED.url,
-			logo_url = COALESCE(EXCLUDED.logo_url, iptv_channels.logo_url),
-			group_title = COALESCE(EXCLUDED.group_title, iptv_channels.group_title),
-			country = COALESCE(EXCLUDED.country, iptv_channels.country),
-			language = COALESCE(EXCLUDED.language, iptv_channels.language),
-			tvg_id = COALESCE(EXCLUDED.tvg_id, iptv_channels.tvg_id),
-			source_id = COALESCE(EXCLUDED.source_id, iptv_channels.source_id),
-			updated_at = NOW()`
+type ChannelFilters struct {
+	Group  *string
+	Search *string
+	Limit  int
+	Offset int
+}
 
-	_, err := r.db.Exec(query, ch.ID, ch.Name, ch.URL, ch.LogoURL, ch.GroupTitle,
-		ch.Country, ch.Language, ch.TvgID, ch.SourceID)
-	return err
+type ChannelWithEPG struct {
+	models.Channel
+	HasEPG bool `json:"hasEpg"`
+}
+
+func (r *IPTVRepository) GetChannels(filters ChannelFilters) ([]*ChannelWithEPG, int, error) {
+	var conditions []string
+	var args []interface{}
+	argIdx := 1
+
+	if filters.Group != nil && *filters.Group != "" {
+		conditions = append(conditions, fmt.Sprintf("c.group_title = $%d", argIdx))
+		args = append(args, *filters.Group)
+		argIdx++
+	}
+	if filters.Search != nil && *filters.Search != "" {
+		conditions = append(conditions, fmt.Sprintf("c.name ILIKE $%d", argIdx))
+		args = append(args, "%"+*filters.Search+"%")
+		argIdx++
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	var total int
+	countQ := fmt.Sprintf("SELECT COUNT(*) FROM channels c %s", where)
+	if err := r.db.QueryRow(countQ, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT c.id, c.name, c.group_title, c.stream_url, c.tvg_rec, c.logo_url, c.thumbnail_url,
+		       EXISTS(SELECT 1 FROM epg_programs ep WHERE ep.channel_id = c.id LIMIT 1) as has_epg
+		FROM channels c
+		%s
+		ORDER BY c.name ASC
+		LIMIT $%d OFFSET $%d`, where, argIdx, argIdx+1)
+
+	args = append(args, filters.Limit, filters.Offset)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("channels query: %w", err)
+	}
+	defer rows.Close()
+
+	var channels []*ChannelWithEPG
+	for rows.Next() {
+		ch := &ChannelWithEPG{}
+		if err := rows.Scan(
+			&ch.ID, &ch.Name, &ch.GroupTitle, &ch.StreamURL, &ch.TvgRec,
+			&ch.LogoURL, &ch.ThumbnailURL, &ch.HasEPG,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan: %w", err)
+		}
+		channels = append(channels, ch)
+	}
+	return channels, total, nil
+}
+
+func (r *IPTVRepository) GetChannelByID(id int) (*ChannelWithEPG, error) {
+	ch := &ChannelWithEPG{}
+	err := r.db.QueryRow(`
+		SELECT c.id, c.name, c.group_title, c.stream_url, c.tvg_rec, c.logo_url, c.thumbnail_url,
+		       EXISTS(SELECT 1 FROM epg_programs ep WHERE ep.channel_id = c.id LIMIT 1) as has_epg
+		FROM channels c
+		WHERE c.id = $1`, id).Scan(
+		&ch.ID, &ch.Name, &ch.GroupTitle, &ch.StreamURL, &ch.TvgRec,
+		&ch.LogoURL, &ch.ThumbnailURL, &ch.HasEPG,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return ch, err
+}
+
+func (r *IPTVRepository) GetCategories() ([]CategoryStat, error) {
+	rows, err := r.db.Query(`
+		SELECT group_title, COUNT(*) as channel_count
+		FROM channels
+		WHERE group_title != ''
+		GROUP BY group_title
+		ORDER BY channel_count DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []CategoryStat
+	for rows.Next() {
+		var s CategoryStat
+		if err := rows.Scan(&s.Category, &s.ChannelCount); err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
+type CategoryStat struct {
+	Category     string `json:"category"`
+	ChannelCount int    `json:"channelCount"`
+}
+
+func (r *IPTVRepository) GetFeaturedChannels(limit int) ([]*ChannelWithEPG, error) {
+	rows, err := r.db.Query(`
+		SELECT c.id, c.name, c.group_title, c.stream_url, c.tvg_rec, c.logo_url, c.thumbnail_url,
+		       EXISTS(SELECT 1 FROM epg_programs ep WHERE ep.channel_id = c.id LIMIT 1) as has_epg
+		FROM channels c
+		WHERE c.group_title NOT IN ('Взрослые')
+		ORDER BY RANDOM()
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var channels []*ChannelWithEPG
+	for rows.Next() {
+		ch := &ChannelWithEPG{}
+		if err := rows.Scan(
+			&ch.ID, &ch.Name, &ch.GroupTitle, &ch.StreamURL, &ch.TvgRec,
+			&ch.LogoURL, &ch.ThumbnailURL, &ch.HasEPG,
+		); err != nil {
+			return nil, err
+		}
+		channels = append(channels, ch)
+	}
+	return channels, nil
+}
+
+func (r *IPTVRepository) GetStreamURL(channelID int) (string, error) {
+	var url string
+	err := r.db.QueryRow("SELECT stream_url FROM channels WHERE id = $1", channelID).Scan(&url)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return url, err
+}
+
+func (r *IPTVRepository) GetStats() (*Stats, error) {
+	s := &Stats{}
+	err := r.db.QueryRow(`
+		SELECT
+			(SELECT COUNT(*) FROM channels),
+			(SELECT COUNT(DISTINCT group_title) FROM channels WHERE group_title != ''),
+			(SELECT COUNT(DISTINCT channel_id) FROM epg_programs)
+	`).Scan(&s.TotalChannels, &s.TotalGroups, &s.ChannelsWithEPG)
+	return s, err
+}
+
+type Stats struct {
+	TotalChannels   int `json:"totalChannels"`
+	TotalGroups     int `json:"totalGroups"`
+	ChannelsWithEPG int `json:"channelsWithEpg"`
 }
 
 func (r *IPTVRepository) UpsertChannelsBatch(channels []*models.Channel) (int, error) {
@@ -34,254 +179,64 @@ func (r *IPTVRepository) UpsertChannelsBatch(channels []*models.Channel) (int, e
 		return 0, nil
 	}
 
-	tx, err := r.db.Begin()
-	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
+	const batchSize = 500
+	total := 0
 
-	stmt, err := tx.Prepare(`
-		INSERT INTO iptv_channels (id, name, url, logo_url, group_title, country, language, tvg_id, source_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-		ON CONFLICT (id) DO UPDATE SET
+	for i := 0; i < len(channels); i += batchSize {
+		end := i + batchSize
+		if end > len(channels) {
+			end = len(channels)
+		}
+		chunk := channels[i:end]
+
+		var b strings.Builder
+		b.WriteString("INSERT INTO channels (name, group_title, stream_url, tvg_rec) VALUES ")
+
+		args := make([]interface{}, 0, len(chunk)*4)
+		for j, ch := range chunk {
+			if j > 0 {
+				b.WriteString(",")
+			}
+			base := j*4 + 1
+			fmt.Fprintf(&b, "($%d,$%d,$%d,$%d)", base, base+1, base+2, base+3)
+			args = append(args, ch.Name, ch.GroupTitle, ch.StreamURL, ch.TvgRec)
+		}
+		b.WriteString(` ON CONFLICT (stream_url) DO UPDATE SET
 			name = EXCLUDED.name,
-			url = EXCLUDED.url,
-			logo_url = COALESCE(EXCLUDED.logo_url, iptv_channels.logo_url),
-			group_title = COALESCE(EXCLUDED.group_title, iptv_channels.group_title),
-			country = COALESCE(EXCLUDED.country, iptv_channels.country),
-			language = COALESCE(EXCLUDED.language, iptv_channels.language),
-			tvg_id = COALESCE(EXCLUDED.tvg_id, iptv_channels.tvg_id),
-			source_id = COALESCE(EXCLUDED.source_id, iptv_channels.source_id),
+			group_title = EXCLUDED.group_title,
+			tvg_rec = EXCLUDED.tvg_rec,
 			updated_at = NOW()`)
-	if err != nil {
-		return 0, fmt.Errorf("failed to prepare statement: %w", err)
-	}
-	defer stmt.Close()
 
-	count := 0
-	for _, ch := range channels {
-		if _, err := stmt.Exec(ch.ID, ch.Name, ch.URL, ch.LogoURL, ch.GroupTitle,
-			ch.Country, ch.Language, ch.TvgID, ch.SourceID); err != nil {
-			r.logger.Warnf("Failed to upsert channel %s: %v", ch.ID, err)
+		_, err := r.db.Exec(b.String(), args...)
+		if err != nil {
+			r.logger.Warnf("batch upsert channels failed at %d: %v", i, err)
 			continue
 		}
-		count++
+		total += len(chunk)
 	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit: %w", err)
-	}
-	return count, nil
+	return total, nil
 }
 
-type ChannelFilters struct {
-	Group  *string
-	Limit  int
-	Offset int
-}
-
-func (r *IPTVRepository) GetChannels(filters ChannelFilters) ([]*models.Channel, error) {
-	var conditions []string
-	var args []interface{}
-	argIdx := 1
-
-	if filters.Group != nil {
-		conditions = append(conditions, fmt.Sprintf("group_title = $%d", argIdx))
-		args = append(args, *filters.Group)
-		argIdx++
-	}
-
-	query := "SELECT id, name, url, logo_url, group_title, country, language, tvg_id, is_working, thumbnail_url FROM iptv_channels"
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
-	query += " ORDER BY name ASC"
-
-	if filters.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT $%d", argIdx)
-		args = append(args, filters.Limit)
-		argIdx++
-	}
-	if filters.Offset > 0 {
-		query += fmt.Sprintf(" OFFSET $%d", argIdx)
-		args = append(args, filters.Offset)
-	}
-
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query channels: %w", err)
-	}
-	defer rows.Close()
-
-	var channels []*models.Channel
-	for rows.Next() {
-		ch := &models.Channel{}
-		if err := rows.Scan(&ch.ID, &ch.Name, &ch.URL, &ch.LogoURL, &ch.GroupTitle,
-			&ch.Country, &ch.Language, &ch.TvgID, &ch.IsWorking, &ch.ThumbnailURL); err != nil {
-			return nil, fmt.Errorf("failed to scan channel: %w", err)
-		}
-		channels = append(channels, ch)
-	}
-	return channels, nil
-}
-
-func (r *IPTVRepository) GetFeaturedChannels(limit int) ([]*models.Channel, error) {
-	query := `
-		SELECT id, name, url, logo_url, group_title, country, language, tvg_id, is_working, thumbnail_url
-		FROM iptv_channels
-		WHERE is_working = true
-		ORDER BY RANDOM()
-		LIMIT $1`
-
-	rows, err := r.db.Query(query, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query featured channels: %w", err)
-	}
-	defer rows.Close()
-
-	var channels []*models.Channel
-	for rows.Next() {
-		ch := &models.Channel{}
-		if err := rows.Scan(&ch.ID, &ch.Name, &ch.URL, &ch.LogoURL, &ch.GroupTitle,
-			&ch.Country, &ch.Language, &ch.TvgID, &ch.IsWorking, &ch.ThumbnailURL); err != nil {
-			return nil, fmt.Errorf("failed to scan featured channel: %w", err)
-		}
-		channels = append(channels, ch)
-	}
-	return channels, nil
-}
-
-func (r *IPTVRepository) GetGroups() ([]*models.ChannelGroup, error) {
-	query := `
-		SELECT group_title, COUNT(*) as channel_count
-		FROM iptv_channels
-		WHERE group_title IS NOT NULL AND group_title != ''
-		GROUP BY group_title
-		ORDER BY channel_count DESC`
-
-	rows, err := r.db.Query(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query groups: %w", err)
-	}
-	defer rows.Close()
-
-	var groups []*models.ChannelGroup
-	for rows.Next() {
-		g := &models.ChannelGroup{}
-		if err := rows.Scan(&g.Name, &g.ChannelCount); err != nil {
-			return nil, fmt.Errorf("failed to scan group: %w", err)
-		}
-		groups = append(groups, g)
-	}
-	return groups, nil
-}
-
-func (r *IPTVRepository) GetChannelByID(id string) (*models.Channel, error) {
-	ch := &models.Channel{}
-	err := r.db.QueryRow(`
-		SELECT id, name, url, logo_url, group_title, country, language, tvg_id,
-		       is_working, last_checked_at, video_codec, audio_codec, resolution,
-		       thumbnail_url, thumbnail_updated_at, created_at, updated_at
-		FROM iptv_channels WHERE id = $1`, id).Scan(
-		&ch.ID, &ch.Name, &ch.URL, &ch.LogoURL, &ch.GroupTitle, &ch.Country,
-		&ch.Language, &ch.TvgID, &ch.IsWorking, &ch.LastCheckedAt,
-		&ch.VideoCodec, &ch.AudioCodec, &ch.Resolution,
-		&ch.ThumbnailURL, &ch.ThumbnailUpdatedAt, &ch.CreatedAt, &ch.UpdatedAt)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	return ch, err
-}
-
-func (r *IPTVRepository) UpdateChannelCheckResult(channelID string, isWorking bool, videoCodec, audioCodec, resolution *string) error {
-	_, err := r.db.Exec(`
-		UPDATE iptv_channels
-		SET is_working = $2, last_checked_at = $3, video_codec = $4, audio_codec = $5, resolution = $6, updated_at = NOW()
-		WHERE id = $1`,
-		channelID, isWorking, time.Now(), videoCodec, audioCodec, resolution)
-	return err
-}
-
-func (r *IPTVRepository) UpdateChannelThumbnail(channelID, thumbnailURL string) error {
-	_, err := r.db.Exec(`
-		UPDATE iptv_channels
-		SET thumbnail_url = $2, thumbnail_updated_at = $3, updated_at = NOW()
-		WHERE id = $1`,
-		channelID, thumbnailURL, time.Now())
-	return err
-}
-
-func (r *IPTVRepository) GetChannelsForCheck(limit int) ([]*models.Channel, error) {
-	query := `
-		SELECT id, name, url
-		FROM iptv_channels
-		WHERE last_checked_at IS NULL
-		   OR last_checked_at < NOW() - INTERVAL '30 minutes'
-		ORDER BY last_checked_at ASC NULLS FIRST
-		LIMIT $1`
-
-	rows, err := r.db.Query(query, limit)
+func (r *IPTVRepository) GetAllChannelsByName() (map[string]int, error) {
+	rows, err := r.db.Query("SELECT id, name FROM channels")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var channels []*models.Channel
+	m := make(map[string]int)
 	for rows.Next() {
-		ch := &models.Channel{}
-		if err := rows.Scan(&ch.ID, &ch.Name, &ch.URL); err != nil {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
 			return nil, err
 		}
-		channels = append(channels, ch)
+		m[name] = id
 	}
-	return channels, nil
+	return m, nil
 }
 
-func (r *IPTVRepository) GetWorkingChannelsForThumbnail(limit int) ([]*models.Channel, error) {
-	query := `
-		SELECT id, name, url
-		FROM iptv_channels
-		WHERE is_working = true
-		  AND (thumbnail_updated_at IS NULL OR thumbnail_updated_at < NOW() - INTERVAL '15 minutes')
-		ORDER BY thumbnail_updated_at ASC NULLS FIRST
-		LIMIT $1`
-
-	rows, err := r.db.Query(query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var channels []*models.Channel
-	for rows.Next() {
-		ch := &models.Channel{}
-		if err := rows.Scan(&ch.ID, &ch.Name, &ch.URL); err != nil {
-			return nil, err
-		}
-		channels = append(channels, ch)
-	}
-	return channels, nil
-}
-
-func (r *IPTVRepository) GetTotalChannelCount() (int, error) {
-	var count int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM iptv_channels").Scan(&count)
-	return count, err
-}
-
-func (r *IPTVRepository) GetWorkingChannelCount() (int, error) {
-	var count int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM iptv_channels WHERE is_working = true").Scan(&count)
-	return count, err
-}
-
-func (r *IPTVRepository) RefreshGroupCounts() error {
-	_, err := r.db.Exec(`
-		INSERT INTO iptv_groups (name, channel_count)
-		SELECT group_title, COUNT(*)
-		FROM iptv_channels
-		WHERE group_title IS NOT NULL AND group_title != ''
-		GROUP BY group_title
-		ON CONFLICT (name) DO UPDATE SET channel_count = EXCLUDED.channel_count`)
+func (r *IPTVRepository) TruncateChannels() error {
+	_, err := r.db.Exec("TRUNCATE channels CASCADE")
 	return err
 }

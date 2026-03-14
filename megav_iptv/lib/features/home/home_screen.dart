@@ -40,8 +40,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       id: item.channelId,
       name: item.channelName,
       logoUrl: item.logoUrl,
-      categories: item.categories,
-      country: item.country,
+      groupTitle: item.groupTitle,
       hasEpg: true,
     );
     ref.read(currentChannelIndexProvider.notifier).state = 0;

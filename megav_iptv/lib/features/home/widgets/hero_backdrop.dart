@@ -1,13 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/theme/app_colors.dart';
-
-final _heroCacheManager = CacheManager(
-  Config('heroCache', stalePeriod: const Duration(minutes: 1), maxNrOfCacheObjects: 20),
-);
 
 class HeroBackdrop extends StatelessWidget {
   final String? imageUrl;
@@ -31,15 +25,14 @@ class HeroBackdrop extends StatelessWidget {
       },
       child: imageUrl == null || imageUrl!.isEmpty
           ? _placeholder(key: const ValueKey('empty'))
-          : CachedNetworkImage(
-              imageUrl: imageUrl!,
+          : Image.network(
+              imageUrl!,
               key: ValueKey(imageUrl),
-              cacheManager: _heroCacheManager,
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              memCacheWidth: 800,
-              errorWidget: (ctx, _, _) => _placeholder(key: ValueKey('${imageUrl}_error')),
+              cacheWidth: 800,
+              errorBuilder: (ctx, _, _) => _placeholder(key: ValueKey('${imageUrl}_error')),
             ),
     );
   }

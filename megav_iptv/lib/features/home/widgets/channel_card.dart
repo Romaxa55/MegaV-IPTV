@@ -87,7 +87,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
     );
   }
 
-  Widget _buildLiveBadge(String epgLookupKey) {
+  Widget _buildLiveBadge(int epgLookupKey) {
     return Positioned(
       top: 8.h,
       left: 8.w,
@@ -156,7 +156,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
     );
   }
 
-  Widget _buildBottomInfo(String epgLookupKey) {
+  Widget _buildBottomInfo(int epgLookupKey) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -262,7 +262,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
             ),
             SizedBox(height: 1.h),
             Text(
-              widget.channel.groupTitle ?? '',
+              widget.channel.groupTitle,
               style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.15)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -275,7 +275,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
 
   Widget _metaFallback() {
     return Text(
-      widget.channel.groupTitle ?? '',
+      widget.channel.groupTitle,
       style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.3)),
       maxLines: 1,
     );

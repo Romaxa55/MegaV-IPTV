@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,30 +9,23 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
-	"github.com/romaxa55/iptv-parser/internal/queue"
 	"github.com/romaxa55/iptv-parser/internal/repositories"
 	"github.com/romaxa55/iptv-parser/internal/services"
 	"github.com/sirupsen/logrus"
 )
 
 const thumbnailStaleDuration = 6 * time.Hour
-const thumbnailGeneratingTTL = 5 * time.Minute
 
 type Handler struct {
 	repo         *repositories.IPTVRepository
 	logger       *logrus.Logger
 	thumbService *services.ThumbnailService
-	redisClient  *redis.Client
-	thumbQueue   *queue.RedisQueue
 }
 
 type HandlerOpts struct {
 	Repo         *repositories.IPTVRepository
 	Logger       *logrus.Logger
 	ThumbService *services.ThumbnailService
-	RedisClient  *redis.Client
-	ThumbQueue   *queue.RedisQueue
 }
 
 func NewHandler(opts HandlerOpts) *Handler {
@@ -41,22 +33,17 @@ func NewHandler(opts HandlerOpts) *Handler {
 		repo:         opts.Repo,
 		logger:       opts.Logger,
 		thumbService: opts.ThumbService,
-		redisClient:  opts.RedisClient,
-		thumbQueue:   opts.ThumbQueue,
 	}
 }
 
 func (h *Handler) GetChannels(c *gin.Context) {
-	filters := repositories.ReferenceChannelFilters{
+	filters := repositories.ChannelFilters{
 		Limit:  50,
 		Offset: 0,
 	}
 
-	if v := c.Query("country"); v != "" {
-		filters.Country = &v
-	}
 	if v := c.Query("category"); v != "" {
-		filters.Category = &v
+		filters.Group = &v
 	}
 	if v := c.Query("search"); v != "" {
 		filters.Search = &v
@@ -72,14 +59,14 @@ func (h *Handler) GetChannels(c *gin.Context) {
 		}
 	}
 
-	channels, total, err := h.repo.GetReferenceChannels(filters)
+	channels, total, err := h.repo.GetChannels(filters)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get channels")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load channels"})
 		return
 	}
 
-	h.enrichChannelThumbnails(c, channels)
+	h.enrichThumbnails(c, channels)
 
 	c.JSON(http.StatusOK, gin.H{
 		"channels": channels,
@@ -90,9 +77,13 @@ func (h *Handler) GetChannels(c *gin.Context) {
 }
 
 func (h *Handler) GetChannel(c *gin.Context) {
-	id := c.Param("id")
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid channel ID"})
+		return
+	}
 
-	ch, err := h.repo.GetReferenceChannelByID(id)
+	ch, err := h.repo.GetChannelByID(id)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get channel")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load channel"})
@@ -103,38 +94,32 @@ func (h *Handler) GetChannel(c *gin.Context) {
 		return
 	}
 
-	if h.thumbService != nil && !h.thumbService.ThumbnailExists(id) {
-		h.enqueueThumbnail(id)
-	}
-
-	streams, err := h.repo.GetStreamsByChannelFull(id)
-	if err != nil {
-		h.logger.WithError(err).Error("Failed to get streams")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load streams"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"channel": ch,
-		"streams": streams,
-	})
+	c.JSON(http.StatusOK, ch)
 }
 
 func (h *Handler) GetChannelStreams(c *gin.Context) {
-	id := c.Param("id")
-
-	streams, err := h.repo.GetStreamsByChannelFull(id)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get streams")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load streams"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid channel ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, streams)
+	url, err := h.repo.GetStreamURL(id)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get stream")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load stream"})
+		return
+	}
+
+	c.JSON(http.StatusOK, []gin.H{{"url": url}})
 }
 
 func (h *Handler) GetChannelEPG(c *gin.Context) {
-	id := c.Param("id")
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid channel ID"})
+		return
+	}
 
 	limit := 20
 	if v := c.Query("limit"); v != "" {
@@ -143,14 +128,7 @@ func (h *Handler) GetChannelEPG(c *gin.Context) {
 		}
 	}
 
-	timeshiftHours := 0
-	if v := c.Query("timeshift"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			timeshiftHours = n
-		}
-	}
-
-	programs, err := h.repo.GetProgramsForStream(id, timeshiftHours, limit)
+	programs, err := h.repo.GetProgramsForChannel(id, limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get EPG")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load EPG"})
@@ -227,31 +205,20 @@ func (h *Handler) GetFeaturedChannels(c *gin.Context) {
 		}
 	}
 
-	channels, err := h.repo.GetFeaturedReferenceChannels(limit)
+	channels, err := h.repo.GetFeaturedChannels(limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get featured channels")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load featured channels"})
 		return
 	}
 
-	h.enrichChannelThumbnails(c, channels)
+	h.enrichThumbnails(c, channels)
 
 	c.JSON(http.StatusOK, channels)
 }
 
-func (h *Handler) GetCountries(c *gin.Context) {
-	countries, err := h.repo.GetCountries()
-	if err != nil {
-		h.logger.WithError(err).Error("Failed to get countries")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load countries"})
-		return
-	}
-
-	c.JSON(http.StatusOK, countries)
-}
-
 func (h *Handler) GetCategories(c *gin.Context) {
-	categories, err := h.repo.GetCategoriesWithCounts()
+	categories, err := h.repo.GetCategories()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get categories")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load categories"})
@@ -296,9 +263,6 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 
 	info, _ := os.Stat(thumbPath)
 	age := time.Since(info.ModTime())
-	if age > thumbnailStaleDuration {
-		h.enqueueThumbnail(id)
-	}
 
 	c.Header("Cache-Control", "public, max-age=300")
 	c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
@@ -306,7 +270,7 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 }
 
 func (h *Handler) GetM3UPlaylist(c *gin.Context) {
-	channels, _, err := h.repo.GetReferenceChannels(repositories.ReferenceChannelFilters{
+	channels, _, err := h.repo.GetChannels(repositories.ChannelFilters{
 		Limit:  5000,
 		Offset: 0,
 	})
@@ -316,40 +280,13 @@ func (h *Handler) GetM3UPlaylist(c *gin.Context) {
 		return
 	}
 
-	baseURL := c.Request.Host
-	scheme := "https"
-	if c.Request.TLS == nil {
-		if fwd := c.GetHeader("X-Forwarded-Proto"); fwd != "" {
-			scheme = fwd
-		}
-	}
-	epgURL := fmt.Sprintf("%s://%s/api/epg.xml", scheme, baseURL)
-
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("#EXTM3U url-tvg=\"%s\" x-tvg-url=\"%s\"\n", epgURL, epgURL))
+	sb.WriteString("#EXTM3U\n")
 
 	for _, ch := range channels {
-		if ch.WorkingCount == 0 {
-			continue
-		}
-		streamURL, err := h.repo.GetBestStreamURL(ch.ID)
-		if err != nil || streamURL == "" {
-			continue
-		}
-
-		logo := ""
-		if ch.LogoURL != nil {
-			logo = *ch.LogoURL
-		}
-
-		group := ""
-		if len(ch.Categories) > 0 {
-			group = string(ch.Categories[0])
-		}
-
-		sb.WriteString(fmt.Sprintf("#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n",
-			ch.ID, ch.Name, logo, group, ch.Name))
-		sb.WriteString(streamURL + "\n")
+		sb.WriteString(fmt.Sprintf("#EXTINF:-1 tvg-rec=\"%d\" group-title=\"%s\",%s\n",
+			ch.TvgRec, ch.GroupTitle, ch.Name))
+		sb.WriteString(ch.StreamURL + "\n")
 	}
 
 	c.Header("Content-Type", "audio/x-mpegurl; charset=utf-8")
@@ -357,26 +294,83 @@ func (h *Handler) GetM3UPlaylist(c *gin.Context) {
 	c.String(http.StatusOK, sb.String())
 }
 
-func (h *Handler) buildThumbnailURL(c *gin.Context, channelID string) string {
+func (h *Handler) SyncPlaylist(c *gin.Context) {
+	playlistURL, _, err := h.repo.GetConfig()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get config"})
+		return
+	}
+
+	syncService := services.NewSyncService(h.repo, h.logger)
+	if err := syncService.SyncPlaylist(playlistURL); err != nil {
+		h.logger.WithError(err).Error("Playlist sync failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Playlist synced"})
+}
+
+func (h *Handler) SyncEPG(c *gin.Context) {
+	_, epgURL, err := h.repo.GetConfig()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get config"})
+		return
+	}
+
+	syncService := services.NewSyncService(h.repo, h.logger)
+	if err := syncService.SyncEPG(epgURL); err != nil {
+		h.logger.WithError(err).Error("EPG sync failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "EPG synced"})
+}
+
+func (h *Handler) SyncAll(c *gin.Context) {
+	playlistURL, epgURL, err := h.repo.GetConfig()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get config"})
+		return
+	}
+
+	syncService := services.NewSyncService(h.repo, h.logger)
+
+	if err := syncService.SyncPlaylist(playlistURL); err != nil {
+		h.logger.WithError(err).Error("Playlist sync failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Playlist sync: " + err.Error()})
+		return
+	}
+
+	if err := syncService.SyncEPG(epgURL); err != nil {
+		h.logger.WithError(err).Error("EPG sync failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "EPG sync: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Playlist and EPG synced"})
+}
+
+func (h *Handler) buildThumbnailURL(c *gin.Context, channelID int) string {
 	scheme := "https"
 	if c.Request.TLS == nil {
 		if fwd := c.GetHeader("X-Forwarded-Proto"); fwd != "" {
 			scheme = fwd
 		}
 	}
-	return fmt.Sprintf("%s://%s/api/channels/%s/thumbnail.jpg", scheme, c.Request.Host, channelID)
+	return fmt.Sprintf("%s://%s/api/channels/%d/thumbnail.jpg", scheme, c.Request.Host, channelID)
 }
 
-func (h *Handler) enrichChannelThumbnails(c *gin.Context, channels []*repositories.ChannelWithStreams) {
+func (h *Handler) enrichThumbnails(c *gin.Context, channels []*repositories.ChannelWithEPG) {
 	if h.thumbService == nil {
 		return
 	}
 	for _, ch := range channels {
-		if h.thumbService.ThumbnailExists(ch.ID) {
+		idStr := strconv.Itoa(ch.ID)
+		if h.thumbService.ThumbnailExists(idStr) {
 			url := h.buildThumbnailURL(c, ch.ID)
 			ch.ThumbnailURL = &url
-		} else if ch.WorkingCount > 0 {
-			h.enqueueThumbnailPriority(ch.ID)
 		}
 	}
 }
@@ -386,52 +380,10 @@ func (h *Handler) enrichNowPlayingThumbnails(c *gin.Context, items []*repositori
 		return
 	}
 	for _, item := range items {
-		if h.thumbService.ThumbnailExists(item.ChannelID) {
+		idStr := strconv.Itoa(item.ChannelID)
+		if h.thumbService.ThumbnailExists(idStr) {
 			url := h.buildThumbnailURL(c, item.ChannelID)
 			item.ThumbnailURL = &url
-		} else {
-			h.enqueueThumbnailPriority(item.ChannelID)
 		}
 	}
-}
-
-func (h *Handler) enqueueThumbnail(channelID string) bool {
-	return h.enqueueThumbnailWithPriority(channelID, 0)
-}
-
-func (h *Handler) enqueueThumbnailPriority(channelID string) bool {
-	return h.enqueueThumbnailWithPriority(channelID, 1)
-}
-
-func (h *Handler) enqueueThumbnailWithPriority(channelID string, priority int) bool {
-	if h.redisClient == nil || h.thumbQueue == nil {
-		return false
-	}
-
-	ctx := context.Background()
-	genKey := "iptv:thumb:generating:" + channelID
-
-	set, err := h.redisClient.SetNX(ctx, genKey, "1", thumbnailGeneratingTTL).Result()
-	if err != nil || !set {
-		return false
-	}
-
-	streamURL, err := h.repo.GetBestStreamURL(channelID)
-	if err != nil || streamURL == "" {
-		h.redisClient.Del(ctx, genKey)
-		return false
-	}
-
-	item := &queue.ThumbnailItem{
-		ChannelID: channelID,
-		URL:       streamURL,
-		Timestamp: time.Now(),
-		Priority:  priority,
-	}
-	if err := h.thumbQueue.EnqueueThumbnail(ctx, item); err != nil {
-		h.logger.WithError(err).Warnf("Failed to enqueue thumbnail for %s", channelID)
-		h.redisClient.Del(ctx, genKey)
-		return false
-	}
-	return true
 }

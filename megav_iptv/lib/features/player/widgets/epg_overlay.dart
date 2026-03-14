@@ -10,7 +10,7 @@ import '../../../core/theme/app_colors.dart';
 
 class EpgOverlay extends ConsumerStatefulWidget {
   final String channelName;
-  final String channelId;
+  final int channelId;
   final VoidCallback onClose;
 
   const EpgOverlay({super.key, required this.channelName, required this.channelId, required this.onClose});

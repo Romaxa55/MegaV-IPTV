@@ -3,18 +3,26 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/romaxa55/iptv-parser/internal/models"
 )
 
-func (r *IPTVRepository) GetCurrentProgram(channelID string) (*models.EpgProgram, error) {
+type NowPlayingItem struct {
+	ChannelID    int                `json:"channelId"`
+	ChannelName  string             `json:"channelName"`
+	GroupTitle   string             `json:"groupTitle"`
+	LogoURL      *string            `json:"logoUrl,omitempty"`
+	ThumbnailURL *string            `json:"thumbnailUrl,omitempty"`
+	Program      *models.EpgProgram `json:"program"`
+}
+
+func (r *IPTVRepository) GetCurrentProgram(channelID int) (*models.EpgProgram, error) {
 	now := time.Now()
 	p := &models.EpgProgram{}
 	err := r.db.QueryRow(`
 		SELECT id, channel_id, title, description, category, icon, start_time, end_time, lang
-		FROM iptv_epg_programs
+		FROM epg_programs
 		WHERE channel_id = $1 AND start_time <= $2 AND end_time > $2
 		ORDER BY start_time DESC
 		LIMIT 1`, channelID, now).Scan(
@@ -26,12 +34,12 @@ func (r *IPTVRepository) GetCurrentProgram(channelID string) (*models.EpgProgram
 	return p, err
 }
 
-func (r *IPTVRepository) GetUpcomingPrograms(channelID string, limit int) ([]*models.EpgProgram, error) {
+func (r *IPTVRepository) GetProgramsForChannel(channelID int, limit int) ([]*models.EpgProgram, error) {
 	now := time.Now()
 	rows, err := r.db.Query(`
 		SELECT id, channel_id, title, description, category, icon, start_time, end_time, lang
-		FROM iptv_epg_programs
-		WHERE channel_id = $1 AND start_time > $2
+		FROM epg_programs
+		WHERE channel_id = $1 AND end_time > $2
 		ORDER BY start_time ASC
 		LIMIT $3`, channelID, now, limit)
 	if err != nil {
@@ -51,6 +59,110 @@ func (r *IPTVRepository) GetUpcomingPrograms(channelID string, limit int) ([]*mo
 	return programs, nil
 }
 
+func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {
+	now := time.Now()
+	rows, err := r.db.Query(`
+		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		  AND c.group_title NOT IN ('Взрослые')
+		ORDER BY c.name ASC`, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.GroupTitle, &item.LogoURL, &item.ThumbnailURL,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *IPTVRepository) GetUpcomingAll(withinMinutes int, limit int) ([]*NowPlayingItem, error) {
+	now := time.Now()
+	until := now.Add(time.Duration(withinMinutes) * time.Minute)
+	rows, err := r.db.Query(`
+		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time > $1 AND ep.start_time <= $2
+		  AND c.group_title NOT IN ('Взрослые')
+		ORDER BY ep.start_time ASC
+		LIMIT $3`, now, until, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.GroupTitle, &item.LogoURL, &item.ThumbnailURL,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, error) {
+	now := time.Now()
+	rows, err := r.db.Query(`
+		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		  AND c.group_title NOT IN ('Взрослые')
+		ORDER BY
+		  CASE WHEN ep.icon IS NOT NULL AND ep.icon != '' THEN 0 ELSE 1 END,
+		  ep.end_time - ep.start_time DESC
+		LIMIT $2`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*NowPlayingItem
+	for rows.Next() {
+		item := &NowPlayingItem{}
+		p := &models.EpgProgram{}
+		if err := rows.Scan(
+			&item.ChannelID, &item.ChannelName, &item.GroupTitle, &item.LogoURL, &item.ThumbnailURL,
+			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
+			&p.StartTime, &p.EndTime, &p.Lang,
+		); err != nil {
+			return nil, err
+		}
+		item.Program = p
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (int, error) {
 	if len(programs) == 0 {
 		return 0, nil
@@ -66,16 +178,16 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 		}
 		chunk := programs[i:end]
 
-		query := "INSERT INTO iptv_epg_programs (channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang) VALUES "
-		args := make([]interface{}, 0, len(chunk)*9)
+		query := "INSERT INTO epg_programs (channel_id, title, description, category, icon, start_time, end_time, lang) VALUES "
+		args := make([]interface{}, 0, len(chunk)*8)
 		for j, p := range chunk {
 			if j > 0 {
 				query += ","
 			}
-			base := j * 9
-			query += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
-				base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9)
-			args = append(args, p.ChannelID, p.ReferenceChannelID, p.Title, p.Description,
+			base := j * 8
+			query += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
+				base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8)
+			args = append(args, p.ChannelID, p.Title, p.Description,
 				p.Category, p.Icon, p.StartTime, p.EndTime, p.Lang)
 		}
 		query += " ON CONFLICT DO NOTHING"
@@ -92,323 +204,36 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 	return total, nil
 }
 
-// GetProgramsForStream returns EPG programs for a stream, applying timeshift offset if needed.
-func (r *IPTVRepository) GetProgramsForStream(referenceChannelID string, timeshiftHours int, limit int) ([]*models.EpgProgram, error) {
-	now := time.Now()
-	offset := time.Duration(timeshiftHours) * time.Hour
-
-	rows, err := r.db.Query(`
-		SELECT id, channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang
-		FROM iptv_epg_programs
-		WHERE channel_id = $1
-		  AND end_time + ($2 || ' hours')::interval > $3
-		ORDER BY start_time ASC
-		LIMIT $4`,
-		referenceChannelID, timeshiftHours, now, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var programs []*models.EpgProgram
-	for rows.Next() {
-		p := &models.EpgProgram{}
-		if err := rows.Scan(&p.ID, &p.ChannelID, &p.ReferenceChannelID, &p.Title,
-			&p.Description, &p.Category, &p.Icon, &p.StartTime, &p.EndTime, &p.Lang); err != nil {
-			return nil, err
-		}
-		p.StartTime = p.StartTime.Add(offset)
-		p.EndTime = p.EndTime.Add(offset)
-		programs = append(programs, p)
-	}
-	return programs, nil
-}
-
-type NowPlayingItem struct {
-	ChannelID    string             `json:"channelId"`
-	ChannelName  string             `json:"channelName"`
-	LogoURL      *string            `json:"logoUrl,omitempty"`
-	ThumbnailURL *string            `json:"thumbnailUrl,omitempty"`
-	Country      string             `json:"country"`
-	Categories   []string           `json:"categories"`
-	Program      *models.EpgProgram `json:"program"`
-}
-
-func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {
-	now := time.Now()
-	rows, err := r.db.Query(`
-		SELECT rc.id, rc.name, rc.logo_url, rc.country, rc.categories,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM iptv_epg_programs ep
-		JOIN iptv_reference_channels rc ON rc.id = ep.channel_id
-		JOIN (
-			SELECT channel_id FROM iptv_streams
-			WHERE is_working = true
-			GROUP BY channel_id
-		) ws ON ws.channel_id = rc.id
-		WHERE ep.start_time <= $1 AND ep.end_time > $1
-		  AND rc.is_nsfw = false
-		ORDER BY rc.name ASC`, now)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var items []*NowPlayingItem
-	for rows.Next() {
-		item := &NowPlayingItem{}
-		p := &models.EpgProgram{}
-		var cats []byte
-		if err := rows.Scan(
-			&item.ChannelID, &item.ChannelName, &item.LogoURL, &item.Country, &cats,
-			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
-			&p.StartTime, &p.EndTime, &p.Lang,
-		); err != nil {
-			return nil, err
-		}
-		item.Categories = parsePostgresArray(string(cats))
-		item.Program = p
-		items = append(items, item)
-	}
-	return items, nil
-}
-
-func (r *IPTVRepository) GetUpcomingAll(withinMinutes int, limit int) ([]*NowPlayingItem, error) {
-	now := time.Now()
-	until := now.Add(time.Duration(withinMinutes) * time.Minute)
-	rows, err := r.db.Query(`
-		SELECT rc.id, rc.name, rc.logo_url, rc.country, rc.categories,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM iptv_epg_programs ep
-		JOIN iptv_reference_channels rc ON rc.id = ep.channel_id
-		JOIN (
-			SELECT channel_id FROM iptv_streams
-			WHERE is_working = true
-			GROUP BY channel_id
-		) ws ON ws.channel_id = rc.id
-		WHERE ep.start_time > $1 AND ep.start_time <= $2
-		  AND rc.is_nsfw = false
-		ORDER BY ep.start_time ASC
-		LIMIT $3`, now, until, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var items []*NowPlayingItem
-	for rows.Next() {
-		item := &NowPlayingItem{}
-		p := &models.EpgProgram{}
-		var cats []byte
-		if err := rows.Scan(
-			&item.ChannelID, &item.ChannelName, &item.LogoURL, &item.Country, &cats,
-			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
-			&p.StartTime, &p.EndTime, &p.Lang,
-		); err != nil {
-			return nil, err
-		}
-		item.Categories = parsePostgresArray(string(cats))
-		item.Program = p
-		items = append(items, item)
-	}
-	return items, nil
-}
-
-func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, error) {
-	now := time.Now()
-	rows, err := r.db.Query(`
-		SELECT rc.id, rc.name, rc.logo_url, rc.country, rc.categories,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM iptv_epg_programs ep
-		JOIN iptv_reference_channels rc ON rc.id = ep.channel_id
-		JOIN (
-			SELECT channel_id,
-			       MAX(uptime_pct) as best_uptime
-			FROM iptv_streams
-			WHERE is_working = true
-			GROUP BY channel_id
-		) ws ON ws.channel_id = rc.id
-		WHERE ep.start_time <= $1 AND ep.end_time > $1
-		  AND rc.is_nsfw = false
-		ORDER BY
-		  CASE WHEN ep.icon IS NOT NULL AND ep.icon != '' THEN 0 ELSE 1 END,
-		  ws.best_uptime DESC,
-		  ep.end_time - ep.start_time DESC
-		LIMIT $2`, now, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var items []*NowPlayingItem
-	for rows.Next() {
-		item := &NowPlayingItem{}
-		p := &models.EpgProgram{}
-		var cats []byte
-		if err := rows.Scan(
-			&item.ChannelID, &item.ChannelName, &item.LogoURL, &item.Country, &cats,
-			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
-			&p.StartTime, &p.EndTime, &p.Lang,
-		); err != nil {
-			return nil, err
-		}
-		item.Categories = parsePostgresArray(string(cats))
-		item.Program = p
-		items = append(items, item)
-	}
-	return items, nil
-}
-
 func (r *IPTVRepository) DeleteOldEpgPrograms() (int64, error) {
-	result, err := r.db.Exec(`
-		DELETE FROM iptv_epg_programs
-		WHERE end_time < NOW() - INTERVAL '1 day'`)
+	result, err := r.db.Exec("DELETE FROM epg_programs WHERE end_time < NOW() - INTERVAL '1 day'")
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-func (r *IPTVRepository) DeleteEpgForChannel(channelID string) error {
-	_, err := r.db.Exec("DELETE FROM iptv_epg_programs WHERE channel_id = $1", channelID)
+func (r *IPTVRepository) TruncateEpgPrograms() error {
+	_, err := r.db.Exec("TRUNCATE epg_programs")
 	return err
 }
 
-func (r *IPTVRepository) UpsertEpgChannelMap(channelID, epgChannelID string, confidence float64) error {
+func (r *IPTVRepository) GetConfig() (playlistURL, epgURL string, err error) {
+	err = r.db.QueryRow("SELECT playlist_url, epg_url FROM config WHERE id = 1").Scan(&playlistURL, &epgURL)
+	return
+}
+
+func (r *IPTVRepository) UpsertConfig(playlistURL, epgURL string) error {
 	_, err := r.db.Exec(`
-		INSERT INTO iptv_epg_channel_map (channel_id, epg_channel_id, confidence, created_at)
-		VALUES ($1, $2, $3, NOW())
-		ON CONFLICT (channel_id, epg_channel_id) DO UPDATE SET confidence = EXCLUDED.confidence`,
-		channelID, epgChannelID, confidence)
+		INSERT INTO config (id, playlist_url, epg_url) VALUES (1, $1, $2)
+		ON CONFLICT (id) DO UPDATE SET
+			playlist_url = CASE WHEN $1 != '' THEN $1 ELSE config.playlist_url END,
+			epg_url = CASE WHEN $2 != '' THEN $2 ELSE config.epg_url END`,
+		playlistURL, epgURL)
 	return err
 }
 
-func (r *IPTVRepository) GetEpgChannelMap() (map[string]string, error) {
-	rows, err := r.db.Query(`
-		SELECT channel_id, epg_channel_id
-		FROM iptv_epg_channel_map
-		ORDER BY confidence DESC`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	m := make(map[string]string)
-	for rows.Next() {
-		var channelID, epgChannelID string
-		if err := rows.Scan(&channelID, &epgChannelID); err != nil {
-			return nil, err
-		}
-		if _, exists := m[epgChannelID]; !exists {
-			m[epgChannelID] = channelID
-		}
-	}
-	return m, nil
-}
-
-func (r *IPTVRepository) GetAllChannelTvgIDs() (map[string]string, error) {
-	rows, err := r.db.Query(`
-		SELECT id, tvg_id FROM iptv_channels WHERE tvg_id IS NOT NULL AND tvg_id != ''`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	m := make(map[string]string)
-	for rows.Next() {
-		var id, tvgID string
-		if err := rows.Scan(&id, &tvgID); err != nil {
-			return nil, err
-		}
-		m[tvgID] = id
-	}
-	return m, nil
-}
-
-func (r *IPTVRepository) GetAllChannelNames() (map[string]string, error) {
-	rows, err := r.db.Query("SELECT id, name FROM iptv_channels")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	m := make(map[string]string)
-	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return nil, err
-		}
-		m[name] = id
-	}
-	return m, nil
-}
-
-func (r *IPTVRepository) GetAllReferenceChannelNamesMap() (map[string]string, error) {
-	rows, err := r.db.Query(`
-		SELECT id, name, alt_names FROM iptv_reference_channels`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	m := make(map[string]string)
-	for rows.Next() {
-		var id, name string
-		var altNames []byte
-		if err := rows.Scan(&id, &name, &altNames); err != nil {
-			return nil, err
-		}
-		m[name] = id
-		if altNames != nil {
-			parsed := parsePostgresArray(string(altNames))
-			for _, alt := range parsed {
-				if alt != "" {
-					m[alt] = id
-				}
-			}
-		}
-	}
-	return m, nil
-}
-
-func parsePostgresArray(s string) []string {
-	if s == "" || s == "{}" {
-		return nil
-	}
-	s = strings.TrimPrefix(s, "{")
-	s = strings.TrimSuffix(s, "}")
-
-	var result []string
-	var current strings.Builder
-	inQuote := false
-	escaped := false
-
-	for _, r := range s {
-		if escaped {
-			current.WriteRune(r)
-			escaped = false
-			continue
-		}
-		if r == '\\' {
-			escaped = true
-			continue
-		}
-		if r == '"' {
-			inQuote = !inQuote
-			continue
-		}
-		if r == ',' && !inQuote {
-			result = append(result, current.String())
-			current.Reset()
-			continue
-		}
-		current.WriteRune(r)
-	}
-	if current.Len() > 0 {
-		result = append(result, current.String())
-	}
-	return result
+func (r *IPTVRepository) UpdateSyncTime(field string) error {
+	query := fmt.Sprintf("UPDATE config SET %s = NOW() WHERE id = 1", field)
+	_, err := r.db.Exec(query)
+	return err
 }

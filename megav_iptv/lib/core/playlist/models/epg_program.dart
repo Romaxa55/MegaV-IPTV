@@ -1,6 +1,6 @@
 class EpgProgram {
-  final String id;
-  final String channelId;
+  final int id;
+  final int channelId;
   final String title;
   final String? description;
   final String? category;
@@ -49,8 +49,8 @@ class EpgProgram {
 
   factory EpgProgram.fromJson(Map<String, dynamic> json) {
     return EpgProgram(
-      id: (json['id'] ?? '').toString(),
-      channelId: json['channelId'] as String? ?? '',
+      id: json['id'] is int ? json['id'] as int : int.tryParse(json['id'].toString()) ?? 0,
+      channelId: json['channelId'] is int ? json['channelId'] as int : int.tryParse(json['channelId'].toString()) ?? 0,
       title: json['title'] as String,
       description: json['description'] as String?,
       category: json['category'] as String?,

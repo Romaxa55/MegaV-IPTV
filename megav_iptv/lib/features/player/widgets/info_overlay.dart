@@ -111,7 +111,7 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
     child: Icon(Icons.tv, size: 28.sp, color: Colors.white.withValues(alpha: 0.2)),
   );
 
-  Widget _buildInfo(Channel ch, String key) {
+  Widget _buildInfo(Channel ch, int key) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -133,9 +133,9 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
           spacing: 6.w,
           runSpacing: 4.h,
           children: [
-            if (ch.groupTitle != null)
+            if (ch.groupTitle.isNotEmpty)
               _InfoBadge(
-                text: ch.groupTitle!,
+                text: ch.groupTitle,
                 color: AppColors.primary.withValues(alpha: 0.2),
                 textColor: AppColors.primaryLight,
               ),

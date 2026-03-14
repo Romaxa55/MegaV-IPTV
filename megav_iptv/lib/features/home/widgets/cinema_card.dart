@@ -1,14 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
-
-final _thumbCacheManager = CacheManager(
-  Config('thumbnailCache', stalePeriod: const Duration(minutes: 1), maxNrOfCacheObjects: 200),
-);
 
 class CinemaCard extends StatefulWidget {
   final NowPlayingItem item;
@@ -25,6 +19,22 @@ class _CinemaCardState extends State<CinemaCard> {
   bool _isHovered = false;
   bool _thumbFailed = false;
   int _thumbRetryCount = 0;
+  int _refreshTick = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startRefreshTimer();
+  }
+
+  void _startRefreshTimer() {
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) {
+        setState(() => _refreshTick++);
+        _startRefreshTimer();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,38 +103,40 @@ class _CinemaCardState extends State<CinemaCard> {
     final url = useThumb ? thumbUrl : (iconUrl ?? logoUrl);
 
     if (url == null || url.isEmpty) {
-      return Container(
-        color: const Color(0xFF12121E),
-        child: Center(
-          child: Icon(Icons.tv, size: 36.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
-        ),
-      );
+      return _posterPlaceholder();
     }
 
-    return CachedNetworkImage(
-      key: ValueKey('$url-$_thumbRetryCount'),
-      imageUrl: url,
-      cacheManager: useThumb ? _thumbCacheManager : null,
+    final bustUrl = useThumb ? '$url?t=$_refreshTick' : url;
+
+    return Image.network(
+      bustUrl,
+      key: ValueKey('$bustUrl-$_thumbRetryCount'),
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      memCacheWidth: 360,
+      cacheWidth: 360,
       alignment: Alignment.topCenter,
-      placeholder: (ctx, _) => _posterPlaceholder(),
-      errorWidget: (ctx, _, _) {
+      frameBuilder: (ctx, child, frame, loaded) {
+        if (loaded) return child;
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: frame != null ? child : _posterPlaceholder(),
+        );
+      },
+      errorBuilder: (ctx, _, _) {
         if (useThumb) {
           _thumbFailed = true;
           _retryThumbnail();
           final fallback = iconUrl ?? logoUrl;
           if (fallback != null && fallback.isNotEmpty) {
-            return CachedNetworkImage(
-              imageUrl: fallback,
+            return Image.network(
+              fallback,
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              memCacheWidth: 360,
+              cacheWidth: 360,
               alignment: Alignment.topCenter,
-              errorWidget: (ctx, _, _) => _posterPlaceholder(),
+              errorBuilder: (ctx, _, _) => _posterPlaceholder(),
             );
           }
         }

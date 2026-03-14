@@ -72,18 +72,17 @@ Database environment variables (cross-namespace)
 {{- end }}
 
 {{/*
-Redis environment variables (cross-namespace)
+IPTV playlist/EPG URLs from a manually created Kubernetes Secret
 */}}
-{{- define "iptv-parser.redisEnv" -}}
-- name: REDIS_HOST
-  value: {{ .Values.redis.host | quote }}
-- name: REDIS_PORT
-  value: {{ .Values.redis.port | quote }}
-- name: REDIS_DB
-  value: {{ .Values.redis.db | quote }}
-- name: REDIS_PASSWORD
+{{- define "iptv-parser.iptvEnv" -}}
+- name: PLAYLIST_URL
   valueFrom:
     secretKeyRef:
-      name: {{ .Values.redis.existingSecret }}
-      key: {{ .Values.redis.passwordKey }}
+      name: {{ .Values.iptv.existingSecret }}
+      key: {{ .Values.iptv.playlistUrlKey }}
+- name: EPG_URL
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.iptv.existingSecret }}
+      key: {{ .Values.iptv.epgUrlKey }}
 {{- end }}

@@ -16,7 +16,7 @@ class Media3Engine {
     int initialIndex = 0,
   }) {
     final item = PlaylistMediaItem(
-      id: channel.id,
+      id: channel.id.toString(),
       url: streamUrl,
       title: channel.name,
       subTitle: channel.groupTitle,

@@ -30,14 +30,11 @@ final decoderConfigProvider = StateProvider<DecoderConfig>((ref) => const Decode
 
 // --- Channels & Categories (from Backend API) ---
 
-/// All categories with channel counts.
 final categoriesProvider = FutureProvider<List<({String name, int count})>>((ref) async {
   final api = ref.watch(apiClientProvider);
   return api.getCategories();
 });
 
-/// Paginated channels for a specific category.
-/// Key format: "categoryName|offset|limit"
 final categoryChannelsProvider = FutureProvider.family<({List<Channel> channels, int total}), String>((ref, key) async {
   final api = ref.watch(apiClientProvider);
   final parts = key.split('|');
@@ -52,7 +49,6 @@ String categoryChannelsKey(String? categoryName, {int offset = 0, int limit = 20
   return '${categoryName ?? 'null'}|$offset|$limit';
 }
 
-/// Featured channels for HeroSection
 final featuredChannelsProvider = FutureProvider<List<Channel>>((ref) async {
   final api = ref.watch(apiClientProvider);
   return api.getFeaturedChannels(limit: 8);
@@ -64,7 +60,6 @@ final currentChannelIndexProvider = StateProvider<int>((ref) => -1);
 
 // --- EPG Cinema Experience ---
 
-/// Currently playing programs (capped at 60 to save memory)
 final nowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
@@ -73,14 +68,12 @@ final nowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   return all.sublist(0, 60);
 });
 
-/// Upcoming programs (next 3 hours)
 final upcomingAllProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
   return api.getUpcomingAll();
 });
 
-/// Featured now playing (hero carousel) with fallback to featured channels
 final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
@@ -95,14 +88,13 @@ final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) as
   return channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
 });
 
-/// Cinema categories built from now playing + upcoming data
 final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
   final nowPlaying = await ref.watch(nowPlayingProvider.future);
   final upcoming = await ref.watch(upcomingAllProvider.future);
 
   const maxPerRow = 20;
   final categories = <CinemaCategory>[];
-  final seen = <String>{};
+  final seen = <int>{};
 
   List<NowPlayingItem> unique(Iterable<NowPlayingItem> items) {
     final result = <NowPlayingItem>[];
@@ -147,7 +139,7 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
   }
 
   if (upcoming.isNotEmpty) {
-    final upcomingSeen = <String>{};
+    final upcomingSeen = <int>{};
     final uniqueUpcoming = upcoming.where((i) => upcomingSeen.add(i.channelId)).take(maxPerRow).toList();
     if (uniqueUpcoming.isNotEmpty) {
       categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: uniqueUpcoming));
@@ -223,21 +215,20 @@ class CinemaCategory {
 
 // --- Per-channel EPG ---
 
-final currentProgramProvider = FutureProvider.family<EpgProgram?, String>((ref, channelId) async {
-  if (channelId.isEmpty) return null;
+final currentProgramProvider = FutureProvider.family<EpgProgram?, int>((ref, channelId) async {
+  if (channelId <= 0) return null;
   final api = ref.watch(apiClientProvider);
   return api.getCurrentProgram(channelId);
 });
 
-final upcomingProgramsProvider = FutureProvider.family<List<EpgProgram>, String>((ref, channelId) async {
-  if (channelId.isEmpty) return [];
+final upcomingProgramsProvider = FutureProvider.family<List<EpgProgram>, int>((ref, channelId) async {
+  if (channelId <= 0) return [];
   final api = ref.watch(apiClientProvider);
   return api.getUpcomingPrograms(channelId);
 });
 
 // --- UI Ticks ---
 
-/// Ticks every minute to refresh progress bars and "now playing" data.
 final epgProgressTickProvider = StreamProvider<int>((ref) {
   return Stream.periodic(const Duration(minutes: 1), (i) => i);
 });

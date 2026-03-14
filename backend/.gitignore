@@ -1,7 +1,4 @@
+bin/
 api-server
-epg-parser
-m3u-parser
-thumbnail-worker
-channel-checker
-channel-enricher
-github-crawler
+.env
+thumbnails/

@@ -49,7 +49,7 @@ class ChannelSwitchPreview extends StatelessWidget {
                   ),
                   SizedBox(height: 4.h),
                   Text(
-                    channel.groupTitle ?? '',
+                    channel.groupTitle,
                     style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.4)),
                   ),
                 ],
@@ -122,7 +122,7 @@ class BriefChannelOSD extends StatelessWidget {
                   style: TextStyle(fontSize: 14.sp, color: Colors.white),
                 ),
                 Text(
-                  channel.groupTitle ?? '',
+                  channel.groupTitle,
                   style: TextStyle(fontSize: 11.sp, color: Colors.white.withValues(alpha: 0.3)),
                 ),
               ],

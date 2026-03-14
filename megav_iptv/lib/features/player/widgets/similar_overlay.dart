@@ -38,7 +38,7 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
 
   Future<void> _loadSimilar() async {
     final group = widget.currentChannel.groupTitle;
-    if (group == null) return;
+    if (group.isEmpty) return;
     try {
       final api = ref.read(apiClientProvider);
       final result = await api.getChannels(category: group, limit: 30);
@@ -121,7 +121,7 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
-                  widget.currentChannel.groupTitle ?? 'TV',
+                  widget.currentChannel.groupTitle.isEmpty ? 'TV' : widget.currentChannel.groupTitle,
                   style: TextStyle(fontSize: 11.sp, color: AppColors.primaryLight),
                 ),
               ),
@@ -167,7 +167,7 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
                 SizedBox(width: 8.w),
                 Expanded(
                   child: Text(
-                    'Каналы в категории "${widget.currentChannel.groupTitle ?? 'TV'}"',
+                    'Каналы в категории "${widget.currentChannel.groupTitle.isEmpty ? 'TV' : widget.currentChannel.groupTitle}"',
                     style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.4)),
                   ),
                 ),
@@ -246,7 +246,7 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    ch.groupTitle ?? '',
+                    ch.groupTitle,
                     style: TextStyle(fontSize: 10.sp, color: Colors.white.withValues(alpha: 0.25)),
                     maxLines: 1,
                   ),

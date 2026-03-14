@@ -1,30 +1,20 @@
-IPTV Parser has been deployed to namespace {{ .Release.Namespace }}.
+IPTV Backend has been deployed to namespace {{ .Release.Namespace }}.
 
 Components:
 {{- if .Values.apiService.enabled }}
-  - API Server: {{ .Values.apiService.replicas }} replicas on port {{ .Values.apiService.port }}
-{{- end }}
-{{- if .Values.m3uParser.enabled }}
-  - M3U Parser CronJob: {{ .Values.m3uParser.schedule }}
-{{- end }}
-{{- if .Values.epgParser.enabled }}
-  - EPG Parser CronJob: {{ .Values.epgParser.schedule }}
-{{- end }}
-{{- if .Values.channelChecker.enabled }}
-  - Channel Checker CronJob: {{ .Values.channelChecker.schedule }}
+  - API Server: {{ .Values.apiService.replicas }} replicas on port {{ .Values.apiService.port }} (with playlist/EPG sync)
 {{- end }}
 {{- if .Values.thumbnailWorker.enabled }}
-  - Thumbnail Worker CronJob: {{ .Values.thumbnailWorker.batchSchedule }}
+  - Thumbnail Worker: {{ .Values.thumbnailWorker.replicas }} replicas
 {{- end }}
 
-Cross-namespace connections:
+Connections:
   - PostgreSQL: {{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}
-  - Redis: {{ .Values.redis.host }}:{{ .Values.redis.port }}/{{ .Values.redis.db }}
+  - IPTV URLs Secret: {{ .Values.iptv.existingSecret }}
 
 Useful commands:
   kubectl get pods -n {{ .Release.Namespace }}
-  kubectl get cronjobs -n {{ .Release.Namespace }}
   kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=api -f
 
-Trigger M3U parser manually:
-  kubectl create job --from=cronjob/{{ include "iptv-parser.fullname" . }}-m3u-parser {{ include "iptv-parser.fullname" . }}-m3u-parser-manual-$(date +%s) -n {{ .Release.Namespace }}
+Trigger manual sync:
+  curl -X POST http://<api-host>/api/sync/all

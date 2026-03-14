@@ -30,7 +30,7 @@ spec:
           args:
             - "-port"
             - "{{ .Values.apiService.port }}"
-            - "-cache={{ .Values.apiService.cache }}"
+            - "-sync"
             - "-thumbnail-dir"
             - "{{ .Values.thumbnailWorker.outputDir }}"
           ports:
@@ -38,7 +38,7 @@ spec:
               protocol: TCP
           env:
             {{- include "iptv-parser.dbEnv" . | nindent 12 }}
-            {{- include "iptv-parser.redisEnv" . | nindent 12 }}
+            {{- include "iptv-parser.iptvEnv" . | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /api/health

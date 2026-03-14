@@ -25,10 +25,11 @@ spec:
       containers:
         - name: migration
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["./bin/m3u-parser"]
-          args: ["-migrations", "/app/migrations", "-migrate-only"]
+          command: ["./bin/api-server"]
+          args: ["-migrate-only"]
           env:
             {{- include "iptv-parser.dbEnv" . | nindent 12 }}
+            {{- include "iptv-parser.iptvEnv" . | nindent 12 }}
           resources:
             requests:
               cpu: 50m
