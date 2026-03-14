@@ -283,11 +283,12 @@ func parseXMLTVTime(s string) (time.Time, error) {
 
 func GetDefaultEPGSources() []string {
 	return []string{
-		"https://iptv-org.github.io/epg/guides/ru.xml",
-		"https://iptv-org.github.io/epg/guides/us.xml",
-		"https://iptv-org.github.io/epg/guides/uk.xml",
-		"https://iptv-org.github.io/epg/guides/de.xml",
-		"https://iptv-org.github.io/epg/guides/fr.xml",
+		"http://epg.it999.ru/epg2.xml.gz",
+		"http://epg.it999.ru/epg.xml.gz",
+		"http://programtv.ru/xmltv.xml.gz",
+		"http://www.teleguide.info/download/new3/xmltv.xml.gz",
+		"https://iptvx.one/epg/epg.xml.gz",
+		"https://github.com/iFrez/EPG-EdemTV/raw/master/edem.xml.gz",
 	}
 }
 
@@ -296,8 +297,10 @@ func GetDefaultEPGSources() []string {
 func BuildEPGSourcesForCountries(countries []string) []string {
 	communityEPG := map[string][]string{
 		"RU": {
-			"https://epg.iptvx.one/EPG/epg.xml.gz",
-			"https://raw.githubusercontent.com/dp247/Freeview-EPG/master/epg.xml",
+			"http://epg.it999.ru/epg2.xml.gz",
+			"http://programtv.ru/xmltv.xml.gz",
+			"http://www.teleguide.info/download/new3/xmltv.xml.gz",
+			"https://iptvx.one/epg/epg.xml.gz",
 		},
 		"US": {
 			"https://i.mjh.nz/PlutoTV/us.xml.gz",

@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/romaxa55/iptv-parser/internal/models"
 )
@@ -33,21 +35,54 @@ func (r *IPTVRepository) UpsertStreamsBatch(streams []*models.Stream) (int, erro
 		return 0, nil
 	}
 
+	seen := make(map[string]bool, len(streams))
+	deduped := make([]*models.Stream, 0, len(streams))
+	for _, s := range streams {
+		if s.URL != "" && !seen[s.URL] {
+			seen[s.URL] = true
+			deduped = append(deduped, s)
+		}
+	}
+
 	const batchSize = 500
 	total := 0
 
-	for i := 0; i < len(streams); i += batchSize {
+	for i := 0; i < len(deduped); i += batchSize {
 		end := i + batchSize
-		if end > len(streams) {
-			end = len(streams)
+		if end > len(deduped) {
+			end = len(deduped)
 		}
-		n, err := r.upsertStreamChunk(streams[i:end])
+		n, err := r.upsertStreamChunkRetry(deduped[i:end], 3)
 		if err != nil {
-			return total, fmt.Errorf("batch at offset %d: %w", i, err)
+			r.logger.Warnf("batch upsert failed at offset %d after retries: %v", i, err)
+			continue
 		}
 		total += n
 	}
 	return total, nil
+}
+
+func (r *IPTVRepository) upsertStreamChunkRetry(batch []*models.Stream, maxRetries int) (int, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		n, err := r.upsertStreamChunk(batch)
+		if err == nil {
+			return n, nil
+		}
+		lastErr = err
+		if !isRetryableError(err) {
+			return 0, err
+		}
+		time.Sleep(time.Duration(50+rand.Intn(200)) * time.Millisecond)
+	}
+	return 0, lastErr
+}
+
+func isRetryableError(err error) bool {
+	s := err.Error()
+	return strings.Contains(s, "deadlock detected") ||
+		strings.Contains(s, "could not serialize") ||
+		strings.Contains(s, "cannot affect row a second time")
 }
 
 func (r *IPTVRepository) upsertStreamChunk(batch []*models.Stream) (int, error) {
@@ -106,21 +141,47 @@ func (r *IPTVRepository) UpsertUnmatchedStreamsBatch(streams []*models.Unmatched
 		return 0, nil
 	}
 
+	seen := make(map[string]bool, len(streams))
+	deduped := make([]*models.UnmatchedStream, 0, len(streams))
+	for _, s := range streams {
+		if s.URL != "" && !seen[s.URL] {
+			seen[s.URL] = true
+			deduped = append(deduped, s)
+		}
+	}
+
 	const batchSize = 500
 	total := 0
 
-	for i := 0; i < len(streams); i += batchSize {
+	for i := 0; i < len(deduped); i += batchSize {
 		end := i + batchSize
-		if end > len(streams) {
-			end = len(streams)
+		if end > len(deduped) {
+			end = len(deduped)
 		}
-		n, err := r.upsertUnmatchedChunk(streams[i:end])
+		n, err := r.upsertUnmatchedChunkRetry(deduped[i:end], 3)
 		if err != nil {
-			return total, fmt.Errorf("unmatched batch at offset %d: %w", i, err)
+			r.logger.Warnf("unmatched batch upsert failed at offset %d after retries: %v", i, err)
+			continue
 		}
 		total += n
 	}
 	return total, nil
+}
+
+func (r *IPTVRepository) upsertUnmatchedChunkRetry(batch []*models.UnmatchedStream, maxRetries int) (int, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		n, err := r.upsertUnmatchedChunk(batch)
+		if err == nil {
+			return n, nil
+		}
+		lastErr = err
+		if !isRetryableError(err) {
+			return 0, err
+		}
+		time.Sleep(time.Duration(50+rand.Intn(200)) * time.Millisecond)
+	}
+	return 0, lastErr
 }
 
 func (r *IPTVRepository) upsertUnmatchedChunk(batch []*models.UnmatchedStream) (int, error) {
