@@ -46,16 +46,19 @@ class _CinemaCardState extends State<CinemaCard> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16.r),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildPoster(),
-                  _buildGradientOverlay(),
-                  _buildStatusBadge(),
-                  _buildBottomInfo(),
-                  if (prog.isNow) _buildProgressBar(),
-                  if (isHighlighted) _buildPlayOverlay(),
-                ],
+              child: Container(
+                color: const Color(0xFF12121E),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned(top: 0, left: 0, right: 0, height: 140.h, child: _buildPoster()),
+                    _buildGradientOverlay(),
+                    _buildStatusBadge(),
+                    _buildBottomInfo(),
+                    if (prog.isNow) _buildProgressBar(),
+                    if (isHighlighted) _buildPlayOverlay(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -134,19 +137,22 @@ class _CinemaCardState extends State<CinemaCard> {
   }
 
   Widget _buildGradientOverlay() {
-    return Positioned.fill(
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 140.h,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.15, 0.4, 0.7, 1.0],
+            stops: const [0.0, 0.5, 0.85, 1.0],
             colors: [
-              Colors.black.withValues(alpha: 0.3),
+              Colors.black.withValues(alpha: 0.15),
               Colors.transparent,
-              Colors.transparent,
-              AppColors.background.withValues(alpha: 0.75),
-              AppColors.background,
+              const Color(0xFF12121E).withValues(alpha: 0.6),
+              const Color(0xFF12121E),
             ],
           ),
         ),

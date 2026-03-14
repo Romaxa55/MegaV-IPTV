@@ -20,6 +20,7 @@ class MediaKitEngine extends PlayerEngine {
   StreamSubscription? _playingSub;
   StreamSubscription? _errorSub;
   StreamSubscription? _positionSub;
+  bool _disposed = false;
 
   MediaKitEngine({this.config = const DecoderConfig()});
 
@@ -41,6 +42,7 @@ class MediaKitEngine extends PlayerEngine {
   VideoController get videoController => _videoController;
 
   void _setState(PlayerState state) {
+    if (_disposed) return;
     _currentState = state;
     _stateController.add(state);
   }
@@ -125,10 +127,19 @@ class MediaKitEngine extends PlayerEngine {
 
   @override
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     await _playingSub?.cancel();
     await _errorSub?.cancel();
     await _positionSub?.cancel();
-    await _player.dispose();
+    _playingSub = null;
+    _errorSub = null;
+    _positionSub = null;
+    try {
+      await _player.stop();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _player.dispose();
+    } catch (_) {}
     await _stateController.close();
     await _positionController.close();
     await _errorController.close();

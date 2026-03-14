@@ -125,7 +125,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _hideTimer?.cancel();
     _osdTimer?.cancel();
     _switchTimer?.cancel();
-    _playerManager.stop();
+    if (!_openedViaMedia3) {
+      _playerManager.stop();
+    }
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
