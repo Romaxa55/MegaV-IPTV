@@ -135,7 +135,7 @@ func main() {
 		apiGroup.GET("/channels/:id", handler.GetChannel)
 		apiGroup.GET("/channels/:id/streams", handler.GetChannelStreams)
 		apiGroup.GET("/channels/:id/epg", handler.GetChannelEPG)
-		apiGroup.GET("/channels/:id/thumbnail", handler.GetChannelThumbnail)
+		apiGroup.GET("/channels/:id/thumbnail.jpg", handler.GetChannelThumbnail)
 		apiGroup.GET("/countries", handler.GetCountries)
 		apiGroup.GET("/categories", handler.GetCategories)
 		apiGroup.GET("/health", handler.HealthCheck)
@@ -150,7 +150,7 @@ func main() {
 				"channel":    "/api/channels/:id",
 				"streams":    "/api/channels/:id/streams",
 				"epg":        "/api/channels/:id/epg?timeshift=0&limit=20",
-				"thumbnail":  "/api/channels/:id/thumbnail",
+				"thumbnail":  "/api/channels/:id/thumbnail.jpg",
 				"featured":   "/api/channels/featured?limit=10",
 				"countries":  "/api/countries",
 				"categories": "/api/categories",

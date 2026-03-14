@@ -99,6 +99,10 @@ func (h *Handler) GetChannel(c *gin.Context) {
 		return
 	}
 
+	if h.thumbService != nil && !h.thumbService.ThumbnailExists(id) {
+		h.enqueueThumbnail(id)
+	}
+
 	streams, err := h.repo.GetStreamsByChannelFull(id)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get streams")
@@ -213,35 +217,27 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 	id := c.Param("id")
 
-	if h.thumbService != nil {
-		thumbPath := h.thumbService.GetThumbnailPath(id)
-		info, err := os.Stat(thumbPath)
-		if err == nil && info.Size() > 0 {
-			age := time.Since(info.ModTime())
-			if age > thumbnailStaleDuration {
-				h.enqueueThumbnail(id)
-			}
-			data, err := os.ReadFile(thumbPath)
-			if err == nil && len(data) > 0 {
-				c.Header("Cache-Control", "public, max-age=300")
-				c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
-				c.Data(http.StatusOK, "image/jpeg", data)
-				return
-			}
-		}
-	}
-
-	if h.enqueueThumbnail(id) {
-		h.logger.Debugf("Enqueued thumbnail generation for %s", id)
-	}
-
-	logoURL, err := h.repo.GetChannelLogoURL(id)
-	if err == nil && logoURL != "" {
-		c.Redirect(http.StatusTemporaryRedirect, logoURL)
+	if h.thumbService == nil {
+		c.Status(http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusNotFound, gin.H{"error": "thumbnail not available yet"})
+	thumbPath := h.thumbService.GetThumbnailPath(id)
+	data, err := os.ReadFile(thumbPath)
+	if err != nil || len(data) == 0 {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	info, _ := os.Stat(thumbPath)
+	age := time.Since(info.ModTime())
+	if age > thumbnailStaleDuration {
+		h.enqueueThumbnail(id)
+	}
+
+	c.Header("Cache-Control", "public, max-age=300")
+	c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
+	c.Data(http.StatusOK, "image/jpeg", data)
 }
 
 func (h *Handler) enqueueThumbnail(channelID string) bool {
