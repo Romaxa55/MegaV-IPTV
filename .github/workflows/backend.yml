@@ -66,73 +66,39 @@ jobs:
           --docker-username=${{ github.actor }} \
           --docker-password=${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload context to PVC and run Kaniko
+    - name: Build with Kaniko (no PVC)
       run: |
         TAG="${{ steps.tag.outputs.tag }}"
         IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        NS="${{ env.BUILD_NAMESPACE }}"
 
         tar -czf /tmp/iptv-context.tar.gz -C $GITHUB_WORKSPACE/backend .
 
-        kubectl -n ${{ env.BUILD_NAMESPACE }} delete job kaniko-build-iptv --ignore-not-found
-        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pod kaniko-iptv-loader --ignore-not-found
-        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pvc kaniko-context-iptv --ignore-not-found
+        kubectl -n ${NS} delete job kaniko-build-iptv --ignore-not-found
+        kubectl -n ${NS} delete pod kaniko-iptv-loader --ignore-not-found --force 2>/dev/null || true
+        kubectl -n ${NS} delete pvc kaniko-context-iptv --ignore-not-found
         sleep 2
 
-        cat <<'EOFPVC' | kubectl apply -n ${{ env.BUILD_NAMESPACE }} -f -
-        apiVersion: v1
-        kind: PersistentVolumeClaim
-        metadata:
-          name: kaniko-context-iptv
-        spec:
-          accessModes: [ReadWriteOnce]
-          storageClassName: longhorn
-          resources:
-            requests:
-              storage: 2Gi
-        EOFPVC
-
-        kubectl wait -n ${{ env.BUILD_NAMESPACE }} pvc/kaniko-context-iptv --for=jsonpath='{.status.phase}'=Bound --timeout=60s
-
-        cat <<'EOFLOADER' | kubectl apply -n ${{ env.BUILD_NAMESPACE }} -f -
-        apiVersion: v1
-        kind: Pod
-        metadata:
-          name: kaniko-iptv-loader
-        spec:
-          restartPolicy: Never
-          nodeSelector:
-            node-role.kubernetes.io/worker: ""
-          containers:
-          - name: loader
-            image: alpine:3.19
-            command: ["sleep", "3600"]
-            volumeMounts:
-            - name: context
-              mountPath: /context
-          volumes:
-          - name: context
-            persistentVolumeClaim:
-              claimName: kaniko-context-iptv
-        EOFLOADER
-
-        kubectl wait -n ${{ env.BUILD_NAMESPACE }} pod/kaniko-iptv-loader --for=condition=Ready --timeout=120s
-        kubectl cp /tmp/iptv-context.tar.gz ${{ env.BUILD_NAMESPACE }}/kaniko-iptv-loader:/context/context.tar.gz
-        kubectl exec -n ${{ env.BUILD_NAMESPACE }} kaniko-iptv-loader -- sh -c "cd /context && tar xzf context.tar.gz && rm context.tar.gz"
-        kubectl delete -n ${{ env.BUILD_NAMESPACE }} pod kaniko-iptv-loader --wait=false
-
-        cat <<EOFJOB | kubectl apply -n ${{ env.BUILD_NAMESPACE }} -f -
+        cat <<EOFJOB | kubectl apply -n ${NS} -f -
         apiVersion: batch/v1
         kind: Job
         metadata:
           name: kaniko-build-iptv
         spec:
           backoffLimit: 0
-          ttlSecondsAfterFinished: 300
+          ttlSecondsAfterFinished: 120
           template:
             spec:
               restartPolicy: Never
               nodeSelector:
                 node-role.kubernetes.io/worker: ""
+              initContainers:
+              - name: load-context
+                image: alpine:3.19
+                command: ["sh", "-c", "echo 'Waiting for context upload...' && sleep 5 && while [ ! -f /workspace/.context-ready ]; do sleep 1; done && echo 'Context ready'"]
+                volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
               containers:
               - name: kaniko
                 image: gcr.io/kaniko-project/executor:latest
@@ -146,14 +112,13 @@ jobs:
                 - --snapshot-mode=redo
                 - --compressed-caching=false
                 volumeMounts:
-                - name: context
+                - name: workspace
                   mountPath: /workspace
                 - name: docker-config
                   mountPath: /kaniko/.docker
               volumes:
-              - name: context
-                persistentVolumeClaim:
-                  claimName: kaniko-context-iptv
+              - name: workspace
+                emptyDir: {}
               - name: docker-config
                 secret:
                   secretName: kaniko-ghcr-iptv
@@ -162,23 +127,34 @@ jobs:
                     path: config.json
         EOFJOB
 
-        echo "Waiting for Kaniko build to complete..."
-        kubectl wait -n ${{ env.BUILD_NAMESPACE }} job/kaniko-build-iptv --for=condition=Complete --timeout=900s || {
+        echo "Waiting for init container to start..."
+        kubectl wait -n ${NS} pod -l job-name=kaniko-build-iptv --for=condition=Initialized=False --timeout=60s 2>/dev/null || true
+        sleep 3
+
+        POD=$(kubectl get pods -n ${NS} -l job-name=kaniko-build-iptv -o jsonpath='{.items[0].metadata.name}')
+        echo "Uploading context to ${POD}..."
+
+        kubectl wait -n ${NS} pod/${POD} -c load-context --for=condition=Ready=False --timeout=60s 2>/dev/null || true
+        sleep 2
+
+        kubectl cp /tmp/iptv-context.tar.gz ${NS}/${POD}:/workspace/context.tar.gz -c load-context
+        kubectl exec -n ${NS} ${POD} -c load-context -- sh -c "cd /workspace && tar xzf context.tar.gz && rm context.tar.gz && touch .context-ready"
+
+        echo "Context uploaded, waiting for Kaniko build..."
+        kubectl wait -n ${NS} job/kaniko-build-iptv --for=condition=Complete --timeout=900s || {
           echo "Build failed! Logs:"
-          kubectl logs -n ${{ env.BUILD_NAMESPACE }} -l job-name=kaniko-build-iptv --tail=100
+          kubectl logs -n ${NS} -l job-name=kaniko-build-iptv -c kaniko --tail=100
           exit 1
         }
 
         echo "Build logs:"
-        kubectl logs -n ${{ env.BUILD_NAMESPACE }} -l job-name=kaniko-build-iptv --tail=30
+        kubectl logs -n ${NS} -l job-name=kaniko-build-iptv -c kaniko --tail=30
         echo "Image pushed: ${IMAGE}:${TAG}"
 
     - name: Cleanup build resources
       if: always()
       run: |
         kubectl -n ${{ env.BUILD_NAMESPACE }} delete job kaniko-build-iptv --ignore-not-found
-        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pod kaniko-iptv-loader --ignore-not-found --force
-        kubectl -n ${{ env.BUILD_NAMESPACE }} delete pvc kaniko-context-iptv --ignore-not-found
         kubectl -n ${{ env.BUILD_NAMESPACE }} delete secret kaniko-ghcr-iptv --ignore-not-found
 
   deploy:
