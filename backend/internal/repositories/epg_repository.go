@@ -100,7 +100,7 @@ func (r *IPTVRepository) GetProgramsForStream(referenceChannelID string, timeshi
 	rows, err := r.db.Query(`
 		SELECT id, channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang
 		FROM iptv_epg_programs
-		WHERE reference_channel_id = $1
+		WHERE channel_id = $1
 		  AND end_time + ($2 || ' hours')::interval > $3
 		ORDER BY start_time ASC
 		LIMIT $4`,
