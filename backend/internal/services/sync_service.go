@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/romaxa55/iptv-parser/internal/models"
@@ -111,13 +113,12 @@ func parseM3U(r io.Reader) ([]m3uEntry, error) {
 	return entries, scanner.Err()
 }
 
-// --- EPG Sync ---
+// --- EPG Sync (streaming XML + parallel DB writers) ---
 
-type xmlTV struct {
-	XMLName    xml.Name       `xml:"tv"`
-	Channels   []xmlChannel   `xml:"channel"`
-	Programmes []xmlProgramme `xml:"programme"`
-}
+const (
+	epgBatchSize = 5000
+	epgDBWriters = 4
+)
 
 type xmlChannel struct {
 	ID          string `xml:"id,attr"`
@@ -128,13 +129,13 @@ type xmlChannel struct {
 }
 
 type xmlProgramme struct {
-	Start   string `xml:"start,attr"`
-	Stop    string `xml:"stop,attr"`
-	Channel string `xml:"channel,attr"`
-	Title   string `xml:"title"`
-	Desc    string `xml:"desc"`
+	Start    string `xml:"start,attr"`
+	Stop     string `xml:"stop,attr"`
+	Channel  string `xml:"channel,attr"`
+	Title    string `xml:"title"`
+	Desc     string `xml:"desc"`
 	Category string `xml:"category"`
-	Icon    struct {
+	Icon     struct {
 		Src string `xml:"src,attr"`
 	} `xml:"icon"`
 }
@@ -158,89 +159,146 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 		reader = gz
 	}
 
-	var tv xmlTV
 	decoder := xml.NewDecoder(reader)
 	decoder.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
 		return input, nil
 	}
-	if err := decoder.Decode(&tv); err != nil {
-		return fmt.Errorf("decode xml: %w", err)
-	}
 
-	s.logger.Infof("Parsed EPG: %d channels, %d programmes", len(tv.Channels), len(tv.Programmes))
+	// Stream XML: collect <channel> elements first (small), then process <programme> on the fly
+	epgChannelNames := make(map[string]string, 4000)
+	epgChannelLogos := make(map[string]string, 4000)
 
-	// Build EPG channel name -> display name map
-	epgChannelNames := make(map[string]string, len(tv.Channels))
-	epgChannelLogos := make(map[string]string, len(tv.Channels))
-	for _, ch := range tv.Channels {
-		epgChannelNames[ch.ID] = ch.DisplayName
-		if ch.Icon.Src != "" {
-			epgChannelLogos[ch.ID] = ch.Icon.Src
-		}
-	}
-
-	// Get all channels from DB and build name->id map
 	channelsByName, err := s.repo.GetAllChannelsByName()
 	if err != nil {
 		return fmt.Errorf("get channels by name: %w", err)
 	}
 
-	// Build EPG channel ID -> DB channel ID map
-	epgToDBChannel := make(map[string]int, len(tv.Channels))
-	for epgID, displayName := range epgChannelNames {
-		if dbID, ok := channelsByName[displayName]; ok {
-			epgToDBChannel[epgID] = dbID
-		}
-	}
-
-	s.logger.Infof("Matched %d EPG channels to DB channels (out of %d)", len(epgToDBChannel), len(tv.Channels))
-
 	if err := s.repo.TruncateEpgPrograms(); err != nil {
 		return fmt.Errorf("truncate epg: %w", err)
 	}
 
-	// Convert programmes to models
-	var programs []*models.EpgProgram
-	for _, prog := range tv.Programmes {
-		dbChannelID, ok := epgToDBChannel[prog.Channel]
+	// Parallel DB writers: read batches from channel, write concurrently
+	batchCh := make(chan []*models.EpgProgram, epgDBWriters*2)
+	var totalInserted int64
+	var writerWg sync.WaitGroup
+
+	for i := 0; i < epgDBWriters; i++ {
+		writerWg.Add(1)
+		go func(workerID int) {
+			defer writerWg.Done()
+			for batch := range batchCh {
+				n, err := s.repo.InsertEpgProgramsBatch(batch)
+				if err != nil {
+					s.logger.Errorf("EPG writer %d: insert batch error: %v", workerID, err)
+					continue
+				}
+				atomic.AddInt64(&totalInserted, int64(n))
+			}
+		}(i)
+	}
+
+	// Streaming parse: decode element-by-element
+	var epgToDBChannel map[string]int
+	batch := make([]*models.EpgProgram, 0, epgBatchSize)
+	channelCount := 0
+	programmeCount := 0
+
+	for {
+		tok, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			close(batchCh)
+			writerWg.Wait()
+			return fmt.Errorf("xml token: %w", err)
+		}
+
+		se, ok := tok.(xml.StartElement)
 		if !ok {
 			continue
 		}
 
-		startTime, err := parseXMLTVTime(prog.Start)
-		if err != nil {
-			continue
-		}
-		endTime, err := parseXMLTVTime(prog.Stop)
-		if err != nil {
-			continue
-		}
+		switch se.Name.Local {
+		case "channel":
+			var ch xmlChannel
+			if err := decoder.DecodeElement(&ch, &se); err != nil {
+				s.logger.Warnf("skip bad channel element: %v", err)
+				continue
+			}
+			epgChannelNames[ch.ID] = ch.DisplayName
+			if ch.Icon.Src != "" {
+				epgChannelLogos[ch.ID] = ch.Icon.Src
+			}
+			channelCount++
 
-		p := &models.EpgProgram{
-			ChannelID: dbChannelID,
-			Title:     prog.Title,
-			StartTime: startTime,
-			EndTime:   endTime,
-		}
-		if prog.Desc != "" {
-			p.Description = &prog.Desc
-		}
-		if prog.Category != "" {
-			p.Category = &prog.Category
-		}
-		if prog.Icon.Src != "" {
-			p.Icon = &prog.Icon.Src
-		}
+		case "programme":
+			// Build mapping lazily on first programme (all channels parsed by this point)
+			if epgToDBChannel == nil {
+				epgToDBChannel = make(map[string]int, len(epgChannelNames))
+				for epgID, displayName := range epgChannelNames {
+					if dbID, ok := channelsByName[displayName]; ok {
+						epgToDBChannel[epgID] = dbID
+					}
+				}
+				s.logger.Infof("Parsed %d EPG channels, matched %d to DB", channelCount, len(epgToDBChannel))
+			}
 
-		programs = append(programs, p)
+			var prog xmlProgramme
+			if err := decoder.DecodeElement(&prog, &se); err != nil {
+				s.logger.Warnf("skip bad programme element: %v", err)
+				continue
+			}
+			programmeCount++
+
+			dbChannelID, ok := epgToDBChannel[prog.Channel]
+			if !ok {
+				continue
+			}
+
+			startTime, err := parseXMLTVTime(prog.Start)
+			if err != nil {
+				continue
+			}
+			endTime, err := parseXMLTVTime(prog.Stop)
+			if err != nil {
+				continue
+			}
+
+			p := &models.EpgProgram{
+				ChannelID: dbChannelID,
+				Title:     prog.Title,
+				StartTime: startTime,
+				EndTime:   endTime,
+			}
+			if prog.Desc != "" {
+				p.Description = &prog.Desc
+			}
+			if prog.Category != "" {
+				p.Category = &prog.Category
+			}
+			if prog.Icon.Src != "" {
+				p.Icon = &prog.Icon.Src
+			}
+
+			batch = append(batch, p)
+
+			if len(batch) >= epgBatchSize {
+				batchCh <- batch
+				batch = make([]*models.EpgProgram, 0, epgBatchSize)
+			}
+		}
 	}
 
-	n, err := s.repo.InsertEpgProgramsBatch(programs)
-	if err != nil {
-		return fmt.Errorf("insert epg: %w", err)
+	// Flush remaining
+	if len(batch) > 0 {
+		batchCh <- batch
 	}
+	close(batchCh)
+	writerWg.Wait()
 
-	s.logger.Infof("Inserted %d EPG programs", n)
+	s.logger.Infof("EPG sync done: %d channels, %d programmes parsed, %d inserted (%d DB writers)",
+		channelCount, programmeCount, atomic.LoadInt64(&totalInserted), epgDBWriters)
 	_ = s.repo.UpdateSyncTime("last_epg_sync")
 	return nil
 }
