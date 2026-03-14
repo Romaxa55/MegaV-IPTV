@@ -21,6 +21,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _focusedRow = -1; // -1 = hero
   int _focusedCol = 0;
+  NowPlayingItem? _hoveredItem;
   late final FocusNode _focusNode;
 
   @override
@@ -85,7 +86,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onKeyEvent: (event) => _handleKeyEvent(event, categories),
             child: Column(
               children: [
-                HeroSection(featuredItems: featured, onPlay: _playNowPlaying),
+                HeroSection(featuredItems: featured, overrideItem: _hoveredItem, onPlay: _playNowPlaying),
                 Expanded(
                   child: ListView.builder(
                     padding: EdgeInsets.only(bottom: 32.h),
@@ -98,6 +99,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         isFocusedRow: _focusedRow == rowIdx,
                         focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
                         onItemTap: _playNowPlaying,
+                        onItemFocus: (item) {
+                          setState(() => _hoveredItem = item);
+                        },
                       );
                     },
                   ),
@@ -110,6 +114,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  NowPlayingItem? _resolveHoveredItem(List<CinemaCategory> categories) {
+    if (_focusedRow < 0 || _focusedRow >= categories.length) return null;
+    final items = categories[_focusedRow].items;
+    if (items.isEmpty) return null;
+    final col = _focusedCol.clamp(0, items.length - 1);
+    return items[col];
+  }
+
   void _handleKeyEvent(KeyEvent event, List<CinemaCategory> categories) {
     if (event is! KeyDownEvent) return;
 
@@ -118,8 +130,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         case LogicalKeyboardKey.arrowUp:
           if (_focusedRow <= 0) {
             _focusedRow = -1;
+            _hoveredItem = null;
           } else {
             _focusedRow--;
+            _hoveredItem = _resolveHoveredItem(categories);
           }
         case LogicalKeyboardKey.arrowDown:
           if (_focusedRow == -1) {
@@ -128,14 +142,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           } else if (_focusedRow < categories.length - 1) {
             _focusedRow++;
           }
+          _hoveredItem = _resolveHoveredItem(categories);
         case LogicalKeyboardKey.arrowLeft:
           if (_focusedRow >= 0) {
             _focusedCol = (_focusedCol - 1).clamp(0, 999);
+            _hoveredItem = _resolveHoveredItem(categories);
           }
         case LogicalKeyboardKey.arrowRight:
           if (_focusedRow >= 0 && _focusedRow < categories.length) {
             final maxCol = categories[_focusedRow].items.length - 1;
             _focusedCol = (_focusedCol + 1).clamp(0, maxCol);
+            _hoveredItem = _resolveHoveredItem(categories);
           }
         case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
           if (_focusedRow == -1) {

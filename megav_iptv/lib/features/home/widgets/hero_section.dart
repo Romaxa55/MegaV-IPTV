@@ -14,9 +14,10 @@ import 'hero_top_bar.dart';
 
 class HeroSection extends StatefulWidget {
   final List<NowPlayingItem> featuredItems;
+  final NowPlayingItem? overrideItem;
   final void Function(NowPlayingItem item) onPlay;
 
-  const HeroSection({super.key, required this.featuredItems, required this.onPlay});
+  const HeroSection({super.key, required this.featuredItems, this.overrideItem, required this.onPlay});
 
   @override
   State<HeroSection> createState() => _HeroSectionState();
@@ -57,11 +58,24 @@ class _HeroSectionState extends State<HeroSection> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (widget.featuredItems.isEmpty) return SizedBox(height: 0.3.sh);
+  void didUpdateWidget(HeroSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.overrideItem != null && oldWidget.overrideItem == null) {
+      _autoRotateTimer?.cancel();
+    } else if (widget.overrideItem == null && oldWidget.overrideItem != null) {
+      _startAutoRotate();
+    }
+  }
 
-    final item = widget.featuredItems[_heroIndex];
+  @override
+  Widget build(BuildContext context) {
+    if (widget.featuredItems.isEmpty && widget.overrideItem == null) return SizedBox(height: 0.3.sh);
+
+    final item = widget.overrideItem ?? (widget.featuredItems.isNotEmpty ? widget.featuredItems[_heroIndex] : null);
+    if (item == null) return SizedBox(height: 0.3.sh);
+
     final heroHeight = 0.42.sh;
+    final showDots = widget.overrideItem == null && widget.featuredItems.length > 1;
 
     return SizedBox(
       height: heroHeight,
@@ -72,8 +86,7 @@ class _HeroSectionState extends State<HeroSection> {
           _buildGradients(),
           HeroTopBar(onSettings: () => context.push('/settings')),
           _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
-          if (widget.featuredItems.length > 1)
-            HeroDots(count: widget.featuredItems.length.clamp(0, 8), activeIndex: _heroIndex, onTap: _goTo),
+          if (showDots) HeroDots(count: widget.featuredItems.length.clamp(0, 8), activeIndex: _heroIndex, onTap: _goTo),
         ],
       ),
     );

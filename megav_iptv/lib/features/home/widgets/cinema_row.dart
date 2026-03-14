@@ -11,6 +11,7 @@ class CinemaRow extends StatefulWidget {
   final bool isFocusedRow;
   final int focusedCol;
   final void Function(NowPlayingItem item) onItemTap;
+  final void Function(NowPlayingItem? item)? onItemFocus;
 
   const CinemaRow({
     super.key,
@@ -19,6 +20,7 @@ class CinemaRow extends StatefulWidget {
     this.isFocusedRow = false,
     this.focusedCol = -1,
     required this.onItemTap,
+    this.onItemFocus,
   });
 
   @override
@@ -119,6 +121,9 @@ class _CinemaRowState extends State<CinemaRow> {
                     item: widget.items[index],
                     isFocused: isFocused,
                     onTap: () => widget.onItemTap(widget.items[index]),
+                    onFocusChange: (focused) {
+                      widget.onItemFocus?.call(focused ? widget.items[index] : null);
+                    },
                   ),
                 );
               },

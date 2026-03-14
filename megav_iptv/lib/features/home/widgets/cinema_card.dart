@@ -8,8 +8,9 @@ class CinemaCard extends StatefulWidget {
   final NowPlayingItem item;
   final bool isFocused;
   final VoidCallback? onTap;
+  final ValueChanged<bool>? onFocusChange;
 
-  const CinemaCard({super.key, required this.item, this.isFocused = false, this.onTap});
+  const CinemaCard({super.key, required this.item, this.isFocused = false, this.onTap, this.onFocusChange});
 
   @override
   State<CinemaCard> createState() => _CinemaCardState();
@@ -27,6 +28,14 @@ class _CinemaCardState extends State<CinemaCard> {
     _startRefreshTimer();
   }
 
+  @override
+  void didUpdateWidget(CinemaCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isFocused && !oldWidget.isFocused) {
+      widget.onFocusChange?.call(true);
+    }
+  }
+
   void _startRefreshTimer() {
     Future.delayed(const Duration(seconds: 30), () {
       if (mounted) {
@@ -42,8 +51,14 @@ class _CinemaCardState extends State<CinemaCard> {
     final prog = widget.item.program;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        widget.onFocusChange?.call(true);
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        widget.onFocusChange?.call(false);
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedScale(
