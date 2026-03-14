@@ -15,7 +15,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: romaxa55/iptv-parser
   NAMESPACE: megav-iptv
-  BUILD_NAMESPACE: megav
+  BUILD_NAMESPACE: megav-iptv
 
 jobs:
   build:
