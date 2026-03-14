@@ -56,35 +56,40 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 		return 0, nil
 	}
 
-	tx, err := r.db.Begin()
-	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
+	const chunkSize = 100
+	total := 0
 
-	stmt, err := tx.Prepare(`
-		INSERT INTO iptv_epg_programs (channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		ON CONFLICT DO NOTHING`)
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
+	for i := 0; i < len(programs); i += chunkSize {
+		end := i + chunkSize
+		if end > len(programs) {
+			end = len(programs)
+		}
+		chunk := programs[i:end]
 
-	count := 0
-	for _, p := range programs {
-		if _, err := stmt.Exec(p.ChannelID, p.ReferenceChannelID, p.Title, p.Description, p.Category,
-			p.Icon, p.StartTime, p.EndTime, p.Lang); err != nil {
-			r.logger.Warnf("Failed to insert EPG program for %s: %v", p.ChannelID, err)
+		query := "INSERT INTO iptv_epg_programs (channel_id, reference_channel_id, title, description, category, icon, start_time, end_time, lang) VALUES "
+		args := make([]interface{}, 0, len(chunk)*9)
+		for j, p := range chunk {
+			if j > 0 {
+				query += ","
+			}
+			base := j * 9
+			query += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)",
+				base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9)
+			args = append(args, p.ChannelID, p.ReferenceChannelID, p.Title, p.Description,
+				p.Category, p.Icon, p.StartTime, p.EndTime, p.Lang)
+		}
+		query += " ON CONFLICT DO NOTHING"
+
+		result, err := r.db.Exec(query, args...)
+		if err != nil {
+			r.logger.Warnf("Failed to insert EPG batch chunk at %d: %v", i, err)
 			continue
 		}
-		count++
+		n, _ := result.RowsAffected()
+		total += int(n)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-	return count, nil
+	return total, nil
 }
 
 // GetProgramsForStream returns EPG programs for a stream, applying timeshift offset if needed.

@@ -190,37 +190,12 @@ func (s *EPGService) SmartMatch(
 			continue
 		}
 
-		matched := false
 		for _, epgName := range epgNames {
 			norm := normalizeName(epgName)
 			if chID, ok := normalizedDB[norm]; ok {
 				result[epgID] = chID
-				matched = true
 				break
 			}
-		}
-		if matched {
-			continue
-		}
-
-		bestScore := 0.0
-		bestChannelID := ""
-		for _, epgName := range epgNames {
-			normalizedEPG := normalizeName(epgName)
-			for normCh, chID := range normalizedDB {
-				score := similarity(normalizedEPG, normCh)
-				if score > bestScore && score >= 0.85 {
-					bestScore = score
-					bestChannelID = chID
-				}
-			}
-			if bestChannelID != "" {
-				break
-			}
-		}
-
-		if bestChannelID != "" {
-			result[epgID] = bestChannelID
 		}
 	}
 
