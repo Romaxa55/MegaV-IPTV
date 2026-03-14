@@ -1,4 +1,7 @@
-backend/api-server
-backend/epg-parser
-backend/m3u-parser
-backend/thumbnail-worker
+api-server
+epg-parser
+m3u-parser
+thumbnail-worker
+channel-checker
+channel-enricher
+github-crawler
