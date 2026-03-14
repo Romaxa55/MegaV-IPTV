@@ -107,28 +107,31 @@ func main() {
 		router.Use(cacheMiddleware.CacheResponse())
 	}
 
-	// Flutter-compatible API routes (matches ApiClient in megav_iptv)
 	apiGroup := router.Group("/api")
 	{
-		apiGroup.GET("/groups", handler.GetGroups)
 		apiGroup.GET("/channels", handler.GetChannels)
 		apiGroup.GET("/channels/featured", handler.GetFeaturedChannels)
-		apiGroup.GET("/channels/:id/thumbnail", handler.GetChannelThumbnail)
-		apiGroup.GET("/epg/current", handler.GetCurrentProgram)
-		apiGroup.GET("/epg/upcoming", handler.GetUpcomingPrograms)
+		apiGroup.GET("/channels/:id", handler.GetChannel)
+		apiGroup.GET("/channels/:id/streams", handler.GetChannelStreams)
+		apiGroup.GET("/channels/:id/epg", handler.GetChannelEPG)
+		apiGroup.GET("/countries", handler.GetCountries)
+		apiGroup.GET("/categories", handler.GetCategories)
 		apiGroup.GET("/health", handler.HealthCheck)
 	}
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": "IPTV API Server",
-			"version": "1.0.0",
+			"version": "2.0.0",
 			"endpoints": gin.H{
-				"groups":   "/api/groups",
-				"channels": "/api/channels",
-				"featured": "/api/channels/featured",
-				"epg":      "/api/epg/current",
-				"health":   "/api/health",
+				"channels":   "/api/channels?country=US&category=news&search=CNN&limit=50&offset=0",
+				"channel":    "/api/channels/:id",
+				"streams":    "/api/channels/:id/streams",
+				"epg":        "/api/channels/:id/epg?timeshift=0&limit=20",
+				"featured":   "/api/channels/featured?limit=10",
+				"countries":  "/api/countries",
+				"categories": "/api/categories",
+				"health":     "/api/health",
 			},
 		})
 	})

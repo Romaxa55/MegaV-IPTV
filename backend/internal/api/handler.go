@@ -18,63 +18,123 @@ func NewHandler(repo *repositories.IPTVRepository, logger *logrus.Logger) *Handl
 	return &Handler{repo: repo, logger: logger}
 }
 
-func (h *Handler) GetGroups(c *gin.Context) {
-	groups, err := h.repo.GetGroups()
-	if err != nil {
-		h.logger.WithError(err).Error("Failed to get groups")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load groups"})
-		return
-	}
-
-	result := make([]gin.H, 0, len(groups))
-	for _, g := range groups {
-		result = append(result, gin.H{
-			"name":  g.Name,
-			"count": g.ChannelCount,
-		})
-	}
-	c.JSON(http.StatusOK, result)
-}
-
 func (h *Handler) GetChannels(c *gin.Context) {
-	filters := repositories.ChannelFilters{
-		Limit:  20,
+	filters := repositories.ReferenceChannelFilters{
+		Limit:  50,
 		Offset: 0,
 	}
 
-	if group := c.Query("group"); group != "" {
-		filters.Group = &group
+	if v := c.Query("country"); v != "" {
+		filters.Country = &v
 	}
-	if limit := c.Query("limit"); limit != "" {
-		if n, err := strconv.Atoi(limit); err == nil && n > 0 {
+	if v := c.Query("category"); v != "" {
+		filters.Category = &v
+	}
+	if v := c.Query("search"); v != "" {
+		filters.Search = &v
+	}
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
 			filters.Limit = n
 		}
 	}
-	if offset := c.Query("offset"); offset != "" {
-		if n, err := strconv.Atoi(offset); err == nil && n >= 0 {
+	if v := c.Query("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 			filters.Offset = n
 		}
 	}
 
-	channels, err := h.repo.GetChannels(filters)
+	channels, total, err := h.repo.GetReferenceChannels(filters)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get channels")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load channels"})
 		return
 	}
 
-	c.JSON(http.StatusOK, channels)
+	c.JSON(http.StatusOK, gin.H{
+		"channels": channels,
+		"total":    total,
+		"limit":    filters.Limit,
+		"offset":   filters.Offset,
+	})
 }
 
-func (h *Handler) GetFeaturedChannels(c *gin.Context) {
-	limit := 10
-	if l := c.Query("limit"); l != "" {
-		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+func (h *Handler) GetChannel(c *gin.Context) {
+	id := c.Param("id")
+
+	ch, err := h.repo.GetReferenceChannelByID(id)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get channel")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load channel"})
+		return
+	}
+	if ch == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Channel not found"})
+		return
+	}
+
+	streams, err := h.repo.GetStreamsByChannelFull(id)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get streams")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load streams"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"channel": ch,
+		"streams": streams,
+	})
+}
+
+func (h *Handler) GetChannelStreams(c *gin.Context) {
+	id := c.Param("id")
+
+	streams, err := h.repo.GetStreamsByChannelFull(id)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get streams")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load streams"})
+		return
+	}
+
+	c.JSON(http.StatusOK, streams)
+}
+
+func (h *Handler) GetChannelEPG(c *gin.Context) {
+	id := c.Param("id")
+
+	limit := 20
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			limit = n
 		}
 	}
 
-	channels, err := h.repo.GetFeaturedChannels(limit)
+	timeshiftHours := 0
+	if v := c.Query("timeshift"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			timeshiftHours = n
+		}
+	}
+
+	programs, err := h.repo.GetProgramsForStream(id, timeshiftHours, limit)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get EPG")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load EPG"})
+		return
+	}
+
+	c.JSON(http.StatusOK, programs)
+}
+
+func (h *Handler) GetFeaturedChannels(c *gin.Context) {
+	limit := 10
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	channels, err := h.repo.GetFeaturedReferenceChannels(limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get featured channels")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load featured channels"})
@@ -84,78 +144,42 @@ func (h *Handler) GetFeaturedChannels(c *gin.Context) {
 	c.JSON(http.StatusOK, channels)
 }
 
-func (h *Handler) GetCurrentProgram(c *gin.Context) {
-	channelID := c.Query("channelId")
-	if channelID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "channelId is required"})
-		return
-	}
-
-	program, err := h.repo.GetCurrentProgram(channelID)
+func (h *Handler) GetCountries(c *gin.Context) {
+	countries, err := h.repo.GetCountries()
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get current program")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load current program"})
+		h.logger.WithError(err).Error("Failed to get countries")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load countries"})
 		return
 	}
 
-	if program == nil {
-		c.JSON(http.StatusNotFound, nil)
-		return
-	}
-
-	c.JSON(http.StatusOK, program)
+	c.JSON(http.StatusOK, countries)
 }
 
-func (h *Handler) GetUpcomingPrograms(c *gin.Context) {
-	channelID := c.Query("channelId")
-	if channelID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "channelId is required"})
-		return
-	}
-
-	limit := 10
-	if l := c.Query("limit"); l != "" {
-		if n, err := strconv.Atoi(l); err == nil && n > 0 {
-			limit = n
-		}
-	}
-
-	programs, err := h.repo.GetUpcomingPrograms(channelID, limit)
+func (h *Handler) GetCategories(c *gin.Context) {
+	categories, err := h.repo.GetCategoriesWithCounts()
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to get upcoming programs")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load upcoming programs"})
+		h.logger.WithError(err).Error("Failed to get categories")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load categories"})
 		return
 	}
 
-	c.JSON(http.StatusOK, programs)
-}
-
-func (h *Handler) GetChannelThumbnail(c *gin.Context) {
-	channelID := c.Param("id")
-	ch, err := h.repo.GetChannelByID(channelID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load channel"})
-		return
-	}
-	if ch == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Channel not found"})
-		return
-	}
-	if ch.ThumbnailURL == nil || *ch.ThumbnailURL == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No thumbnail available"})
-		return
-	}
-	c.Redirect(http.StatusTemporaryRedirect, *ch.ThumbnailURL)
+	c.JSON(http.StatusOK, categories)
 }
 
 func (h *Handler) HealthCheck(c *gin.Context) {
-	total, _ := h.repo.GetTotalChannelCount()
-	working, _ := h.repo.GetWorkingChannelCount()
+	stats, err := h.repo.GetStats()
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get stats")
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"service": "iptv-api",
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":           "ok",
-		"service":          "iptv-api",
-		"total_channels":   total,
-		"working_channels": working,
+		"status":  "ok",
+		"service": "iptv-api",
+		"stats":   stats,
 	})
 }
