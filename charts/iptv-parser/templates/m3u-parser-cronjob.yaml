@@ -39,11 +39,13 @@ spec:
                 {{- include "iptv-parser.dbEnv" . | nindent 16 }}
                 {{- include "iptv-parser.redisEnv" . | nindent 16 }}
                 - name: BATCH_SIZE
-                  value: {{ .Values.m3uParser.batchSize | quote }}
+                  value: {{ .Values.m3uParser.batchSize | default "500" | quote }}
                 - name: FAST_CHECK
-                  value: "true"
+                  value: {{ .Values.m3uParser.fastCheck | default "true" | quote }}
                 - name: FAST_CHECK_WORKERS
-                  value: {{ .Values.m3uParser.fastCheckWorkers | default "20" | quote }}
+                  value: {{ .Values.m3uParser.fastCheckWorkers | default "50" | quote }}
+                - name: DB_WRITERS
+                  value: {{ .Values.m3uParser.dbWriters | default "4" | quote }}
               resources:
                 {{- toYaml .Values.m3uParser.resources | nindent 16 }}
       backoffLimit: 2

@@ -40,15 +40,18 @@ apiService:
 m3uParser:
   enabled: true
   schedule: "0 */1 * * *"
-  batchSize: 100
+  batchSize: 500
+  fastCheck: "true"
+  fastCheckWorkers: 50
+  dbWriters: 4
   debug: false
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
 
 # --- EPG Parser CronJob ---
 epgParser:
