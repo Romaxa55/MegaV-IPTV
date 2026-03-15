@@ -159,9 +159,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return LayoutBuilder(
             builder: (context, constraints) {
               final screenH = constraints.maxHeight;
-              const maxCards = 380.0;
-              final cardsHeight = (screenH * 0.55).clamp(200.0, maxCards);
-              final heroHeight = screenH - cardsHeight;
+              final heroHeight = screenH * 0.40;
+              final cardsHeight = screenH - heroHeight;
+              final rowHeight = cardsHeight / 2;
 
               return KeyboardListener(
                 focusNode: _focusNode,
@@ -192,7 +192,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             items: cat.items,
                             isFocusedRow: _focusedRow == rowIdx,
                             focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
-                            availableHeight: cardsHeight,
+                            availableHeight: rowHeight,
                             onLoadMore: isMoviesRow ? () => ref.read(moviesNotifierProvider.notifier).loadMore() : null,
                             wrapAround: isMoviesRow,
                             onItemTap: _playNowPlaying,
