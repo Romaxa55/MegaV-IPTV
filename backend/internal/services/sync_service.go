@@ -197,14 +197,15 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 		}(i)
 	}
 
-	// Build normalized name index for fuzzy matching
-	normalizedDB := make(map[string]int, len(channelsByName))
+	// Build normalized name index for fuzzy matching (multiple DB channels may share a normalized name)
+	normalizedDB := make(map[string][]int, len(channelsByName))
 	for name, id := range channelsByName {
-		normalizedDB[normalizeChannelName(name)] = id
+		key := normalizeChannelName(name)
+		normalizedDB[key] = append(normalizedDB[key], id)
 	}
 
 	// Streaming parse: decode element-by-element
-	var epgToDBChannel map[string]int
+	var epgToDBChannels map[string][]int
 	batch := make([]*models.EpgProgram, 0, epgBatchSize)
 	channelCount := 0
 	programmeCount := 0
@@ -239,39 +240,39 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 			channelCount++
 
 		case "programme":
-			// Build mapping lazily on first programme (all channels parsed by this point)
-			if epgToDBChannel == nil {
-				epgToDBChannel = make(map[string]int, len(epgChannelNames))
+			if epgToDBChannels == nil {
+				epgToDBChannels = make(map[string][]int, len(epgChannelNames))
 				exactMatch := 0
 				fuzzyMatch := 0
 				for epgID, displayNames := range epgChannelNames {
-					matched := false
 					for _, dn := range displayNames {
 						if dbID, ok := channelsByName[dn]; ok {
-							epgToDBChannel[epgID] = dbID
+							epgToDBChannels[epgID] = appendUnique(epgToDBChannels[epgID], dbID)
 							exactMatch++
-							matched = true
-							break
 						}
 					}
-					if !matched {
-						for _, dn := range displayNames {
-							if dbID, ok := normalizedDB[normalizeChannelName(dn)]; ok {
-								epgToDBChannel[epgID] = dbID
-								fuzzyMatch++
-								break
+					// Also try fuzzy: picks up HD/FHD/SD variants that differ only by suffix
+					for _, dn := range displayNames {
+						norm := normalizeChannelName(dn)
+						if dbIDs, ok := normalizedDB[norm]; ok {
+							for _, id := range dbIDs {
+								epgToDBChannels[epgID] = appendUnique(epgToDBChannels[epgID], id)
 							}
+							fuzzyMatch++
 						}
 					}
 				}
-				s.logger.Infof("Parsed %d EPG channels, matched %d to DB (exact=%d, fuzzy=%d), unmatched=%d",
-					channelCount, len(epgToDBChannel), exactMatch, fuzzyMatch,
-					channelCount-len(epgToDBChannel))
+				totalMapped := 0
+				for _, ids := range epgToDBChannels {
+					totalMapped += len(ids)
+				}
+				s.logger.Infof("Parsed %d EPG channels, matched %d EPG->%d DB channels (exact=%d, fuzzy=%d), unmatched=%d",
+					channelCount, len(epgToDBChannels), totalMapped, exactMatch, fuzzyMatch,
+					channelCount-len(epgToDBChannels))
 
-				// Log a sample of unmatched EPG channels for debugging
 				unmatchedSample := 0
 				for epgID, displayNames := range epgChannelNames {
-					if _, ok := epgToDBChannel[epgID]; !ok {
+					if _, ok := epgToDBChannels[epgID]; !ok {
 						if unmatchedSample < 30 {
 							s.logger.Debugf("Unmatched EPG channel id=%s names=%v", epgID, displayNames)
 							unmatchedSample++
@@ -279,11 +280,12 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 					}
 				}
 
-				// Update channel logos from EPG
 				dbLogos := make(map[int]string)
 				for epgID, logoURL := range epgChannelLogos {
-					if dbID, ok := epgToDBChannel[epgID]; ok {
-						dbLogos[dbID] = logoURL
+					if dbIDs, ok := epgToDBChannels[epgID]; ok {
+						for _, dbID := range dbIDs {
+							dbLogos[dbID] = logoURL
+						}
 					}
 				}
 				if len(dbLogos) > 0 {
@@ -302,7 +304,7 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 			}
 			programmeCount++
 
-			dbChannelID, ok := epgToDBChannel[prog.Channel]
+			dbChannelIDs, ok := epgToDBChannels[prog.Channel]
 			if !ok {
 				continue
 			}
@@ -316,27 +318,29 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 				continue
 			}
 
-			p := &models.EpgProgram{
-				ChannelID: dbChannelID,
-				Title:     prog.Title,
-				StartTime: startTime,
-				EndTime:   endTime,
-			}
-			if prog.Desc != "" {
-				p.Description = &prog.Desc
-			}
-			if prog.Category != "" {
-				p.Category = &prog.Category
-			}
-			if prog.Icon.Src != "" {
-				p.Icon = &prog.Icon.Src
-			}
+			for _, dbChannelID := range dbChannelIDs {
+				p := &models.EpgProgram{
+					ChannelID: dbChannelID,
+					Title:     prog.Title,
+					StartTime: startTime,
+					EndTime:   endTime,
+				}
+				if prog.Desc != "" {
+					p.Description = &prog.Desc
+				}
+				if prog.Category != "" {
+					p.Category = &prog.Category
+				}
+				if prog.Icon.Src != "" {
+					p.Icon = &prog.Icon.Src
+				}
 
-			batch = append(batch, p)
+				batch = append(batch, p)
 
-			if len(batch) >= epgBatchSize {
-				batchCh <- batch
-				batch = make([]*models.EpgProgram, 0, epgBatchSize)
+				if len(batch) >= epgBatchSize {
+					batchCh <- batch
+					batch = make([]*models.EpgProgram, 0, epgBatchSize)
+				}
 			}
 		}
 	}
@@ -352,6 +356,15 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 		channelCount, programmeCount, atomic.LoadInt64(&totalInserted), epgDBWriters)
 	_ = s.repo.UpdateSyncTime("last_epg_sync")
 	return nil
+}
+
+func appendUnique(slice []int, val int) []int {
+	for _, v := range slice {
+		if v == val {
+			return slice
+		}
+	}
+	return append(slice, val)
 }
 
 func normalizeChannelName(name string) string {
