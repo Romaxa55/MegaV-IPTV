@@ -67,7 +67,7 @@ class _CinemaCardState extends State<CinemaCard> {
           duration: const Duration(milliseconds: 200),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 220.w,
+            width: 260.w,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16.r),
               border: isHighlighted ? Border.all(color: AppColors.primary, width: 2) : null,
@@ -95,7 +95,7 @@ class _CinemaCardState extends State<CinemaCard> {
   Widget _buildPosterArea(bool isHighlighted) {
     final prog = widget.item.program;
     return SizedBox(
-      height: 200.h,
+      height: 240.h,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -364,12 +364,12 @@ class _CinemaCardState extends State<CinemaCard> {
           SizedBox(height: 6.h),
           Row(
             children: [
-              Icon(Icons.tv_rounded, size: TS.t10.sp, color: Colors.white.withValues(alpha: 0.2)),
+              _buildChannelLogo(),
               SizedBox(width: 5.w),
               Expanded(
                 child: Text(
                   widget.item.channelName,
-                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.25)),
+                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -379,6 +379,25 @@ class _CinemaCardState extends State<CinemaCard> {
         ],
       ),
     );
+  }
+
+  Widget _buildChannelLogo() {
+    final logoUrl = widget.item.logoUrl;
+    final size = 16.w;
+    if (logoUrl != null && logoUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4.r),
+        child: Image.network(
+          logoUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) =>
+              Icon(Icons.tv_rounded, size: TS.t11.sp, color: Colors.white.withValues(alpha: 0.2)),
+        ),
+      );
+    }
+    return Icon(Icons.tv_rounded, size: TS.t11.sp, color: Colors.white.withValues(alpha: 0.2));
   }
 
   Widget _dot() => Padding(

@@ -241,6 +241,44 @@ func (r *IPTVRepository) TruncateChannels() error {
 	return err
 }
 
+func (r *IPTVRepository) UpdateChannelLogos(logos map[int]string) error {
+	if len(logos) == 0 {
+		return nil
+	}
+	const batchSize = 200
+	ids := make([]int, 0, len(logos))
+	for id := range logos {
+		ids = append(ids, id)
+	}
+	for i := 0; i < len(ids); i += batchSize {
+		end := i + batchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		chunk := ids[i:end]
+		var b strings.Builder
+		b.WriteString("UPDATE channels SET logo_url = CASE id ")
+		args := make([]interface{}, 0, len(chunk)*2+len(chunk))
+		argIdx := 1
+		idPlaceholders := make([]string, 0, len(chunk))
+		for _, id := range chunk {
+			fmt.Fprintf(&b, "WHEN $%d THEN $%d ", argIdx, argIdx+1)
+			args = append(args, id, logos[id])
+			argIdx += 2
+			idPlaceholders = append(idPlaceholders, fmt.Sprintf("$%d", argIdx))
+			args = append(args, id)
+			argIdx++
+		}
+		b.WriteString("END, updated_at = NOW() WHERE id IN (")
+		b.WriteString(strings.Join(idPlaceholders, ","))
+		b.WriteString(")")
+		if _, err := r.db.Exec(b.String(), args...); err != nil {
+			r.logger.Warnf("update channel logos batch at %d: %v", i, err)
+		}
+	}
+	return nil
+}
+
 func (r *IPTVRepository) UpdateChannelThumbnail(channelID string, thumbnailURL string) error {
 	_, err := r.db.Exec("UPDATE channels SET thumbnail_url = $1, updated_at = NOW() WHERE id = $2",
 		thumbnailURL, channelID)

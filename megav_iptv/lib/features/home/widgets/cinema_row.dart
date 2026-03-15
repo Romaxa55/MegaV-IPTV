@@ -40,7 +40,7 @@ class _CinemaRowState extends State<CinemaRow> {
 
   void _scrollToIndex(int index) {
     if (!_scrollController.hasClients) return;
-    final cardWidth = 220.w + 12.w;
+    final cardWidth = 260.w + 12.w;
     final targetOffset = (index * cardWidth) - 80.w;
     _scrollController.animateTo(
       targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
@@ -104,7 +104,7 @@ class _CinemaRowState extends State<CinemaRow> {
             ),
           ),
           SizedBox(
-            height: 310.h,
+            height: 360.h,
             child: ListView.builder(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,

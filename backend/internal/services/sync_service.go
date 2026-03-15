@@ -242,6 +242,21 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 					}
 				}
 				s.logger.Infof("Parsed %d EPG channels, matched %d to DB", channelCount, len(epgToDBChannel))
+
+				// Update channel logos from EPG
+				dbLogos := make(map[int]string)
+				for epgID, logoURL := range epgChannelLogos {
+					if dbID, ok := epgToDBChannel[epgID]; ok {
+						dbLogos[dbID] = logoURL
+					}
+				}
+				if len(dbLogos) > 0 {
+					if err := s.repo.UpdateChannelLogos(dbLogos); err != nil {
+						s.logger.Warnf("failed to update channel logos: %v", err)
+					} else {
+						s.logger.Infof("Updated %d channel logos from EPG", len(dbLogos))
+					}
+				}
 			}
 
 			var prog xmlProgramme

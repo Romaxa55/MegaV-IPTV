@@ -74,7 +74,7 @@ class _HeroSectionState extends State<HeroSection> {
     final item = widget.overrideItem ?? (widget.featuredItems.isNotEmpty ? widget.featuredItems[_heroIndex] : null);
     if (item == null) return SizedBox(height: 0.3.sh);
 
-    final heroHeight = 0.42.sh;
+    final heroHeight = 0.65.sh;
     final showDots = widget.overrideItem == null && widget.featuredItems.length > 1;
 
     return SizedBox(
