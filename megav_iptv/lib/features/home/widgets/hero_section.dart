@@ -106,10 +106,10 @@ class _HeroContent extends StatelessWidget {
     final prog = item.program;
 
     return Positioned(
-      bottom: 32.h,
-      left: 32.w,
+      bottom: 24.h,
+      left: 40.w,
       child: SizedBox(
-        width: 0.45.sw,
+        width: 0.55.sw,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 500),
           transitionBuilder: (child, animation) {
@@ -136,27 +136,29 @@ class _HeroContent extends StatelessWidget {
               Text(
                 prog.title,
                 style: TextStyle(
-                  fontSize: TS.t3xl.sp,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 42.sp,
+                  fontWeight: FontWeight.w800,
                   color: Colors.white,
-                  shadows: const [Shadow(blurRadius: 20, color: Colors.black54)],
+                  height: 1.1,
+                  letterSpacing: -0.5,
+                  shadows: const [Shadow(blurRadius: 24, color: Colors.black87)],
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              SizedBox(height: 4.h),
-              _buildMetaRow(),
               if (prog.description != null && prog.description!.isNotEmpty) ...[
-                SizedBox(height: 8.h),
+                SizedBox(height: 6.h),
                 Text(
                   prog.description!,
-                  style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.65), height: 1.4),
-                  maxLines: 2,
+                  style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.6), height: 1.4),
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
-              if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
-              SizedBox(height: 12.h),
+              SizedBox(height: 6.h),
+              _buildMetaRow(),
+              if (prog.isNow) ...[SizedBox(height: 8.h), _buildProgressBar()],
+              SizedBox(height: 14.h),
               _buildActions(),
             ],
           ),
@@ -208,23 +210,23 @@ class _HeroContent extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(Icons.star_rounded, size: TS.sm.sp, color: AppColors.ratingGold),
-        SizedBox(width: 3.w),
+        Icon(Icons.star_rounded, size: TS.lg.sp, color: AppColors.ratingGold),
+        SizedBox(width: 4.w),
         Text(
           rating.toStringAsFixed(1),
-          style: TextStyle(fontSize: TS.xs.sp, color: AppColors.ratingGold, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: TS.sm.sp, color: AppColors.ratingGold, fontWeight: FontWeight.w600),
         ),
         _dot(),
         if (prog.category != null) ...[
           Text(
             prog.category!,
-            style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.6)),
+            style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.6)),
           ),
           _dot(),
         ],
         Text(
           _formatDuration(prog.duration),
-          style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
+          style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.5)),
         ),
       ],
     );
@@ -234,7 +236,7 @@ class _HeroContent extends StatelessWidget {
     padding: EdgeInsets.symmetric(horizontal: 6.w),
     child: Text(
       '·',
-      style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.2)),
+      style: TextStyle(fontSize: TS.lg.sp, color: Colors.white.withValues(alpha: 0.2)),
     ),
   );
 
@@ -244,16 +246,16 @@ class _HeroContent extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.schedule_rounded, size: TS.xs.sp, color: Colors.white.withValues(alpha: 0.3)),
+            Icon(Icons.schedule_rounded, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.3)),
             SizedBox(width: 4.w),
             Text(
               '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
-              style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
+              style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.5)),
             ),
-            SizedBox(width: 12.w),
+            const Spacer(),
             Text(
               'ещё ${_formatDuration(prog.remaining)}',
-              style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
+              style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.4)),
             ),
           ],
         ),
@@ -261,7 +263,7 @@ class _HeroContent extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(4.r),
           child: SizedBox(
-            height: 5.h,
+            height: 6.h,
             child: Stack(
               children: [
                 Container(
@@ -299,15 +301,15 @@ class _HeroContent extends StatelessWidget {
             onTap: onPlay,
             borderRadius: BorderRadius.circular(12.r),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 12.h),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.play_arrow, size: TS.lg.sp, color: AppColors.background),
-                  SizedBox(width: 6.w),
+                  Icon(Icons.play_arrow, size: TS.xl.sp, color: AppColors.background),
+                  SizedBox(width: 8.w),
                   Text(
                     'Смотреть',
-                    style: TextStyle(fontSize: TS.sm.sp, fontWeight: FontWeight.w600, color: AppColors.background),
+                    style: TextStyle(fontSize: TS.lg.sp, fontWeight: FontWeight.w600, color: AppColors.background),
                   ),
                 ],
               ),
@@ -316,7 +318,7 @@ class _HeroContent extends StatelessWidget {
         ),
         SizedBox(width: 8.w),
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+          padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12.r),
@@ -330,8 +332,8 @@ class _HeroContent extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4.r),
                   child: Image.network(
                     item.logoUrl!,
-                    width: 20.w,
-                    height: 20.w,
+                    width: 24.w,
+                    height: 24.w,
                     fit: BoxFit.contain,
                     errorBuilder: (_, _, _) =>
                         Icon(Icons.tv, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.7)),
@@ -342,7 +344,7 @@ class _HeroContent extends StatelessWidget {
               SizedBox(width: 6.w),
               Text(
                 item.channelName,
-                style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.7)),
+                style: TextStyle(fontSize: TS.lg.sp, color: Colors.white.withValues(alpha: 0.7)),
               ),
             ],
           ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../core/playlist/models/epg_program.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -141,9 +140,8 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  // --- EXPANDED: Netflix-style overlay at bottom ---
+  // --- EXPANDED: title + channel name only ---
   Widget _buildExpandedOverlay() {
-    final prog = widget.item.program;
     return Positioned(
       bottom: 0,
       left: 0,
@@ -155,9 +153,9 @@ class _CinemaCardState extends State<CinemaCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              prog.title,
+              widget.item.program.title,
               style: TextStyle(
-                fontSize: TS.lg.sp,
+                fontSize: TS.sm.sp,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
                 height: 1.2,
@@ -166,87 +164,19 @@ class _CinemaCardState extends State<CinemaCard> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            SizedBox(height: 8.h),
-            Wrap(
-              spacing: 6.w,
-              runSpacing: 4.h,
-              children: [
-                if (prog.isNow) _badge('LIVE', AppColors.liveBadge),
-                _badge(_pseudoRating(), const Color(0xFF1DB954), icon: Icons.star_rounded),
-                _badge(widget.item.channelName, Colors.white.withValues(alpha: 0.15)),
-              ],
+            SizedBox(height: 4.h),
+            Text(
+              widget.item.channelName,
+              style: TextStyle(
+                fontSize: TS.t10.sp,
+                color: Colors.white.withValues(alpha: 0.5),
+                shadows: [Shadow(color: Colors.black, blurRadius: 6)],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            SizedBox(height: 8.h),
-            _buildMeta(prog),
-            if (prog.description != null && prog.description!.isNotEmpty) ...[
-              SizedBox(height: 4.h),
-              Text(
-                prog.description!,
-                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.5), height: 1.3),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            if (prog.isNow) ...[
-              SizedBox(height: 8.h),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2.r),
-                child: LinearProgressIndicator(
-                  value: prog.progress,
-                  minHeight: 3.h,
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                ),
-              ),
-            ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildMeta(EpgProgram prog) {
-    return Row(
-      children: [
-        _buildChannelLogo(),
-        SizedBox(width: 5.w),
-        if (prog.category != null) ...[
-          Text(
-            prog.category!,
-            style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.45)),
-          ),
-          _dot(),
-        ],
-        Text(
-          '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
-          style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
-        ),
-        if (prog.isNow) ...[
-          _dot(),
-          Text(
-            'ещё ${_fmtDuration(prog.remaining)}',
-            style: TextStyle(fontSize: TS.t10.sp, color: AppColors.primary),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _badge(String text, Color bg, {IconData? icon}) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6.r)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[Icon(icon, size: TS.t10.sp, color: Colors.white), SizedBox(width: 3.w)],
-          Text(
-            text,
-            style: TextStyle(fontSize: TS.t9.sp, fontWeight: FontWeight.w600, color: Colors.white),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
       ),
     );
   }
@@ -320,48 +250,5 @@ class _CinemaCardState extends State<CinemaCard> {
         child: Icon(Icons.tv, size: 32.sp, color: AppColors.textHint.withValues(alpha: 0.2)),
       ),
     );
-  }
-
-  Widget _buildChannelLogo() {
-    final logoUrl = widget.item.logoUrl;
-    final size = 16.w;
-    if (logoUrl != null && logoUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4.r),
-        child: Image.network(
-          logoUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) =>
-              Icon(Icons.tv_rounded, size: TS.t11.sp, color: Colors.white.withValues(alpha: 0.2)),
-        ),
-      );
-    }
-    return Icon(Icons.tv_rounded, size: TS.t11.sp, color: Colors.white.withValues(alpha: 0.2));
-  }
-
-  Widget _dot() => Padding(
-    padding: EdgeInsets.symmetric(horizontal: 5.w),
-    child: Text(
-      '·',
-      style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.15)),
-    ),
-  );
-
-  String _pseudoRating() {
-    final hash = widget.item.program.title.hashCode.abs();
-    final r = 6.0 + (hash % 40) / 10.0;
-    return r.toStringAsFixed(1);
-  }
-
-  String _fmtTime(DateTime dt) {
-    final l = dt.toLocal();
-    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
-  }
-
-  String _fmtDuration(Duration d) {
-    if (d.inHours > 0) return '${d.inHours}ч ${d.inMinutes.remainder(60)}м';
-    return '${d.inMinutes} мин';
   }
 }
