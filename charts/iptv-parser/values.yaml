@@ -56,15 +56,15 @@ apiService:
 thumbnailWorker:
   enabled: true
   replicas: 1
-  workers: 4
+  workers: 2
   outputDir: "/app/thumbnails"
   resources:
     requests:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 128Mi
     limits:
       cpu: 1000m
-      memory: 512Mi
+      memory: 2Gi
 
 # --- Ingress ---
 ingress:
