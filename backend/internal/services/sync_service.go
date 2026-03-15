@@ -60,13 +60,21 @@ func (s *SyncService) SyncPlaylist(playlistURL string) error {
 		})
 	}
 
-	if err := s.repo.TruncateChannels(); err != nil {
-		return fmt.Errorf("truncate channels: %w", err)
-	}
-
 	n, err := s.repo.UpsertChannelsBatch(channels)
 	if err != nil {
 		return fmt.Errorf("upsert channels: %w", err)
+	}
+
+	streamURLs := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		if ch.StreamURL != "" {
+			streamURLs = append(streamURLs, ch.StreamURL)
+		}
+	}
+	if deleted, err := s.repo.DeleteChannelsNotIn(streamURLs); err != nil {
+		s.logger.Warnf("Failed to clean stale channels: %v", err)
+	} else if deleted > 0 {
+		s.logger.Infof("Removed %d stale channels not in current playlist", deleted)
 	}
 
 	s.logger.Infof("Synced %d channels to database", n)

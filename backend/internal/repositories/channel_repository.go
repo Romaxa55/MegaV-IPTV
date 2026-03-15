@@ -241,6 +241,63 @@ func (r *IPTVRepository) TruncateChannels() error {
 	return err
 }
 
+func (r *IPTVRepository) DeleteChannelsNotIn(streamURLs []string) (int64, error) {
+	if len(streamURLs) == 0 {
+		return 0, nil
+	}
+	urlSet := make(map[string]bool, len(streamURLs))
+	for _, u := range streamURLs {
+		urlSet[u] = true
+	}
+
+	rows, err := r.db.Query("SELECT id, stream_url FROM channels")
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	var toDelete []int
+	for rows.Next() {
+		var id int
+		var url string
+		if err := rows.Scan(&id, &url); err != nil {
+			continue
+		}
+		if url == "" || !urlSet[url] {
+			toDelete = append(toDelete, id)
+		}
+	}
+
+	if len(toDelete) == 0 {
+		return 0, nil
+	}
+
+	const batchSize = 500
+	var totalDeleted int64
+	for i := 0; i < len(toDelete); i += batchSize {
+		end := i + batchSize
+		if end > len(toDelete) {
+			end = len(toDelete)
+		}
+		chunk := toDelete[i:end]
+		placeholders := make([]string, len(chunk))
+		args := make([]interface{}, len(chunk))
+		for j, id := range chunk {
+			placeholders[j] = fmt.Sprintf("$%d", j+1)
+			args[j] = id
+		}
+		query := fmt.Sprintf("DELETE FROM channels WHERE id IN (%s)", strings.Join(placeholders, ","))
+		result, err := r.db.Exec(query, args...)
+		if err != nil {
+			r.logger.Warnf("delete stale channels batch failed: %v", err)
+			continue
+		}
+		n, _ := result.RowsAffected()
+		totalDeleted += n
+	}
+	return totalDeleted, nil
+}
+
 func (r *IPTVRepository) UpdateChannelLogos(logos map[int]string) error {
 	if len(logos) == 0 {
 		return nil
