@@ -35,10 +35,19 @@ class CinemaRow extends StatefulWidget {
 
 class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
+  int _hoveredCol = -1;
 
   static const double _gap = 8;
   static const int _visibleNarrow = 5;
   static const double _narrowCropRatio = 0.55;
+
+  int get _activeCol {
+    if (_hoveredCol >= 0) return _hoveredCol;
+    if (widget.isFocusedRow && widget.focusedCol >= 0) {
+      return widget.focusedCol.clamp(0, widget.items.length - 1);
+    }
+    return 0;
+  }
 
   @override
   void initState() {
@@ -163,24 +172,35 @@ class _CinemaRowState extends State<CinemaRow> {
               addRepaintBoundaries: true,
               itemCount: widget.items.length,
               itemBuilder: (context, index) {
-                final activeCol = widget.isFocusedRow ? widget.focusedCol.clamp(0, widget.items.length - 1) : 0;
-                final isExpanded = index == activeCol;
-                final isFocused = widget.isFocusedRow && isExpanded;
+                final active = _activeCol;
+                final isExpanded = index == active;
+                final isFocused = (widget.isFocusedRow || _hoveredCol >= 0) && isExpanded;
                 final w = isExpanded ? sizes.fullW : sizes.narrowW;
 
-                return Padding(
-                  padding: EdgeInsets.only(right: _gap),
-                  child: CinemaCard(
-                    item: widget.items[index],
-                    isFocused: isFocused,
-                    cardWidth: w,
-                    posterWidth: sizes.fullW,
-                    cardHeight: cardListHeight,
-                    expanded: isExpanded,
-                    onTap: () => widget.onItemTap(widget.items[index]),
-                    onFocusChange: (focused) {
-                      widget.onItemFocus?.call(focused ? widget.items[index] : null);
-                    },
+                return MouseRegion(
+                  onEnter: (_) {
+                    if (_hoveredCol != index) {
+                      setState(() => _hoveredCol = index);
+                      widget.onItemFocus?.call(widget.items[index]);
+                    }
+                  },
+                  onExit: (_) {
+                    if (_hoveredCol == index) {
+                      setState(() => _hoveredCol = -1);
+                      widget.onItemFocus?.call(null);
+                    }
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(right: _gap),
+                    child: CinemaCard(
+                      item: widget.items[index],
+                      isFocused: isFocused,
+                      cardWidth: w,
+                      posterWidth: sizes.fullW,
+                      cardHeight: cardListHeight,
+                      expanded: isExpanded,
+                      onTap: () => widget.onItemTap(widget.items[index]),
+                    ),
                   ),
                 );
               },

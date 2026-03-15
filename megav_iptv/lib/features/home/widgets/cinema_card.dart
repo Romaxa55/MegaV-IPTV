@@ -32,51 +32,30 @@ class CinemaCard extends StatefulWidget {
 }
 
 class _CinemaCardState extends State<CinemaCard> {
-  bool _isHovered = false;
   bool _thumbFailed = false;
   int _thumbRetryCount = 0;
 
   static const _cardBg = Color(0xFF12121E);
 
   @override
-  void didUpdateWidget(CinemaCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isFocused && !oldWidget.isFocused) {
-      widget.onFocusChange?.call(true);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isHighlighted = widget.isFocused || _isHovered;
-
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        widget.onFocusChange?.call(true);
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-        widget.onFocusChange?.call(false);
-      },
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          width: widget.cardWidth ?? 260.w,
-          height: widget.cardHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.r),
-            border: isHighlighted
-                ? Border.all(color: Colors.white.withValues(alpha: 0.35), width: 2)
-                : Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
-            boxShadow: isHighlighted
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 4)]
-                : null,
-          ),
-          child: ClipRRect(borderRadius: BorderRadius.circular(12.r), child: _buildCardContent()),
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        width: widget.cardWidth ?? 260.w,
+        height: widget.cardHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12.r),
+          border: widget.isFocused
+              ? Border.all(color: Colors.white.withValues(alpha: 0.35), width: 2)
+              : Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
+          boxShadow: widget.isFocused
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 4)]
+              : null,
         ),
+        child: ClipRRect(borderRadius: BorderRadius.circular(12.r), child: _buildCardContent()),
       ),
     );
   }
