@@ -22,6 +22,8 @@ class _CinemaCardState extends State<CinemaCard> {
   int _thumbRetryCount = 0;
   int _refreshTick = 0;
 
+  static const _cardBg = Color(0xFF12121E);
+
   @override
   void initState() {
     super.initState();
@@ -48,7 +50,6 @@ class _CinemaCardState extends State<CinemaCard> {
   @override
   Widget build(BuildContext context) {
     final isHighlighted = widget.isFocused || _isHovered;
-    final prog = widget.item.program;
 
     return MouseRegion(
       onEnter: (_) {
@@ -62,32 +63,26 @@ class _CinemaCardState extends State<CinemaCard> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedScale(
-          scale: isHighlighted ? 1.05 : 1.0,
+          scale: isHighlighted ? 1.04 : 1.0,
           duration: const Duration(milliseconds: 200),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 180.w,
+            width: 220.w,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16.r),
               border: isHighlighted ? Border.all(color: AppColors.primary, width: 2) : null,
               boxShadow: isHighlighted
-                  ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2)]
+                  ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 24, spreadRadius: 2)]
                   : null,
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16.r),
               child: Container(
-                color: const Color(0xFF12121E),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Positioned(top: 0, left: 0, right: 0, height: 140.h, child: _buildPoster()),
-                    _buildGradientOverlay(),
-                    _buildStatusBadge(),
-                    _buildBottomInfo(),
-                    if (prog.isNow) _buildProgressBar(),
-                    if (isHighlighted) _buildPlayOverlay(),
-                  ],
+                color: _cardBg,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [_buildPosterArea(isHighlighted), _buildInfoArea()],
                 ),
               ),
             ),
@@ -97,16 +92,22 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  void _retryThumbnail() {
-    if (_thumbRetryCount >= 3) return;
-    Future.delayed(Duration(seconds: 5 * (_thumbRetryCount + 1)), () {
-      if (mounted) {
-        setState(() {
-          _thumbFailed = false;
-          _thumbRetryCount++;
-        });
-      }
-    });
+  Widget _buildPosterArea(bool isHighlighted) {
+    final prog = widget.item.program;
+    return SizedBox(
+      height: 200.h,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildPoster(),
+          _buildPosterGradient(),
+          _buildLiveBadge(),
+          _buildRatingBadge(),
+          if (prog.isNow) _buildProgressOverlay(),
+          if (isHighlighted) _buildPlayOverlay(),
+        ],
+      ),
+    );
   }
 
   Widget _buildPoster() {
@@ -117,9 +118,7 @@ class _CinemaCardState extends State<CinemaCard> {
     final useThumb = thumbUrl != null && thumbUrl.isNotEmpty && !_thumbFailed;
     final url = useThumb ? thumbUrl : (iconUrl ?? logoUrl);
 
-    if (url == null || url.isEmpty) {
-      return _posterPlaceholder();
-    }
+    if (url == null || url.isEmpty) return _posterPlaceholder();
 
     final bustUrl = useThumb ? '$url?t=$_refreshTick' : url;
 
@@ -129,7 +128,7 @@ class _CinemaCardState extends State<CinemaCard> {
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      cacheWidth: 360,
+      cacheWidth: 440,
       alignment: Alignment.topCenter,
       frameBuilder: (ctx, child, frame, loaded) {
         if (loaded) return child;
@@ -149,7 +148,7 @@ class _CinemaCardState extends State<CinemaCard> {
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              cacheWidth: 360,
+              cacheWidth: 440,
               alignment: Alignment.topCenter,
               errorBuilder: (ctx, _, _) => _posterPlaceholder(),
             );
@@ -160,74 +159,78 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
+  void _retryThumbnail() {
+    if (_thumbRetryCount >= 3) return;
+    Future.delayed(Duration(seconds: 5 * (_thumbRetryCount + 1)), () {
+      if (mounted) {
+        setState(() {
+          _thumbFailed = false;
+          _thumbRetryCount++;
+        });
+      }
+    });
+  }
+
   Widget _posterPlaceholder() {
     return Container(
-      color: const Color(0xFF12121E),
+      color: _cardBg,
       child: Center(
-        child: Icon(Icons.tv, size: 36.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
+        child: Icon(Icons.tv, size: 40.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
       ),
     );
   }
 
-  Widget _buildGradientOverlay() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 140.h,
+  Widget _buildPosterGradient() {
+    return Positioned.fill(
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.5, 0.85, 1.0],
-            colors: [
-              Colors.black.withValues(alpha: 0.15),
-              Colors.transparent,
-              const Color(0xFF12121E).withValues(alpha: 0.6),
-              const Color(0xFF12121E),
-            ],
+            stops: const [0.0, 0.4, 0.85, 1.0],
+            colors: [Colors.black.withValues(alpha: 0.2), Colors.transparent, _cardBg.withValues(alpha: 0.7), _cardBg],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildStatusBadge() {
+  Widget _buildLiveBadge() {
     final prog = widget.item.program;
     return Positioned(
-      top: 8.h,
-      left: 8.w,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (prog.isNow)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      top: 10.h,
+      left: 10.w,
+      child: prog.isNow
+          ? Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: AppColors.liveBadge.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(8.r),
-                boxShadow: [BoxShadow(color: AppColors.liveBadge.withValues(alpha: 0.3), blurRadius: 8)],
+                boxShadow: [BoxShadow(color: AppColors.liveBadge.withValues(alpha: 0.4), blurRadius: 10)],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 4.w,
-                    height: 4.w,
+                    width: 5.w,
+                    height: 5.w,
                     decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                   ),
-                  SizedBox(width: 4.w),
+                  SizedBox(width: 5.w),
                   Text(
                     'LIVE',
-                    style: TextStyle(fontSize: TS.t10.sp, color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: TS.t10.sp,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
               ),
             )
-          else
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+          : Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8.r),
@@ -237,97 +240,55 @@ class _CinemaCardState extends State<CinemaCard> {
                 style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.8)),
               ),
             ),
-        ],
-      ),
     );
   }
 
-  Widget _buildProgressBar() {
-    final prog = widget.item.program;
+  Widget _buildRatingBadge() {
     return Positioned(
-      bottom: 56.h,
-      left: 8.w,
-      right: 8.w,
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2.r),
-            child: LinearProgressIndicator(
-              value: prog.progress,
-              minHeight: 3.h,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+      top: 10.h,
+      right: 10.w,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.star_rounded, size: TS.t11.sp, color: AppColors.ratingGold),
+            SizedBox(width: 3.w),
+            Text(
+              _pseudoRating(),
+              style: TextStyle(
+                fontSize: TS.t10.sp,
+                color: Colors.white.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          SizedBox(height: 2.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _fmtDuration(prog.elapsed),
-                style: TextStyle(fontSize: TS.t7.sp, color: Colors.white.withValues(alpha: 0.25)),
-              ),
-              Text(
-                '-${_fmtDuration(prog.remaining)}',
-                style: TextStyle(fontSize: TS.t7.sp, color: Colors.white.withValues(alpha: 0.4)),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBottomInfo() {
+  Widget _buildProgressOverlay() {
     final prog = widget.item.program;
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: Padding(
-        padding: EdgeInsets.all(10.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              prog.title,
-              style: TextStyle(
-                fontSize: TS.xs.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 2.h),
-            Row(
-              children: [
-                if (prog.category != null) ...[
-                  Text(
-                    prog.category!,
-                    style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  Text(
-                    ' · ',
-                    style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.15)),
-                  ),
-                ],
-                Text(
-                  _fmtDuration(prog.duration),
-                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.3)),
-                ),
-              ],
-            ),
-            SizedBox(height: 1.h),
-            Text(
-              widget.item.channelName,
-              style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.15)),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(3.r),
+          child: LinearProgressIndicator(
+            value: prog.progress,
+            minHeight: 4.h,
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
         ),
       ),
     );
@@ -336,21 +297,102 @@ class _CinemaCardState extends State<CinemaCard> {
   Widget _buildPlayOverlay() {
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withValues(alpha: 0.2),
+        color: Colors.black.withValues(alpha: 0.25),
         child: Center(
           child: Container(
-            width: 44.w,
-            height: 44.w,
+            width: 48.w,
+            height: 48.w,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.9),
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)],
             ),
-            child: Icon(Icons.play_arrow, size: TS.xl.sp, color: AppColors.background),
+            child: Icon(Icons.play_arrow_rounded, size: TS.t2xl.sp, color: AppColors.background),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildInfoArea() {
+    final prog = widget.item.program;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 10.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  prog.title,
+                  style: TextStyle(fontSize: TS.sm.sp, fontWeight: FontWeight.w600, color: Colors.white, height: 1.2),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (prog.isNow) ...[
+                SizedBox(width: 6.w),
+                Text(
+                  '~${_fmtDuration(prog.remaining)}',
+                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.35)),
+                ),
+              ],
+            ],
+          ),
+          SizedBox(height: 4.h),
+          Row(
+            children: [
+              if (prog.category != null) ...[
+                Flexible(
+                  child: Text(
+                    prog.category!,
+                    style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.4)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                _dot(),
+              ],
+              Text(
+                _fmtDuration(prog.duration),
+                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
+              ),
+            ],
+          ),
+          SizedBox(height: 6.h),
+          Row(
+            children: [
+              Icon(Icons.tv_rounded, size: TS.t10.sp, color: Colors.white.withValues(alpha: 0.2)),
+              SizedBox(width: 5.w),
+              Expanded(
+                child: Text(
+                  widget.item.channelName,
+                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.25)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot() => Padding(
+    padding: EdgeInsets.symmetric(horizontal: 5.w),
+    child: Text(
+      '·',
+      style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.15)),
+    ),
+  );
+
+  String _pseudoRating() {
+    final hash = widget.item.program.title.hashCode.abs();
+    final r = 6.0 + (hash % 40) / 10.0;
+    return r.toStringAsFixed(1);
   }
 
   String _fmtTime(DateTime dt) {
@@ -359,7 +401,7 @@ class _CinemaCardState extends State<CinemaCard> {
   }
 
   String _fmtDuration(Duration d) {
-    if (d.inHours > 0) return '${d.inHours}ч ${d.inMinutes.remainder(60)}м';
+    if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes.remainder(60)} мин';
     return '${d.inMinutes} мин';
   }
 }

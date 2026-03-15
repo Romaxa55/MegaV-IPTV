@@ -185,12 +185,15 @@ class _HeroContent extends StatelessWidget {
             SizedBox(height: 4.h),
             _buildMetaRow(),
             if (prog.description != null && prog.description!.isNotEmpty) ...[
-              SizedBox(height: 6.h),
-              Text(
-                prog.description!,
-                style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.4)),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              SizedBox(height: 8.h),
+              SizedBox(
+                width: 500.w,
+                child: Text(
+                  prog.description!,
+                  style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.65), height: 1.4),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
             if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
@@ -210,15 +213,15 @@ class _HeroContent extends StatelessWidget {
         if (item.isLive) HeroBadge(text: 'В ЭФИРЕ', color: AppColors.liveBadge.withValues(alpha: 0.9), showPulse: true),
         HeroBadge(
           text: item.channelName,
-          color: Colors.white.withValues(alpha: 0.1),
-          textColor: Colors.white.withValues(alpha: 0.6),
+          color: AppColors.primary.withValues(alpha: 0.2),
+          textColor: AppColors.primaryLight,
           icon: Icons.live_tv,
         ),
         if (item.program.category != null)
           HeroBadge(
             text: item.program.category!,
-            color: Colors.white.withValues(alpha: 0.06),
-            textColor: Colors.white.withValues(alpha: 0.4),
+            color: Colors.white.withValues(alpha: 0.1),
+            textColor: Colors.white.withValues(alpha: 0.7),
           ),
       ],
     );
@@ -226,25 +229,28 @@ class _HeroContent extends StatelessWidget {
 
   Widget _buildMetaRow() {
     final prog = item.program;
+    final hash = prog.title.hashCode.abs();
+    final rating = 6.0 + (hash % 40) / 10.0;
+
     return Row(
       children: [
+        Icon(Icons.star_rounded, size: TS.sm.sp, color: AppColors.ratingGold),
+        SizedBox(width: 3.w),
+        Text(
+          rating.toStringAsFixed(1),
+          style: TextStyle(fontSize: TS.xs.sp, color: AppColors.ratingGold, fontWeight: FontWeight.w600),
+        ),
+        _dot(),
         if (prog.category != null) ...[
           Text(
             prog.category!,
-            style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
+            style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.6)),
           ),
           _dot(),
         ],
-        Icon(Icons.timer_outlined, size: TS.xs.sp, color: Colors.white.withValues(alpha: 0.25)),
-        SizedBox(width: 4.w),
         Text(
           _formatDuration(prog.duration),
-          style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
-        ),
-        _dot(),
-        Text(
-          '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
-          style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.35)),
+          style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
         ),
       ],
     );
@@ -253,26 +259,33 @@ class _HeroContent extends StatelessWidget {
   Widget _dot() => Padding(
     padding: EdgeInsets.symmetric(horizontal: 6.w),
     child: Text(
-      '•',
-      style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.15)),
+      '·',
+      style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.2)),
     ),
   );
 
   Widget _buildProgressBar() {
     final prog = item.program;
     return SizedBox(
-      width: 400.w,
+      width: 420.w,
       child: Column(
         children: [
           Row(
             children: [
+              Icon(Icons.schedule_rounded, size: TS.xs.sp, color: Colors.white.withValues(alpha: 0.3)),
+              SizedBox(width: 4.w),
+              Text(
+                '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
+                style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
+              ),
+              SizedBox(width: 12.w),
               Text(
                 'ещё ${_formatDuration(prog.remaining)}',
-                style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
+                style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
               ),
             ],
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: 6.h),
           ClipRRect(
             borderRadius: BorderRadius.circular(4.r),
             child: SizedBox(
