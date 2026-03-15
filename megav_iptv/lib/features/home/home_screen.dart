@@ -159,9 +159,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return LayoutBuilder(
             builder: (context, constraints) {
               final screenH = constraints.maxHeight;
-              final heroFraction = 0.40;
-              final cardsFraction = 1.0 - heroFraction;
-              final cardsHeight = screenH * cardsFraction;
+              const maxCards = 380.0;
+              final cardsHeight = (screenH * 0.55).clamp(200.0, maxCards);
+              final heroHeight = screenH - cardsHeight;
 
               return KeyboardListener(
                 focusNode: _focusNode,
@@ -169,7 +169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   children: [
                     SizedBox(
-                      height: screenH * heroFraction,
+                      height: heroHeight,
                       child: HeroSection(
                         featuredItems: featured,
                         overrideItem: _hoveredItem,

@@ -39,10 +39,9 @@ class _HeroSectionState extends State<HeroSection> {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
           if (widget.videoWidget != null)
-            widget.videoWidget!
-          else
-            HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
+            AnimatedOpacity(opacity: 1.0, duration: const Duration(milliseconds: 800), child: widget.videoWidget!),
           _buildGradients(),
           HeroTopBar(onSettings: () => context.push('/settings')),
           _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
