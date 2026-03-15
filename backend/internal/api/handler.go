@@ -159,8 +159,6 @@ func (h *Handler) GetNowPlaying(c *gin.Context) {
 		return
 	}
 
-	h.enrichNowPlayingThumbnails(c, items)
-
 	c.JSON(http.StatusOK, items)
 }
 
@@ -185,8 +183,6 @@ func (h *Handler) GetUpcomingAll(c *gin.Context) {
 		return
 	}
 
-	h.enrichNowPlayingThumbnails(c, items)
-
 	c.JSON(http.StatusOK, items)
 }
 
@@ -204,8 +200,6 @@ func (h *Handler) GetFeaturedNowPlaying(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load featured"})
 		return
 	}
-
-	h.enrichNowPlayingThumbnails(c, items)
 
 	c.JSON(http.StatusOK, items)
 }
