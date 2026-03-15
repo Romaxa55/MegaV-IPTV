@@ -56,7 +56,7 @@ class ApiClient {
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded == null || decoded is! List) return [];
-      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
+      return decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
     }
     throw Exception('Failed to load now playing');
   }
@@ -66,7 +66,7 @@ class ApiClient {
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded == null || decoded is! List) return [];
-      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
+      return decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
     }
     throw Exception('Failed to load upcoming');
   }
@@ -78,10 +78,13 @@ class ApiClient {
       if (decoded is Map<String, dynamic>) {
         final List<dynamic> itemsJson = decoded['items'] ?? [];
         final total = decoded['total'] as int? ?? 0;
-        return (items: itemsJson.map((json) => NowPlayingItem.fromJson(json)).toList(), total: total);
+        return (items: itemsJson.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList(), total: total);
       }
       if (decoded is List) {
-        return (items: decoded.map((json) => NowPlayingItem.fromJson(json)).toList(), total: decoded.length);
+        return (
+          items: decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList(),
+          total: decoded.length,
+        );
       }
       return (items: <NowPlayingItem>[], total: 0);
     }
@@ -93,7 +96,7 @@ class ApiClient {
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded == null || decoded is! List) return [];
-      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
+      return decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
     }
     throw Exception('Failed to load featured now playing');
   }
@@ -132,6 +135,18 @@ class ApiClient {
   }
 
   String thumbnailUrl(int channelId) => '$baseUrl/api/channels/$channelId/thumbnail.jpg';
+
+  NowPlayingItem _enrichThumbnail(NowPlayingItem item) {
+    if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty) return item;
+    return NowPlayingItem(
+      channelId: item.channelId,
+      channelName: item.channelName,
+      groupTitle: item.groupTitle,
+      logoUrl: item.logoUrl,
+      thumbnailUrl: thumbnailUrl(item.channelId),
+      program: item.program,
+    );
+  }
 
   void dispose() {
     _client.close();

@@ -259,7 +259,7 @@ class _CinemaCardState extends State<CinemaCard> {
     final iconUrl = widget.item.program.icon;
     final logoUrl = widget.item.logoUrl;
 
-    final useThumb = thumbUrl != null && thumbUrl.isNotEmpty && !_thumbFailed;
+    final useThumb = thumbUrl != null && !_thumbFailed;
     final url = useThumb ? thumbUrl : (iconUrl ?? logoUrl);
 
     if (url == null || url.isEmpty) return _posterPlaceholder();
@@ -302,8 +302,10 @@ class _CinemaCardState extends State<CinemaCard> {
   }
 
   void _retryThumbnail() {
-    if (_thumbRetryCount >= 3) return;
-    Future.delayed(Duration(seconds: 5 * (_thumbRetryCount + 1)), () {
+    if (_thumbRetryCount >= 6) return;
+    final delays = [3, 5, 10, 15, 30, 60];
+    final delaySec = delays[_thumbRetryCount.clamp(0, delays.length - 1)];
+    Future.delayed(Duration(seconds: delaySec), () {
       if (mounted) {
         setState(() {
           _thumbFailed = false;

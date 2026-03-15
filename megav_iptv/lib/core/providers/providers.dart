@@ -61,19 +61,16 @@ final currentChannelIndexProvider = StateProvider<int>((ref) => -1);
 // --- EPG Cinema Experience ---
 
 final nowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
-  ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
   return api.getNowPlaying();
 });
 
 final upcomingAllProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
-  ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
   return api.getUpcomingAll(limit: 200);
 });
 
 final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
-  ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
   final featured = await api.getFeaturedNowPlaying(limit: 8);
   if (featured.isNotEmpty) return featured;
@@ -83,7 +80,17 @@ final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) as
     final result = await api.getChannels(limit: 8);
     channels = result.channels;
   }
-  return channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
+  return channels.map((ch) {
+    final item = NowPlayingItem.fromChannel(ch);
+    return NowPlayingItem(
+      channelId: item.channelId,
+      channelName: item.channelName,
+      groupTitle: item.groupTitle,
+      logoUrl: item.logoUrl,
+      thumbnailUrl: api.thumbnailUrl(item.channelId),
+      program: item.program,
+    );
+  }).toList();
 });
 
 class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
@@ -133,7 +140,6 @@ class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
 }
 
 final moviesNotifierProvider = StateNotifierProvider<MoviesNotifier, AsyncValue<List<NowPlayingItem>>>((ref) {
-  ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
   return MoviesNotifier(api);
 });
@@ -191,7 +197,17 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
     for (var i = 0; i < missingGroupNames.length; i++) {
       final channels = results[i].channels;
       if (channels.isEmpty) continue;
-      final items = channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
+      final items = channels.map((ch) {
+        final item = NowPlayingItem.fromChannel(ch);
+        return NowPlayingItem(
+          channelId: item.channelId,
+          channelName: item.channelName,
+          groupTitle: item.groupTitle,
+          logoUrl: item.logoUrl,
+          thumbnailUrl: api.thumbnailUrl(item.channelId),
+          program: item.program,
+        );
+      }).toList();
       final name = missingGroupNames[i];
       final id = 'group-${name.toLowerCase().replaceAll(' ', '-')}';
       categories.add(CinemaCategory(id: id, name: name, items: items));
@@ -241,10 +257,4 @@ final upcomingProgramsProvider = FutureProvider.family<List<EpgProgram>, int>((r
   if (channelId <= 0) return [];
   final api = ref.watch(apiClientProvider);
   return api.getUpcomingPrograms(channelId);
-});
-
-// --- UI Ticks ---
-
-final epgProgressTickProvider = StreamProvider<int>((ref) {
-  return Stream.periodic(const Duration(minutes: 1), (i) => i);
 });
