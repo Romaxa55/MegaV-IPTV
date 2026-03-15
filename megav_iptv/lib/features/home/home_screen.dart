@@ -159,7 +159,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return LayoutBuilder(
             builder: (context, constraints) {
               final screenH = constraints.maxHeight;
-              final heroFraction = 0.65;
+              final heroFraction = 0.40;
               final cardsFraction = 1.0 - heroFraction;
               final cardsHeight = screenH * cardsFraction;
 

@@ -333,13 +333,18 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 
 func (h *Handler) enqueueThumbnail(channelID string) {
 	if h.redisClient == nil || h.thumbQueue == nil {
+		h.logger.Warnf("enqueueThumbnail(%s): redis=%v queue=%v", channelID, h.redisClient != nil, h.thumbQueue != nil)
 		return
 	}
 
 	ctx := context.Background()
 	genKey := "iptv:thumb:generating:" + channelID
 	set, err := h.redisClient.SetNX(ctx, genKey, "1", thumbnailGeneratingTTL).Result()
-	if err != nil || !set {
+	if err != nil {
+		h.logger.WithError(err).Warnf("enqueueThumbnail(%s): SetNX failed", channelID)
+		return
+	}
+	if !set {
 		return
 	}
 
@@ -351,6 +356,7 @@ func (h *Handler) enqueueThumbnail(channelID string) {
 
 	streamURL, err := h.repo.GetStreamURL(chID)
 	if err != nil || streamURL == "" {
+		h.logger.Warnf("enqueueThumbnail(%s): no stream URL (err=%v)", channelID, err)
 		h.redisClient.Del(ctx, genKey)
 		return
 	}
@@ -363,6 +369,8 @@ func (h *Handler) enqueueThumbnail(channelID string) {
 	if err := h.thumbQueue.EnqueueThumbnail(ctx, item); err != nil {
 		h.logger.WithError(err).Warnf("Failed to enqueue thumbnail for %s", channelID)
 		h.redisClient.Del(ctx, genKey)
+	} else {
+		h.logger.Infof("Enqueued thumbnail for channel %s", channelID)
 	}
 }
 
