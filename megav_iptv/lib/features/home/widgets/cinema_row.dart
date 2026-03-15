@@ -37,9 +37,7 @@ class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
   int _hoveredCol = -1;
 
-  static const double _gap = 8;
-  static const int _visibleNarrow = 5;
-  static const double _narrowCropRatio = 0.55;
+  static const double _gap = 12;
 
   int get _activeCol {
     if (_hoveredCol >= 0) return _hoveredCol;
@@ -75,19 +73,16 @@ class _CinemaRowState extends State<CinemaRow> {
   }
 
   ({double fullW, double narrowW}) _cardSizes(double screenW) {
-    final padH = 32.w;
-    final usable = screenW - padH * 2;
-    final totalGaps = _gap * _visibleNarrow;
-    final fullW = (usable - totalGaps) / (_narrowCropRatio * (_visibleNarrow - 1) + 1);
-    final narrowW = fullW * _narrowCropRatio;
+    // В дизайне Figma широкая карточка = 28%, узкая = 14% ширины экрана
+    final fullW = screenW * 0.28;
+    final narrowW = screenW * 0.14;
     return (fullW: fullW, narrowW: narrowW);
   }
 
   void _scrollToFocused() {
     if (!_scrollController.hasClients) return;
     final col = widget.focusedCol.clamp(0, widget.items.length - 1);
-    final screenW = MediaQuery.of(context).size.width;
-    final sizes = _cardSizes(screenW);
+    final sizes = _cardSizes(MediaQuery.of(context).size.width);
 
     double offset = 0;
     for (int i = 0; i < col; i++) {
