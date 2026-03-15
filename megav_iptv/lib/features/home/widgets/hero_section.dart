@@ -149,57 +149,56 @@ class _HeroContent extends StatelessWidget {
     return Positioned(
       bottom: 32.h,
       left: 32.w,
-      right: 32.w,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 500),
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-              child: child,
-            ),
-          );
-        },
-        child: Column(
-          key: ValueKey(prog.id),
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildBadges(),
-            SizedBox(height: 8.h),
-            Text(
-              prog.title,
-              style: TextStyle(
-                fontSize: TS.t3xl.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: const [Shadow(blurRadius: 20, color: Colors.black54)],
+      child: SizedBox(
+        width: 0.45.sw,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+                child: child,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 4.h),
-            _buildMetaRow(),
-            if (prog.description != null && prog.description!.isNotEmpty) ...[
+            );
+          },
+          child: Column(
+            key: ValueKey(prog.id),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildBadges(),
               SizedBox(height: 8.h),
-              SizedBox(
-                width: 500.w,
-                child: Text(
+              Text(
+                prog.title,
+                style: TextStyle(
+                  fontSize: TS.t3xl.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [Shadow(blurRadius: 20, color: Colors.black54)],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: 4.h),
+              _buildMetaRow(),
+              if (prog.description != null && prog.description!.isNotEmpty) ...[
+                SizedBox(height: 8.h),
+                Text(
                   prog.description!,
                   style: TextStyle(fontSize: TS.sm.sp, color: Colors.white.withValues(alpha: 0.65), height: 1.4),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              ],
+              if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
+              SizedBox(height: 12.h),
+              _buildActions(),
             ],
-            if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
-            SizedBox(height: 12.h),
-            _buildActions(),
-          ],
+          ),
         ),
       ),
     );
@@ -266,53 +265,50 @@ class _HeroContent extends StatelessWidget {
 
   Widget _buildProgressBar() {
     final prog = item.program;
-    return SizedBox(
-      width: 420.w,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.schedule_rounded, size: TS.xs.sp, color: Colors.white.withValues(alpha: 0.3)),
-              SizedBox(width: 4.w),
-              Text(
-                '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
-                style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
-              ),
-              SizedBox(width: 12.w),
-              Text(
-                'ещё ${_formatDuration(prog.remaining)}',
-                style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
-              ),
-            ],
-          ),
-          SizedBox(height: 6.h),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4.r),
-            child: SizedBox(
-              height: 5.h,
-              child: Stack(
-                children: [
-                  Container(
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(Icons.schedule_rounded, size: TS.xs.sp, color: Colors.white.withValues(alpha: 0.3)),
+            SizedBox(width: 4.w),
+            Text(
+              '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
+              style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.5)),
+            ),
+            SizedBox(width: 12.w),
+            Text(
+              'ещё ${_formatDuration(prog.remaining)}',
+              style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
+            ),
+          ],
+        ),
+        SizedBox(height: 6.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4.r),
+          child: SizedBox(
+            height: 5.h,
+            child: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: prog.progress,
+                  child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4.r),
+                      gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
                     ),
                   ),
-                  FractionallySizedBox(
-                    widthFactor: prog.progress,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4.r),
-                        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
