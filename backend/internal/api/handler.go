@@ -213,12 +213,18 @@ func (h *Handler) GetFeaturedNowPlaying(c *gin.Context) {
 func (h *Handler) GetMoviesNowPlaying(c *gin.Context) {
 	limit := 20
 	if v := c.Query("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 50 {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
 			limit = n
 		}
 	}
+	offset := 0
+	if v := c.Query("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
 
-	items, err := h.repo.GetMoviesNowPlaying(limit)
+	items, total, err := h.repo.GetMoviesNowPlaying(limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get movies now playing")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load movies"})
@@ -232,7 +238,12 @@ func (h *Handler) GetMoviesNowPlaying(c *gin.Context) {
 
 	h.enrichNowPlayingThumbnails(c, items)
 
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, gin.H{
+		"items":  items,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
 }
 
 func (h *Handler) GetFeaturedChannels(c *gin.Context) {

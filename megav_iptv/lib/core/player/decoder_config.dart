@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 enum DecoderMode {
   auto('Auto', 'auto', false),
   system('System', '', true),
@@ -53,14 +55,22 @@ class DecoderConfig {
     );
   }
 
-  Map<String, String> get mpvProperties => {
-    'cache': 'no',
-    'profile': 'low-latency',
-    'hwdec': decoderMode.hwdecValue.isEmpty ? 'auto' : decoderMode.hwdecValue,
-    'vd-lavc-threads': '2',
-    'rtsp-transport': 'udp',
-    'demuxer-lavf-probesize': '2097152',
-    'demuxer-lavf-analyzeduration': '2',
-    'http-header-fields': 'User-Agent: $userAgent',
-  };
+  Map<String, String> get mpvProperties {
+    String hwdec = decoderMode.hwdecValue.isEmpty ? 'auto' : decoderMode.hwdecValue;
+    if (hwdec.startsWith('mediacodec') && !_isAndroid) {
+      hwdec = 'auto';
+    }
+    return {
+      'cache': 'no',
+      'profile': 'low-latency',
+      'hwdec': hwdec,
+      'vd-lavc-threads': '2',
+      'rtsp-transport': 'udp',
+      'demuxer-lavf-probesize': '2097152',
+      'demuxer-lavf-analyzeduration': '2',
+      'http-header-fields': 'User-Agent: $userAgent',
+    };
+  }
+
+  static bool get _isAndroid => Platform.isAndroid;
 }

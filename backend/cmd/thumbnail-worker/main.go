@@ -25,7 +25,7 @@ func main() {
 
 	var (
 		debug     = flag.Bool("debug", cfg.Debug, "Enable debug logging")
-		workers   = flag.Int("workers", 25, "Number of concurrent thumbnail workers")
+		workers   = flag.Int("workers", 4, "Number of concurrent thumbnail workers")
 		outputDir = flag.String("output", "/app/thumbnails", "Thumbnail output directory")
 	)
 	flag.Parse()

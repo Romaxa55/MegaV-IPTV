@@ -55,16 +55,16 @@ apiService:
 # Workers listen to Redis queue and generate thumbnails on-demand via ffmpeg.
 thumbnailWorker:
   enabled: true
-  replicas: 2
-  workers: 25
+  replicas: 1
+  workers: 4
   outputDir: "/app/thumbnails"
   resources:
     requests:
-      cpu: 500m
+      cpu: 200m
       memory: 256Mi
     limits:
-      cpu: 2000m
-      memory: 1Gi
+      cpu: 1000m
+      memory: 512Mi
 
 # --- Ingress ---
 ingress:

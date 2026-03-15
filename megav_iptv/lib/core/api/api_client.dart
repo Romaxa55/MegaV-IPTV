@@ -71,12 +71,19 @@ class ApiClient {
     throw Exception('Failed to load upcoming');
   }
 
-  Future<List<NowPlayingItem>> getMoviesNowPlaying({int limit = 20}) async {
-    final response = await _client.get(Uri.parse('$baseUrl/api/epg/movies?limit=$limit'));
+  Future<({List<NowPlayingItem> items, int total})> getMoviesNowPlaying({int limit = 20, int offset = 0}) async {
+    final response = await _client.get(Uri.parse('$baseUrl/api/epg/movies?limit=$limit&offset=$offset'));
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
-      if (decoded == null || decoded is! List) return [];
-      return decoded.map((json) => NowPlayingItem.fromJson(json)).toList();
+      if (decoded is Map<String, dynamic>) {
+        final List<dynamic> itemsJson = decoded['items'] ?? [];
+        final total = decoded['total'] as int? ?? 0;
+        return (items: itemsJson.map((json) => NowPlayingItem.fromJson(json)).toList(), total: total);
+      }
+      if (decoded is List) {
+        return (items: decoded.map((json) => NowPlayingItem.fromJson(json)).toList(), total: decoded.length);
+      }
+      return (items: <NowPlayingItem>[], total: 0);
     }
     throw Exception('Failed to load movies now playing');
   }

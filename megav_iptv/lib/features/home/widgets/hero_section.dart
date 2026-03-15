@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -9,84 +7,45 @@ import '../../../core/theme/app_colors.dart';
 
 import 'hero_backdrop.dart';
 import 'hero_badges.dart';
-import 'hero_dots.dart';
 import 'hero_top_bar.dart';
 
 class HeroSection extends StatefulWidget {
   final List<NowPlayingItem> featuredItems;
   final NowPlayingItem? overrideItem;
   final void Function(NowPlayingItem item) onPlay;
+  final Widget? videoWidget;
 
-  const HeroSection({super.key, required this.featuredItems, this.overrideItem, required this.onPlay});
+  const HeroSection({
+    super.key,
+    required this.featuredItems,
+    this.overrideItem,
+    required this.onPlay,
+    this.videoWidget,
+  });
 
   @override
   State<HeroSection> createState() => _HeroSectionState();
 }
 
 class _HeroSectionState extends State<HeroSection> {
-  int _heroIndex = 0;
-  Timer? _autoRotateTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startAutoRotate();
-  }
-
-  void _startAutoRotate() {
-    _autoRotateTimer?.cancel();
-    if (widget.featuredItems.length <= 1) return;
-    _autoRotateTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (mounted) {
-        setState(() {
-          _heroIndex = (_heroIndex + 1) % widget.featuredItems.length;
-        });
-      }
-    });
-  }
-
-  void _goTo(int index) {
-    _autoRotateTimer?.cancel();
-    setState(() => _heroIndex = index.clamp(0, widget.featuredItems.length - 1));
-    _startAutoRotate();
-  }
-
-  @override
-  void dispose() {
-    _autoRotateTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(HeroSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.overrideItem != null && oldWidget.overrideItem == null) {
-      _autoRotateTimer?.cancel();
-    } else if (widget.overrideItem == null && oldWidget.overrideItem != null) {
-      _startAutoRotate();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (widget.featuredItems.isEmpty && widget.overrideItem == null) return SizedBox(height: 0.3.sh);
+    if (widget.featuredItems.isEmpty && widget.overrideItem == null) return const SizedBox.expand();
 
-    final item = widget.overrideItem ?? (widget.featuredItems.isNotEmpty ? widget.featuredItems[_heroIndex] : null);
-    if (item == null) return SizedBox(height: 0.3.sh);
+    final item = widget.overrideItem ?? (widget.featuredItems.isNotEmpty ? widget.featuredItems.first : null);
+    if (item == null) return const SizedBox.expand();
 
-    final heroHeight = 0.65.sh;
-    final showDots = widget.overrideItem == null && widget.featuredItems.length > 1;
-
-    return SizedBox(
-      height: heroHeight,
+    return SizedBox.expand(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
+          if (widget.videoWidget != null)
+            widget.videoWidget!
+          else
+            HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
           _buildGradients(),
           HeroTopBar(onSettings: () => context.push('/settings')),
           _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
-          if (showDots) HeroDots(count: widget.featuredItems.length.clamp(0, 8), activeIndex: _heroIndex, onTap: _goTo),
         ],
       ),
     );
@@ -170,6 +129,8 @@ class _HeroContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              _buildChannelLogo(),
+              SizedBox(height: 10.h),
               _buildBadges(),
               SizedBox(height: 8.h),
               Text(
@@ -204,6 +165,21 @@ class _HeroContent extends StatelessWidget {
     );
   }
 
+  Widget _buildChannelLogo() {
+    final logoUrl = item.logoUrl;
+    if (logoUrl == null || logoUrl.isEmpty) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8.r),
+      child: Image.network(
+        logoUrl,
+        width: 48.w,
+        height: 48.w,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      ),
+    );
+  }
+
   Widget _buildBadges() {
     return Wrap(
       spacing: 6.w,
@@ -214,7 +190,6 @@ class _HeroContent extends StatelessWidget {
           text: item.channelName,
           color: AppColors.primary.withValues(alpha: 0.2),
           textColor: AppColors.primaryLight,
-          icon: Icons.live_tv,
         ),
         if (item.program.category != null)
           HeroBadge(
@@ -350,7 +325,20 @@ class _HeroContent extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.tv, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.7)),
+              if (item.logoUrl != null && item.logoUrl!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4.r),
+                  child: Image.network(
+                    item.logoUrl!,
+                    width: 20.w,
+                    height: 20.w,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) =>
+                        Icon(Icons.tv, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.7)),
+                  ),
+                )
+              else
+                Icon(Icons.tv, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.7)),
               SizedBox(width: 6.w),
               Text(
                 item.channelName,

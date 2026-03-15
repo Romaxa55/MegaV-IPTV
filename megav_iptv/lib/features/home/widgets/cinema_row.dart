@@ -12,6 +12,9 @@ class CinemaRow extends StatefulWidget {
   final int focusedCol;
   final void Function(NowPlayingItem item) onItemTap;
   final void Function(NowPlayingItem? item)? onItemFocus;
+  final double? availableHeight;
+  final VoidCallback? onLoadMore;
+  final bool wrapAround;
 
   const CinemaRow({
     super.key,
@@ -21,6 +24,9 @@ class CinemaRow extends StatefulWidget {
     this.focusedCol = -1,
     required this.onItemTap,
     this.onItemFocus,
+    this.availableHeight,
+    this.onLoadMore,
+    this.wrapAround = false,
   });
 
   @override
@@ -35,13 +41,22 @@ class _CinemaRowState extends State<CinemaRow> {
     super.didUpdateWidget(oldWidget);
     if (widget.isFocusedRow && widget.focusedCol >= 0) {
       _scrollToIndex(widget.focusedCol);
+      if (widget.onLoadMore != null && widget.focusedCol >= widget.items.length - 3) {
+        widget.onLoadMore!();
+      }
     }
+  }
+
+  double _computeCardWidth() {
+    final titleBarHeight = 16.h + 8.h + 20.sp;
+    final totalHeight = widget.availableHeight ?? 360.h;
+    return (totalHeight - titleBarHeight) * 0.6;
   }
 
   void _scrollToIndex(int index) {
     if (!_scrollController.hasClients) return;
-    final cardWidth = 260.w + 12.w;
-    final targetOffset = (index * cardWidth) - 80.w;
+    final cw = _computeCardWidth() + 12.w;
+    final targetOffset = (index * cw) - 80.w;
     _scrollController.animateTo(
       targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
       duration: const Duration(milliseconds: 300),
@@ -68,12 +83,17 @@ class _CinemaRowState extends State<CinemaRow> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
+    final titleBarHeight = 16.h + 8.h + 20.sp;
+    final totalHeight = widget.availableHeight ?? 360.h;
+    final cardListHeight = totalHeight - titleBarHeight;
+    final cardWidth = cardListHeight * 0.6;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
+      height: totalHeight,
       color: widget.isFocusedRow ? Colors.white.withValues(alpha: 0.015) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(32.w, 16.h, 32.w, 8.h),
@@ -103,8 +123,7 @@ class _CinemaRowState extends State<CinemaRow> {
               ],
             ),
           ),
-          SizedBox(
-            height: 360.h,
+          Expanded(
             child: ListView.builder(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
@@ -120,6 +139,8 @@ class _CinemaRowState extends State<CinemaRow> {
                   child: CinemaCard(
                     item: widget.items[index],
                     isFocused: isFocused,
+                    cardWidth: cardWidth,
+                    cardHeight: cardListHeight,
                     onTap: () => widget.onItemTap(widget.items[index]),
                     onFocusChange: (focused) {
                       widget.onItemFocus?.call(focused ? widget.items[index] : null);

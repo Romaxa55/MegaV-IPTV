@@ -68,7 +68,6 @@ func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {
 		FROM epg_programs ep
 		JOIN channels c ON c.id = ep.channel_id
 		WHERE ep.start_time <= $1 AND ep.end_time > $1
-		  AND c.group_title NOT IN ('Взрослые')
 		ORDER BY c.name ASC`, now)
 	if err != nil {
 		return nil, err
@@ -204,15 +203,10 @@ func (r *IPTVRepository) InsertEpgProgramsBatch(programs []*models.EpgProgram) (
 	return total, nil
 }
 
-func (r *IPTVRepository) GetMoviesNowPlaying(limit int) ([]*NowPlayingItem, error) {
+func (r *IPTVRepository) GetMoviesNowPlaying(limit, offset int) ([]*NowPlayingItem, int, error) {
 	now := time.Now()
-	rows, err := r.db.Query(`
-		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM epg_programs ep
-		JOIN channels c ON c.id = ep.channel_id
-		WHERE ep.start_time <= $1 AND ep.end_time > $1
+
+	const movieFilter = `
 		  AND c.group_title NOT IN ('Взрослые')
 		  AND (
 		    c.group_title ILIKE '%кино%'
@@ -230,16 +224,37 @@ func (r *IPTVRepository) GetMoviesNowPlaying(limit int) ([]*NowPlayingItem, erro
 		    OR ep.category ILIKE '%ужас%'
 		    OR ep.category ILIKE '%приключен%'
 		    OR ep.category ILIKE '%сериал%'
-		  )
-		ORDER BY ep.start_time DESC
-		LIMIT $2`, now, limit)
+		  )`
+
+	var total int
+	err := r.db.QueryRow(`
+		SELECT COUNT(DISTINCT c.id)
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1`+movieFilter, now).Scan(&total)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	rows, err := r.db.Query(`
+		SELECT DISTINCT ON (c.id)
+		       c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+		       ep.start_time, ep.end_time, ep.lang
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1`+movieFilter+`
+		ORDER BY c.id, ep.start_time DESC`, now)
+	if err != nil {
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var items []*NowPlayingItem
-	seen := make(map[int]bool)
+	type movieRow struct {
+		item *NowPlayingItem
+		hasIcon bool
+	}
+	var all []movieRow
 	for rows.Next() {
 		item := &NowPlayingItem{}
 		p := &models.EpgProgram{}
@@ -248,16 +263,41 @@ func (r *IPTVRepository) GetMoviesNowPlaying(limit int) ([]*NowPlayingItem, erro
 			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
 			&p.StartTime, &p.EndTime, &p.Lang,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		if seen[item.ChannelID] {
-			continue
-		}
-		seen[item.ChannelID] = true
 		item.Program = p
-		items = append(items, item)
+		hi := p.Icon != nil && *p.Icon != ""
+		all = append(all, movieRow{item: item, hasIcon: hi})
 	}
-	return items, nil
+
+	// Sort: items with poster/icon first, then by start_time DESC (recently started first)
+	for i := 0; i < len(all); i++ {
+		for j := i + 1; j < len(all); j++ {
+			swap := false
+			if all[i].hasIcon != all[j].hasIcon {
+				swap = !all[i].hasIcon && all[j].hasIcon
+			} else {
+				swap = all[i].item.Program.StartTime.Before(all[j].item.Program.StartTime)
+			}
+			if swap {
+				all[i], all[j] = all[j], all[i]
+			}
+		}
+	}
+
+	if offset >= len(all) {
+		return nil, total, nil
+	}
+	end := offset + limit
+	if end > len(all) {
+		end = len(all)
+	}
+
+	items := make([]*NowPlayingItem, 0, end-offset)
+	for _, r := range all[offset:end] {
+		items = append(items, r.item)
+	}
+	return items, total, nil
 }
 
 func (r *IPTVRepository) UpdateEpgProgramIcon(programID int, iconURL string) error {

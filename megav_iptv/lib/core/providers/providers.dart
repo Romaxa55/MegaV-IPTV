@@ -63,15 +63,13 @@ final currentChannelIndexProvider = StateProvider<int>((ref) => -1);
 final nowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
-  final all = await api.getNowPlaying();
-  if (all.length <= 60) return all;
-  return all.sublist(0, 60);
+  return api.getNowPlaying();
 });
 
 final upcomingAllProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
-  return api.getUpcomingAll();
+  return api.getUpcomingAll(limit: 200);
 });
 
 final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
@@ -88,69 +86,96 @@ final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) as
   return channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
 });
 
-final moviesNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) async {
+class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
+  final ApiClient _api;
+  int _total = 0;
+  int _offset = 0;
+  bool _loading = false;
+  static const _pageSize = 20;
+
+  MoviesNotifier(this._api) : super(const AsyncValue.loading()) {
+    _loadInitial();
+  }
+
+  int get total => _total;
+  bool get hasMore => _offset < _total;
+
+  Future<void> _loadInitial() async {
+    try {
+      final result = await _api.getMoviesNowPlaying(limit: _pageSize, offset: 0);
+      _total = result.total;
+      _offset = result.items.length;
+      state = AsyncValue.data(result.items);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (_loading || !hasMore) return;
+    _loading = true;
+    try {
+      final result = await _api.getMoviesNowPlaying(limit: _pageSize, offset: _offset);
+      _total = result.total;
+      _offset += result.items.length;
+      final current = state.value ?? [];
+      state = AsyncValue.data([...current, ...result.items]);
+    } catch (_) {}
+    _loading = false;
+  }
+
+  Future<void> refresh() async {
+    _offset = 0;
+    _total = 0;
+    state = const AsyncValue.loading();
+    await _loadInitial();
+  }
+}
+
+final moviesNotifierProvider = StateNotifierProvider<MoviesNotifier, AsyncValue<List<NowPlayingItem>>>((ref) {
   ref.watch(epgProgressTickProvider);
   final api = ref.watch(apiClientProvider);
-  return api.getMoviesNowPlaying(limit: 20);
+  return MoviesNotifier(api);
 });
 
 final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
-  final movies = await ref.watch(moviesNowPlayingProvider.future);
+  final moviesAsync = ref.watch(moviesNotifierProvider);
+  final movies = moviesAsync.value ?? [];
   final nowPlaying = await ref.watch(nowPlayingProvider.future);
   final upcoming = await ref.watch(upcomingAllProvider.future);
 
-  const maxPerRow = 20;
   final categories = <CinemaCategory>[];
-  final seen = <int>{};
 
-  List<NowPlayingItem> unique(Iterable<NowPlayingItem> items) {
-    final result = <NowPlayingItem>[];
-    for (final i in items) {
-      if (seen.add(i.channelId)) result.add(i);
-      if (result.length >= maxPerRow) break;
-    }
-    return result;
+  // 1) Фильмы в эфире (из movies endpoint — все каналы где идёт фильм/сериал)
+  if (movies.isNotEmpty) {
+    categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: movies));
   }
 
-  final liveMovies = unique(movies);
-  if (liveMovies.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: liveMovies));
-  }
-
-  final liveSport = unique(nowPlaying.where((i) => _isSportCategory(i.program.category)));
-  if (liveSport.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-sport', name: '⚽  Спорт в эфире', items: liveSport));
-  }
-
-  final liveKids = unique(nowPlaying.where((i) => _isKidsCategory(i.program.category)));
-  if (liveKids.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-kids', name: '🧸  Детям', items: liveKids));
-  }
-
-  final liveDocs = unique(nowPlaying.where((i) => _isDocCategory(i.program.category)));
-  if (liveDocs.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-docs', name: '🔬  Познавательное', items: liveDocs));
-  }
-
-  final liveOther = unique(
-    nowPlaying.where(
-      (i) =>
-          !_isMovieCategory(i.program.category) &&
-          !_isSportCategory(i.program.category) &&
-          !_isKidsCategory(i.program.category) &&
-          !_isDocCategory(i.program.category),
-    ),
-  );
-  if (liveOther.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-other', name: '📡  Сейчас в эфире', items: liveOther));
-  }
-
+  // 2) Скоро начнётся — фильмы/сериалы
   if (upcoming.isNotEmpty) {
-    final upcomingSeen = <int>{};
-    final uniqueUpcoming = upcoming.where((i) => upcomingSeen.add(i.channelId)).take(maxPerRow).toList();
-    if (uniqueUpcoming.isNotEmpty) {
-      categories.add(CinemaCategory(id: 'upcoming', name: '⏰  Скоро начнётся', items: uniqueUpcoming));
+    final movieUpcoming = upcoming.where((i) => _isMovieCategory(i.program.category)).toList();
+    if (movieUpcoming.isNotEmpty) {
+      categories.add(CinemaCategory(id: 'upcoming-movies', name: '⏰  Скоро начнётся', items: movieUpcoming));
     }
+  }
+
+  // 3) Все категории из плейлиста — группируем nowPlaying по groupTitle
+  final byGroup = <String, List<NowPlayingItem>>{};
+  final groupOrder = <String>[];
+  for (final item in nowPlaying) {
+    final g = item.groupTitle;
+    if (!byGroup.containsKey(g)) {
+      byGroup[g] = [];
+      groupOrder.add(g);
+    }
+    byGroup[g]!.add(item);
+  }
+
+  for (final group in groupOrder) {
+    final items = byGroup[group]!;
+    if (items.isEmpty) continue;
+    final id = 'group-${group.toLowerCase().replaceAll(' ', '-')}';
+    categories.add(CinemaCategory(id: id, name: group, items: items));
   }
 
   return categories;
@@ -174,42 +199,6 @@ bool _isMovieCategory(String? cat) {
       lower.contains('мелодрам') ||
       lower.contains('детектив') ||
       lower.contains('приключен');
-}
-
-bool _isSportCategory(String? cat) {
-  if (cat == null) return false;
-  final lower = cat.toLowerCase();
-  return lower.contains('спорт') ||
-      lower.contains('sport') ||
-      lower.contains('футбол') ||
-      lower.contains('хоккей') ||
-      lower.contains('баскетбол') ||
-      lower.contains('теннис') ||
-      lower.contains('бокс') ||
-      lower.contains('mma') ||
-      lower.contains('борьб');
-}
-
-bool _isKidsCategory(String? cat) {
-  if (cat == null) return false;
-  final lower = cat.toLowerCase();
-  return lower.contains('дет') ||
-      lower.contains('kids') ||
-      lower.contains('мульт') ||
-      lower.contains('cartoon') ||
-      lower.contains('аним');
-}
-
-bool _isDocCategory(String? cat) {
-  if (cat == null) return false;
-  final lower = cat.toLowerCase();
-  return lower.contains('познав') ||
-      lower.contains('документ') ||
-      lower.contains('docum') ||
-      lower.contains('наук') ||
-      lower.contains('science') ||
-      lower.contains('discovery') ||
-      lower.contains('природ');
 }
 
 class CinemaCategory {

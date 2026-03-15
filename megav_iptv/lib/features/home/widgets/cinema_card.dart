@@ -9,8 +9,18 @@ class CinemaCard extends StatefulWidget {
   final bool isFocused;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onFocusChange;
+  final double? cardWidth;
+  final double? cardHeight;
 
-  const CinemaCard({super.key, required this.item, this.isFocused = false, this.onTap, this.onFocusChange});
+  const CinemaCard({
+    super.key,
+    required this.item,
+    this.isFocused = false,
+    this.onTap,
+    this.onFocusChange,
+    this.cardWidth,
+    this.cardHeight,
+  });
 
   @override
   State<CinemaCard> createState() => _CinemaCardState();
@@ -67,7 +77,8 @@ class _CinemaCardState extends State<CinemaCard> {
           duration: const Duration(milliseconds: 200),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 260.w,
+            width: widget.cardWidth ?? 260.w,
+            height: widget.cardHeight,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16.r),
               border: isHighlighted ? Border.all(color: AppColors.primary, width: 2) : null,
@@ -81,8 +92,10 @@ class _CinemaCardState extends State<CinemaCard> {
                 color: _cardBg,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [_buildPosterArea(isHighlighted), _buildInfoArea()],
+                  children: [
+                    Expanded(child: _buildPosterArea(isHighlighted)),
+                    _buildInfoArea(),
+                  ],
                 ),
               ),
             ),
@@ -94,19 +107,16 @@ class _CinemaCardState extends State<CinemaCard> {
 
   Widget _buildPosterArea(bool isHighlighted) {
     final prog = widget.item.program;
-    return SizedBox(
-      height: 240.h,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildPoster(),
-          _buildPosterGradient(),
-          _buildLiveBadge(),
-          _buildRatingBadge(),
-          if (prog.isNow) _buildProgressOverlay(),
-          if (isHighlighted) _buildPlayOverlay(),
-        ],
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _buildPoster(),
+        _buildPosterGradient(),
+        _buildLiveBadge(),
+        _buildRatingBadge(),
+        if (prog.isNow) _buildProgressOverlay(),
+        if (isHighlighted) _buildPlayOverlay(),
+      ],
     );
   }
 

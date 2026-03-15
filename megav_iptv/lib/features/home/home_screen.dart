@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/player/player_manager.dart';
 import '../../core/playlist/models/channel.dart';
 import '../../core/playlist/models/now_playing.dart';
 import '../../core/providers/providers.dart';
@@ -24,6 +27,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   NowPlayingItem? _hoveredItem;
   late final FocusNode _focusNode;
 
+  Timer? _previewTimer;
+  NowPlayingItem? _previewingItem;
+  bool _isPreviewPlaying = false;
+  PlayerManager? _previewPlayer;
+
   @override
   void initState() {
     super.initState();
@@ -32,11 +40,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _previewTimer?.cancel();
+    _stopPreview();
     _focusNode.dispose();
     super.dispose();
   }
 
+  void _onHoveredItemChanged(NowPlayingItem? item) {
+    _previewTimer?.cancel();
+    if (item == null || item.channelId != _hoveredItem?.channelId) {
+      _stopPreview();
+    }
+    setState(() => _hoveredItem = item);
+    if (item != null) {
+      _previewTimer = Timer(const Duration(milliseconds: 2000), () {
+        if (mounted && _hoveredItem?.channelId == item.channelId) {
+          _startPreview(item);
+        }
+      });
+    }
+  }
+
+  Future<void> _startPreview(NowPlayingItem item) async {
+    final api = ref.read(apiClientProvider);
+    final streamUrl = await api.getBestStreamUrl(item.channelId);
+    if (streamUrl == null || !mounted) return;
+    if (_hoveredItem?.channelId != item.channelId) return;
+
+    _previewPlayer ??= ref.read(playerManagerProvider);
+    if (!_previewPlayer!.isInitialized) {
+      await _previewPlayer!.initialize();
+    }
+    await _previewPlayer!.playChannel(streamUrl, channelId: item.channelId.toString());
+    if (mounted) {
+      setState(() {
+        _previewingItem = item;
+        _isPreviewPlaying = true;
+      });
+    }
+  }
+
+  void _stopPreview() {
+    if (_isPreviewPlaying) {
+      _previewPlayer?.stop();
+      setState(() {
+        _isPreviewPlaying = false;
+        _previewingItem = null;
+      });
+    }
+  }
+
   void _playNowPlaying(NowPlayingItem item) {
+    _previewTimer?.cancel();
+    if (_isPreviewPlaying && _previewingItem?.channelId == item.channelId) {
+      ref.read(currentChannelProvider.notifier).state = Channel(
+        id: item.channelId,
+        name: item.channelName,
+        logoUrl: item.logoUrl,
+        groupTitle: item.groupTitle,
+        hasEpg: true,
+      );
+      ref.read(currentChannelIndexProvider.notifier).state = 0;
+      setState(() => _isPreviewPlaying = false);
+      context.push('/player');
+      return;
+    }
+    _stopPreview();
     ref.read(currentChannelProvider.notifier).state = Channel(
       id: item.channelId,
       name: item.channelName,
@@ -81,33 +150,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (featured) {
           final categories = categoriesAsync.value ?? [];
 
-          return KeyboardListener(
-            focusNode: _focusNode,
-            onKeyEvent: (event) => _handleKeyEvent(event, categories),
-            child: Column(
-              children: [
-                HeroSection(featuredItems: featured, overrideItem: _hoveredItem, onPlay: _playNowPlaying),
-                Expanded(
-                  child: ListView.builder(
-                    padding: EdgeInsets.only(bottom: 32.h),
-                    itemCount: categories.length,
-                    itemBuilder: (context, rowIdx) {
-                      final cat = categories[rowIdx];
-                      return CinemaRow(
-                        title: cat.name,
-                        items: cat.items,
-                        isFocusedRow: _focusedRow == rowIdx,
-                        focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
-                        onItemTap: _playNowPlaying,
-                        onItemFocus: (item) {
-                          setState(() => _hoveredItem = item);
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final screenH = constraints.maxHeight;
+              final heroFraction = 0.65;
+              final cardsFraction = 1.0 - heroFraction;
+              final cardsHeight = screenH * cardsFraction;
+
+              return KeyboardListener(
+                focusNode: _focusNode,
+                onKeyEvent: (event) => _handleKeyEvent(event, categories),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: screenH * heroFraction,
+                      child: HeroSection(
+                        featuredItems: featured,
+                        overrideItem: _hoveredItem,
+                        onPlay: _playNowPlaying,
+                        videoWidget: _isPreviewPlaying && _previewPlayer?.mediaKitEngine != null
+                            ? _previewPlayer!.mediaKitEngine!.buildVideoWidget(fit: BoxFit.cover)
+                            : null,
+                      ),
+                    ),
+                    SizedBox(
+                      height: cardsHeight,
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: categories.length,
+                        itemBuilder: (context, rowIdx) {
+                          final cat = categories[rowIdx];
+                          final isMoviesRow = cat.id == 'live-movies';
+                          return CinemaRow(
+                            title: cat.name,
+                            items: cat.items,
+                            isFocusedRow: _focusedRow == rowIdx,
+                            focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
+                            availableHeight: cardsHeight,
+                            onLoadMore: isMoviesRow ? () => ref.read(moviesNotifierProvider.notifier).loadMore() : null,
+                            wrapAround: isMoviesRow,
+                            onItemTap: _playNowPlaying,
+                            onItemFocus: (item) => _onHoveredItemChanged(item),
+                          );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -125,15 +216,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _handleKeyEvent(KeyEvent event, List<CinemaCategory> categories) {
     if (event is! KeyDownEvent) return;
 
+    if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
+      if (_isPreviewPlaying) {
+        _stopPreview();
+        return;
+      }
+      if (_focusedRow >= 0) {
+        setState(() {
+          _focusedRow = -1;
+          _onHoveredItemChanged(null);
+        });
+        return;
+      }
+    }
+
     setState(() {
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowUp:
           if (_focusedRow <= 0) {
             _focusedRow = -1;
-            _hoveredItem = null;
+            _onHoveredItemChanged(null);
           } else {
             _focusedRow--;
-            _hoveredItem = _resolveHoveredItem(categories);
+            _onHoveredItemChanged(_resolveHoveredItem(categories));
           }
         case LogicalKeyboardKey.arrowDown:
           if (_focusedRow == -1) {
@@ -142,17 +247,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           } else if (_focusedRow < categories.length - 1) {
             _focusedRow++;
           }
-          _hoveredItem = _resolveHoveredItem(categories);
+          _onHoveredItemChanged(_resolveHoveredItem(categories));
         case LogicalKeyboardKey.arrowLeft:
-          if (_focusedRow >= 0) {
-            _focusedCol = (_focusedCol - 1).clamp(0, 999);
-            _hoveredItem = _resolveHoveredItem(categories);
+          if (_focusedRow >= 0 && _focusedRow < categories.length) {
+            if (_focusedCol <= 0) {
+              _focusedCol = categories[_focusedRow].items.length - 1;
+            } else {
+              _focusedCol--;
+            }
+            _onHoveredItemChanged(_resolveHoveredItem(categories));
           }
         case LogicalKeyboardKey.arrowRight:
           if (_focusedRow >= 0 && _focusedRow < categories.length) {
-            final maxCol = categories[_focusedRow].items.length - 1;
-            _focusedCol = (_focusedCol + 1).clamp(0, maxCol);
-            _hoveredItem = _resolveHoveredItem(categories);
+            final cat = categories[_focusedRow];
+            final maxCol = cat.items.length - 1;
+            if (_focusedCol >= maxCol) {
+              if (cat.id == 'live-movies') {
+                final notifier = ref.read(moviesNotifierProvider.notifier);
+                if (notifier.hasMore) {
+                  _focusedCol++;
+                } else {
+                  _focusedCol = 0;
+                }
+              } else {
+                _focusedCol = 0;
+              }
+            } else {
+              _focusedCol++;
+            }
+            _onHoveredItemChanged(_resolveHoveredItem(categories));
           }
         case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
           if (_focusedRow == -1) {
