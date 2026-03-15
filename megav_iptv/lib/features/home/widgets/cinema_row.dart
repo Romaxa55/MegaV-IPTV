@@ -36,9 +36,9 @@ class CinemaRow extends StatefulWidget {
 class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
 
-  static const double _focusedWidthFraction = 0.38;
-  static const int _visibleNarrowCards = 3;
-  static const double _gap = 10;
+  static const double _gap = 8;
+  static const int _visibleNarrow = 5;
+  static const double _narrowCropRatio = 0.55;
 
   @override
   void initState() {
@@ -65,18 +65,24 @@ class _CinemaRowState extends State<CinemaRow> {
     }
   }
 
+  ({double fullW, double narrowW}) _cardSizes(double screenW) {
+    final padH = 32.w;
+    final usable = screenW - padH * 2;
+    final totalGaps = _gap * _visibleNarrow;
+    final fullW = (usable - totalGaps) / (_narrowCropRatio * (_visibleNarrow - 1) + 1);
+    final narrowW = fullW * _narrowCropRatio;
+    return (fullW: fullW, narrowW: narrowW);
+  }
+
   void _scrollToFocused() {
     if (!_scrollController.hasClients) return;
     final col = widget.focusedCol.clamp(0, widget.items.length - 1);
     final screenW = MediaQuery.of(context).size.width;
-    final padH = 32.w;
-    final usable = screenW - padH * 2;
-    final focusedW = usable * _focusedWidthFraction;
-    final narrowW = (usable - focusedW - _gap * _visibleNarrowCards) / _visibleNarrowCards;
+    final sizes = _cardSizes(screenW);
 
     double offset = 0;
     for (int i = 0; i < col; i++) {
-      offset += narrowW + _gap;
+      offset += sizes.narrowW + _gap;
     }
 
     _scrollController.animateTo(
@@ -110,10 +116,7 @@ class _CinemaRowState extends State<CinemaRow> {
     final cardListHeight = totalHeight - titleBarHeight;
 
     final screenW = MediaQuery.of(context).size.width;
-    final padH = 32.w;
-    final usable = screenW - padH * 2;
-    final focusedW = usable * _focusedWidthFraction;
-    final narrowW = (usable - focusedW - _gap * _visibleNarrowCards) / _visibleNarrowCards;
+    final sizes = _cardSizes(screenW);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -163,7 +166,7 @@ class _CinemaRowState extends State<CinemaRow> {
                 final activeCol = widget.isFocusedRow ? widget.focusedCol.clamp(0, widget.items.length - 1) : 0;
                 final isExpanded = index == activeCol;
                 final isFocused = widget.isFocusedRow && isExpanded;
-                final w = isExpanded ? focusedW : narrowW;
+                final w = isExpanded ? sizes.fullW : sizes.narrowW;
 
                 return Padding(
                   padding: EdgeInsets.only(right: _gap),
@@ -171,6 +174,7 @@ class _CinemaRowState extends State<CinemaRow> {
                     item: widget.items[index],
                     isFocused: isFocused,
                     cardWidth: w,
+                    posterWidth: sizes.fullW,
                     cardHeight: cardListHeight,
                     expanded: isExpanded,
                     onTap: () => widget.onItemTap(widget.items[index]),

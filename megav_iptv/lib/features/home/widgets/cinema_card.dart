@@ -12,6 +12,7 @@ class CinemaCard extends StatefulWidget {
   final VoidCallback? onTap;
   final ValueChanged<bool>? onFocusChange;
   final double? cardWidth;
+  final double? posterWidth;
   final double? cardHeight;
 
   const CinemaCard({
@@ -22,6 +23,7 @@ class CinemaCard extends StatefulWidget {
     this.onTap,
     this.onFocusChange,
     this.cardWidth,
+    this.posterWidth,
     this.cardHeight,
   });
 
@@ -73,19 +75,36 @@ class _CinemaCardState extends State<CinemaCard> {
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 4)]
                 : null,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12.r),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                _buildPoster(),
-                _buildGradient(),
-                if (widget.expanded) _buildExpandedOverlay() else _buildNarrowOverlay(),
-              ],
-            ),
-          ),
+          child: ClipRRect(borderRadius: BorderRadius.circular(12.r), child: _buildCardContent()),
         ),
       ),
+    );
+  }
+
+  Widget _buildCardContent() {
+    final pW = widget.posterWidth ?? widget.cardWidth ?? 260.w;
+    final cW = widget.cardWidth ?? 260.w;
+    final isCropped = pW > cW + 1;
+
+    if (!isCropped) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildPoster(),
+          _buildGradient(),
+          if (widget.expanded) _buildExpandedOverlay() else _buildNarrowOverlay(),
+        ],
+      );
+    }
+
+    final shift = (pW - cW) / 2;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(left: -shift, top: 0, bottom: 0, width: pW, child: _buildPoster()),
+        _buildGradient(),
+        _buildNarrowOverlay(),
+      ],
     );
   }
 
