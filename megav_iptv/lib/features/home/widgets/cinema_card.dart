@@ -33,15 +33,8 @@ class _CinemaCardState extends State<CinemaCard> {
   bool _isHovered = false;
   bool _thumbFailed = false;
   int _thumbRetryCount = 0;
-  int _refreshTick = 0;
 
   static const _cardBg = Color(0xFF12121E);
-
-  @override
-  void initState() {
-    super.initState();
-    _startRefreshTimer();
-  }
 
   @override
   void didUpdateWidget(CinemaCard oldWidget) {
@@ -49,15 +42,6 @@ class _CinemaCardState extends State<CinemaCard> {
     if (widget.isFocused && !oldWidget.isFocused) {
       widget.onFocusChange?.call(true);
     }
-  }
-
-  void _startRefreshTimer() {
-    Future.delayed(const Duration(seconds: 30), () {
-      if (mounted) {
-        setState(() => _refreshTick++);
-        _startRefreshTimer();
-      }
-    });
   }
 
   @override
@@ -83,42 +67,64 @@ class _CinemaCardState extends State<CinemaCard> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12.r),
             border: isHighlighted
-                ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2)
+                ? Border.all(color: Colors.white.withValues(alpha: 0.35), width: 2)
                 : Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
             boxShadow: isHighlighted
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 4)]
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 4)]
                 : null,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12.r),
-            child: widget.expanded ? _buildExpandedCard() : _buildNarrowCard(),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _buildPoster(),
+                _buildGradient(),
+                if (widget.expanded) _buildExpandedOverlay() else _buildNarrowOverlay(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // --- NARROW CARD: poster only, no text ---
-  Widget _buildNarrowCard() {
-    return Stack(fit: StackFit.expand, children: [_buildPoster(), _buildNarrowGradient(), _buildNarrowTitle()]);
-  }
-
-  Widget _buildNarrowGradient() {
+  Widget _buildGradient() {
+    if (widget.expanded) {
+      return Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.35, 0.75, 1.0],
+              colors: [
+                Colors.black.withValues(alpha: 0.1),
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.65),
+                Colors.black.withValues(alpha: 0.92),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Positioned.fill(
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.5, 1.0],
-            colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+            stops: const [0.0, 0.55, 1.0],
+            colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.75)],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildNarrowTitle() {
+  // --- NARROW: just title at bottom ---
+  Widget _buildNarrowOverlay() {
     return Positioned(
       bottom: 8.h,
       left: 8.w,
@@ -129,7 +135,7 @@ class _CinemaCardState extends State<CinemaCard> {
           fontSize: TS.t10.sp,
           fontWeight: FontWeight.w600,
           color: Colors.white.withValues(alpha: 0.9),
-          shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 6)],
+          shadows: [Shadow(color: Colors.black, blurRadius: 8)],
         ),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -137,83 +143,94 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  // --- EXPANDED CARD: Netflix-style with badges and info ---
-  Widget _buildExpandedCard() {
+  // --- EXPANDED: Netflix-style overlay at bottom ---
+  Widget _buildExpandedOverlay() {
     final prog = widget.item.program;
-    return Container(
-      color: _cardBg,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _buildExpandedPoster()),
-          _buildExpandedInfo(prog),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandedPoster() {
-    final prog = widget.item.program;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _buildPoster(),
-        _buildExpandedGradient(),
-        _buildExpandedBadges(),
-        if (prog.isNow) _buildProgressOverlay(),
-      ],
-    );
-  }
-
-  Widget _buildExpandedGradient() {
-    return Positioned.fill(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: const [0.0, 0.3, 0.85, 1.0],
-            colors: [Colors.black.withValues(alpha: 0.15), Colors.transparent, _cardBg.withValues(alpha: 0.6), _cardBg],
-          ),
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 12.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              prog.title,
+              style: TextStyle(
+                fontSize: TS.lg.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                height: 1.2,
+                shadows: [Shadow(color: Colors.black, blurRadius: 10)],
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: 8.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 4.h,
+              children: [
+                if (prog.isNow) _badge('LIVE', AppColors.liveBadge),
+                _badge(_pseudoRating(), const Color(0xFF1DB954), icon: Icons.star_rounded),
+                _badge(widget.item.channelName, Colors.white.withValues(alpha: 0.15)),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            _buildMeta(prog),
+            if (prog.description != null && prog.description!.isNotEmpty) ...[
+              SizedBox(height: 4.h),
+              Text(
+                prog.description!,
+                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.5), height: 1.3),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (prog.isNow) ...[
+              SizedBox(height: 8.h),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2.r),
+                child: LinearProgressIndicator(
+                  value: prog.progress,
+                  minHeight: 3.h,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildExpandedBadges() {
-    final prog = widget.item.program;
-    return Positioned(
-      bottom: 10.h,
-      left: 12.w,
-      right: 12.w,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+  Widget _buildMeta(EpgProgram prog) {
+    return Row(
+      children: [
+        _buildChannelLogo(),
+        SizedBox(width: 5.w),
+        if (prog.category != null) ...[
           Text(
-            prog.title,
-            style: TextStyle(
-              fontSize: TS.lg.sp,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              height: 1.2,
-              shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 8)],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            prog.category!,
+            style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.45)),
           ),
-          SizedBox(height: 8.h),
-          Row(
-            children: [
-              if (prog.isNow) _badge('LIVE', AppColors.liveBadge),
-              if (prog.isNow) SizedBox(width: 6.w),
-              _badge(_pseudoRating(), const Color(0xFF1DB954), icon: Icons.star_rounded),
-              SizedBox(width: 6.w),
-              _badge(widget.item.channelName, Colors.white.withValues(alpha: 0.15)),
-            ],
+          _dot(),
+        ],
+        Text(
+          '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
+          style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
+        ),
+        if (prog.isNow) ...[
+          _dot(),
+          Text(
+            'ещё ${_fmtDuration(prog.remaining)}',
+            style: TextStyle(fontSize: TS.t10.sp, color: AppColors.primary),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -225,94 +242,13 @@ class _CinemaCardState extends State<CinemaCard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[Icon(icon, size: TS.t10.sp, color: Colors.white), SizedBox(width: 3.w)],
-          Flexible(
-            child: Text(
-              text,
-              style: TextStyle(fontSize: TS.t9.sp, fontWeight: FontWeight.w600, color: Colors.white),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Text(
+            text,
+            style: TextStyle(fontSize: TS.t9.sp, fontWeight: FontWeight.w600, color: Colors.white),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpandedInfo(EpgProgram prog) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 10.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              if (prog.category != null) ...[
-                Text(
-                  prog.category!,
-                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.5)),
-                ),
-                _dot(),
-              ],
-              Text(
-                _fmtDuration(prog.duration),
-                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.4)),
-              ),
-              if (prog.isNow) ...[
-                _dot(),
-                Text(
-                  'ещё ${_fmtDuration(prog.remaining)}',
-                  style: TextStyle(fontSize: TS.t10.sp, color: AppColors.primary),
-                ),
-              ],
-            ],
-          ),
-          if (prog.description != null && prog.description!.isNotEmpty) ...[
-            SizedBox(height: 4.h),
-            Text(
-              prog.description!,
-              style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35), height: 1.3),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          SizedBox(height: 6.h),
-          Row(
-            children: [
-              _buildChannelLogo(),
-              SizedBox(width: 5.w),
-              Expanded(
-                child: Text(
-                  widget.item.channelName,
-                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
-                style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.25)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressOverlay() {
-    final prog = widget.item.program;
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: ClipRRect(
-        child: LinearProgressIndicator(
-          value: prog.progress,
-          minHeight: 3.h,
-          backgroundColor: Colors.white.withValues(alpha: 0.08),
-          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-        ),
       ),
     );
   }
@@ -328,11 +264,9 @@ class _CinemaCardState extends State<CinemaCard> {
 
     if (url == null || url.isEmpty) return _posterPlaceholder();
 
-    final bustUrl = useThumb ? '$url?t=$_refreshTick' : url;
-
     return Image.network(
-      bustUrl,
-      key: ValueKey('$bustUrl-$_thumbRetryCount'),
+      url,
+      key: ValueKey('$url-$_thumbRetryCount'),
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
@@ -427,7 +361,7 @@ class _CinemaCardState extends State<CinemaCard> {
   }
 
   String _fmtDuration(Duration d) {
-    if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes.remainder(60)} мин';
+    if (d.inHours > 0) return '${d.inHours}ч ${d.inMinutes.remainder(60)}м';
     return '${d.inMinutes} мин';
   }
 }

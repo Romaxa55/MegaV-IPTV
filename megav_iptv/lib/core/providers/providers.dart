@@ -142,9 +142,16 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
   final api = ref.watch(apiClientProvider);
   final moviesAsync = ref.watch(moviesNotifierProvider);
   final movies = moviesAsync.value ?? [];
-  final nowPlaying = await ref.watch(nowPlayingProvider.future);
-  final upcoming = await ref.watch(upcomingAllProvider.future);
-  final allCategories = await ref.watch(categoriesProvider.future);
+
+  final results = await Future.wait([
+    ref.watch(nowPlayingProvider.future),
+    ref.watch(upcomingAllProvider.future),
+    ref.watch(categoriesProvider.future),
+  ]);
+
+  final nowPlaying = results[0] as List<NowPlayingItem>;
+  final upcoming = results[1] as List<NowPlayingItem>;
+  final allCategories = results[2] as List<({String name, int count})>;
 
   final categories = <CinemaCategory>[];
 
@@ -165,6 +172,7 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
   }
 
   final coveredGroups = <String>{};
+  final missingGroupNames = <String>[];
 
   for (final cat in allCategories) {
     final epgItems = byGroup[cat.name];
@@ -172,20 +180,21 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
       final id = 'group-${cat.name.toLowerCase().replaceAll(' ', '-')}';
       categories.add(CinemaCategory(id: id, name: cat.name, items: epgItems));
       coveredGroups.add(cat.name);
+    } else if (cat.count > 0) {
+      missingGroupNames.add(cat.name);
     }
   }
 
-  final missingGroups = allCategories.where((c) => !coveredGroups.contains(c.name) && c.count > 0).toList();
-  if (missingGroups.isNotEmpty) {
-    final futures = missingGroups.map((g) => api.getChannels(category: g.name, limit: 50));
+  if (missingGroupNames.isNotEmpty) {
+    final futures = missingGroupNames.map((g) => api.getChannels(category: g, limit: 50));
     final results = await Future.wait(futures);
-    for (var i = 0; i < missingGroups.length; i++) {
-      final g = missingGroups[i];
+    for (var i = 0; i < missingGroupNames.length; i++) {
       final channels = results[i].channels;
       if (channels.isEmpty) continue;
       final items = channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
-      final id = 'group-${g.name.toLowerCase().replaceAll(' ', '-')}';
-      categories.add(CinemaCategory(id: id, name: g.name, items: items));
+      final name = missingGroupNames[i];
+      final id = 'group-${name.toLowerCase().replaceAll(' ', '-')}';
+      categories.add(CinemaCategory(id: id, name: name, items: items));
     }
   }
 

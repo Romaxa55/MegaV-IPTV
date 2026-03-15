@@ -62,8 +62,6 @@ class DecoderConfig {
     }
     return {
       'hwdec': hwdec,
-      'vo': 'gpu',
-      'gpu-context': _isAndroid ? 'android' : 'auto',
       'cache': 'yes',
       'demuxer-max-bytes': '50MiB',
       'demuxer-max-back-bytes': '10MiB',
