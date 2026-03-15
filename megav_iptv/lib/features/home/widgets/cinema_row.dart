@@ -36,29 +36,37 @@ class CinemaRow extends StatefulWidget {
 class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
 
+  static const double _focusedWidthFraction = 0.38;
+  static const int _visibleNarrowCards = 3;
+  static const double _gap = 10;
+
   @override
   void didUpdateWidget(CinemaRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isFocusedRow && widget.focusedCol >= 0) {
-      _scrollToIndex(widget.focusedCol);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFocused());
       if (widget.onLoadMore != null && widget.focusedCol >= widget.items.length - 3) {
         widget.onLoadMore!();
       }
     }
   }
 
-  double _computeCardWidth() {
-    final titleBarHeight = 16.h + 8.h + 20.sp;
-    final totalHeight = widget.availableHeight ?? 360.h;
-    return (totalHeight - titleBarHeight) * 0.6;
-  }
-
-  void _scrollToIndex(int index) {
+  void _scrollToFocused() {
     if (!_scrollController.hasClients) return;
-    final cw = _computeCardWidth() + 12.w;
-    final targetOffset = (index * cw) - 80.w;
+    final screenW = MediaQuery.of(context).size.width;
+    final padH = 32.w;
+    final usable = screenW - padH * 2;
+    final focusedW = usable * _focusedWidthFraction;
+    final narrowW = (usable - focusedW - _gap * _visibleNarrowCards) / _visibleNarrowCards;
+
+    double offset = 0;
+    for (int i = 0; i < widget.focusedCol; i++) {
+      offset += narrowW + _gap;
+    }
+    offset -= 20.w;
+
     _scrollController.animateTo(
-      targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+      offset.clamp(0.0, _scrollController.position.maxScrollExtent),
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
@@ -83,10 +91,15 @@ class _CinemaRowState extends State<CinemaRow> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    final titleBarHeight = 16.h + 8.h + 20.sp;
+    final titleBarHeight = 14.h + 6.h + 18.sp;
     final totalHeight = widget.availableHeight ?? 360.h;
     final cardListHeight = totalHeight - titleBarHeight;
-    final cardWidth = cardListHeight * 0.6;
+
+    final screenW = MediaQuery.of(context).size.width;
+    final padH = 32.w;
+    final usable = screenW - padH * 2;
+    final focusedW = usable * _focusedWidthFraction;
+    final narrowW = (usable - focusedW - _gap * _visibleNarrowCards) / _visibleNarrowCards;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -96,7 +109,7 @@ class _CinemaRowState extends State<CinemaRow> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(32.w, 16.h, 32.w, 8.h),
+            padding: EdgeInsets.fromLTRB(32.w, 14.h, 32.w, 6.h),
             child: Row(
               children: [
                 Expanded(
@@ -128,19 +141,22 @@ class _CinemaRowState extends State<CinemaRow> {
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 32.w),
-              cacheExtent: 400,
+              cacheExtent: 600,
               addAutomaticKeepAlives: false,
               addRepaintBoundaries: true,
               itemCount: widget.items.length,
               itemBuilder: (context, index) {
                 final isFocused = widget.isFocusedRow && index == widget.focusedCol.clamp(0, widget.items.length - 1);
+                final w = isFocused ? focusedW : narrowW;
+
                 return Padding(
-                  padding: EdgeInsets.only(right: 12.w),
+                  padding: EdgeInsets.only(right: _gap),
                   child: CinemaCard(
                     item: widget.items[index],
                     isFocused: isFocused,
-                    cardWidth: cardWidth,
+                    cardWidth: w,
                     cardHeight: cardListHeight,
+                    expanded: isFocused,
                     onTap: () => widget.onItemTap(widget.items[index]),
                     onFocusChange: (focused) {
                       widget.onItemFocus?.call(focused ? widget.items[index] : null);

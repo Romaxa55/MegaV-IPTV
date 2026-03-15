@@ -49,7 +49,7 @@ class MediaKitEngine extends PlayerEngine {
 
   @override
   Future<void> initialize() async {
-    _player = Player(configuration: const PlayerConfiguration(bufferSize: 2 * 1024 * 1024));
+    _player = Player(configuration: const PlayerConfiguration(bufferSize: 32 * 1024 * 1024));
 
     _videoController = VideoController(_player);
 

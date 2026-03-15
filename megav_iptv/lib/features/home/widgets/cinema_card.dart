@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../core/playlist/models/epg_program.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
 
 class CinemaCard extends StatefulWidget {
   final NowPlayingItem item;
   final bool isFocused;
+  final bool expanded;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onFocusChange;
   final double? cardWidth;
@@ -16,6 +18,7 @@ class CinemaCard extends StatefulWidget {
     super.key,
     required this.item,
     this.isFocused = false,
+    this.expanded = false,
     this.onTap,
     this.onFocusChange,
     this.cardWidth,
@@ -72,54 +75,249 @@ class _CinemaCardState extends State<CinemaCard> {
       },
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: isHighlighted ? 1.04 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: widget.cardWidth ?? 260.w,
-            height: widget.cardHeight,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16.r),
-              border: isHighlighted ? Border.all(color: AppColors.primary, width: 2) : null,
-              boxShadow: isHighlighted
-                  ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 24, spreadRadius: 2)]
-                  : null,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16.r),
-              child: Container(
-                color: _cardBg,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildPosterArea(isHighlighted)),
-                    _buildInfoArea(),
-                  ],
-                ),
-              ),
-            ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          width: widget.cardWidth ?? 260.w,
+          height: widget.cardHeight,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.r),
+            border: isHighlighted
+                ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2)
+                : Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
+            boxShadow: isHighlighted
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 4)]
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12.r),
+            child: widget.expanded ? _buildExpandedCard() : _buildNarrowCard(),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildPosterArea(bool isHighlighted) {
+  // --- NARROW CARD: poster only, no text ---
+  Widget _buildNarrowCard() {
+    return Stack(fit: StackFit.expand, children: [_buildPoster(), _buildNarrowGradient(), _buildNarrowTitle()]);
+  }
+
+  Widget _buildNarrowGradient() {
+    return Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.5, 1.0],
+            colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNarrowTitle() {
+    return Positioned(
+      bottom: 8.h,
+      left: 8.w,
+      right: 8.w,
+      child: Text(
+        widget.item.program.title,
+        style: TextStyle(
+          fontSize: TS.t10.sp,
+          fontWeight: FontWeight.w600,
+          color: Colors.white.withValues(alpha: 0.9),
+          shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 6)],
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  // --- EXPANDED CARD: Netflix-style with badges and info ---
+  Widget _buildExpandedCard() {
+    final prog = widget.item.program;
+    return Container(
+      color: _cardBg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _buildExpandedPoster()),
+          _buildExpandedInfo(prog),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedPoster() {
     final prog = widget.item.program;
     return Stack(
       fit: StackFit.expand,
       children: [
         _buildPoster(),
-        _buildPosterGradient(),
-        _buildLiveBadge(),
-        _buildRatingBadge(),
+        _buildExpandedGradient(),
+        _buildExpandedBadges(),
         if (prog.isNow) _buildProgressOverlay(),
-        if (isHighlighted) _buildPlayOverlay(),
       ],
     );
   }
 
+  Widget _buildExpandedGradient() {
+    return Positioned.fill(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.3, 0.85, 1.0],
+            colors: [Colors.black.withValues(alpha: 0.15), Colors.transparent, _cardBg.withValues(alpha: 0.6), _cardBg],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedBadges() {
+    final prog = widget.item.program;
+    return Positioned(
+      bottom: 10.h,
+      left: 12.w,
+      right: 12.w,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            prog.title,
+            style: TextStyle(
+              fontSize: TS.lg.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.2,
+              shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 8)],
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              if (prog.isNow) _badge('LIVE', AppColors.liveBadge),
+              if (prog.isNow) SizedBox(width: 6.w),
+              _badge(_pseudoRating(), const Color(0xFF1DB954), icon: Icons.star_rounded),
+              SizedBox(width: 6.w),
+              _badge(widget.item.channelName, Colors.white.withValues(alpha: 0.15)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _badge(String text, Color bg, {IconData? icon}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6.r)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[Icon(icon, size: TS.t10.sp, color: Colors.white), SizedBox(width: 3.w)],
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: TS.t9.sp, fontWeight: FontWeight.w600, color: Colors.white),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedInfo(EpgProgram prog) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 10.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              if (prog.category != null) ...[
+                Text(
+                  prog.category!,
+                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.5)),
+                ),
+                _dot(),
+              ],
+              Text(
+                _fmtDuration(prog.duration),
+                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.4)),
+              ),
+              if (prog.isNow) ...[
+                _dot(),
+                Text(
+                  'ещё ${_fmtDuration(prog.remaining)}',
+                  style: TextStyle(fontSize: TS.t10.sp, color: AppColors.primary),
+                ),
+              ],
+            ],
+          ),
+          if (prog.description != null && prog.description!.isNotEmpty) ...[
+            SizedBox(height: 4.h),
+            Text(
+              prog.description!,
+              style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35), height: 1.3),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          SizedBox(height: 6.h),
+          Row(
+            children: [
+              _buildChannelLogo(),
+              SizedBox(width: 5.w),
+              Expanded(
+                child: Text(
+                  widget.item.channelName,
+                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${_fmtTime(prog.start)} — ${_fmtTime(prog.end)}',
+                style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.25)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressOverlay() {
+    final prog = widget.item.program;
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRRect(
+        child: LinearProgressIndicator(
+          value: prog.progress,
+          minHeight: 3.h,
+          backgroundColor: Colors.white.withValues(alpha: 0.08),
+          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ),
+      ),
+    );
+  }
+
+  // --- SHARED ---
   Widget _buildPoster() {
     final thumbUrl = widget.item.thumbnailUrl;
     final iconUrl = widget.item.program.icon;
@@ -138,7 +336,7 @@ class _CinemaCardState extends State<CinemaCard> {
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      cacheWidth: 440,
+      cacheWidth: widget.expanded ? 600 : 300,
       alignment: Alignment.topCenter,
       frameBuilder: (ctx, child, frame, loaded) {
         if (loaded) return child;
@@ -158,7 +356,7 @@ class _CinemaCardState extends State<CinemaCard> {
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
-              cacheWidth: 440,
+              cacheWidth: widget.expanded ? 600 : 300,
               alignment: Alignment.topCenter,
               errorBuilder: (ctx, _, _) => _posterPlaceholder(),
             );
@@ -185,208 +383,7 @@ class _CinemaCardState extends State<CinemaCard> {
     return Container(
       color: _cardBg,
       child: Center(
-        child: Icon(Icons.tv, size: 40.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
-      ),
-    );
-  }
-
-  Widget _buildPosterGradient() {
-    return Positioned.fill(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: const [0.0, 0.4, 0.85, 1.0],
-            colors: [Colors.black.withValues(alpha: 0.2), Colors.transparent, _cardBg.withValues(alpha: 0.7), _cardBg],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLiveBadge() {
-    final prog = widget.item.program;
-    return Positioned(
-      top: 10.h,
-      left: 10.w,
-      child: prog.isNow
-          ? Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-              decoration: BoxDecoration(
-                color: AppColors.liveBadge.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(8.r),
-                boxShadow: [BoxShadow(color: AppColors.liveBadge.withValues(alpha: 0.4), blurRadius: 10)],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 5.w,
-                    height: 5.w,
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  ),
-                  SizedBox(width: 5.w),
-                  Text(
-                    'LIVE',
-                    style: TextStyle(
-                      fontSize: TS.t10.sp,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Text(
-                _fmtTime(prog.start),
-                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.8)),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildRatingBadge() {
-    return Positioned(
-      top: 10.h,
-      right: 10.w,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.star_rounded, size: TS.t11.sp, color: AppColors.ratingGold),
-            SizedBox(width: 3.w),
-            Text(
-              _pseudoRating(),
-              style: TextStyle(
-                fontSize: TS.t10.sp,
-                color: Colors.white.withValues(alpha: 0.9),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressOverlay() {
-    final prog = widget.item.program;
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(3.r),
-          child: LinearProgressIndicator(
-            value: prog.progress,
-            minHeight: 4.h,
-            backgroundColor: Colors.white.withValues(alpha: 0.1),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlayOverlay() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.25),
-        child: Center(
-          child: Container(
-            width: 48.w,
-            height: 48.w,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)],
-            ),
-            child: Icon(Icons.play_arrow_rounded, size: TS.t2xl.sp, color: AppColors.background),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoArea() {
-    final prog = widget.item.program;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 10.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  prog.title,
-                  style: TextStyle(fontSize: TS.sm.sp, fontWeight: FontWeight.w600, color: Colors.white, height: 1.2),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (prog.isNow) ...[
-                SizedBox(width: 6.w),
-                Text(
-                  '~${_fmtDuration(prog.remaining)}',
-                  style: TextStyle(fontSize: TS.t9.sp, color: Colors.white.withValues(alpha: 0.35)),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: 4.h),
-          Row(
-            children: [
-              if (prog.category != null) ...[
-                Flexible(
-                  child: Text(
-                    prog.category!,
-                    style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.4)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                _dot(),
-              ],
-              Text(
-                _fmtDuration(prog.duration),
-                style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
-              ),
-            ],
-          ),
-          SizedBox(height: 6.h),
-          Row(
-            children: [
-              _buildChannelLogo(),
-              SizedBox(width: 5.w),
-              Expanded(
-                child: Text(
-                  widget.item.channelName,
-                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.35)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ],
+        child: Icon(Icons.tv, size: 32.sp, color: AppColors.textHint.withValues(alpha: 0.2)),
       ),
     );
   }

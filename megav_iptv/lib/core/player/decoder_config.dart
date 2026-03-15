@@ -41,7 +41,7 @@ class DecoderConfig {
 
   const DecoderConfig({
     this.decoderMode = DecoderMode.auto,
-    this.bufferMode = BufferMode.minimal,
+    this.bufferMode = BufferMode.standard,
     this.userAgent = 'MegaV-IPTV/1.0',
   });
 
@@ -61,10 +61,14 @@ class DecoderConfig {
       hwdec = 'auto';
     }
     return {
-      'cache': 'no',
-      'profile': 'low-latency',
       'hwdec': hwdec,
-      'vd-lavc-threads': '2',
+      'vo': 'gpu',
+      'gpu-context': _isAndroid ? 'android' : 'auto',
+      'cache': 'yes',
+      'demuxer-max-bytes': '50MiB',
+      'demuxer-max-back-bytes': '10MiB',
+      'demuxer-readahead-secs': '${bufferMode.seconds}',
+      'vd-lavc-threads': '0',
       'rtsp-transport': 'udp',
       'demuxer-lavf-probesize': '2097152',
       'demuxer-lavf-analyzeduration': '2',
