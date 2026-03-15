@@ -53,6 +53,7 @@ class _CinemaRowState extends State<CinemaRow> {
 
   void _scrollToFocused() {
     if (!_scrollController.hasClients) return;
+    final col = widget.focusedCol.clamp(0, widget.items.length - 1);
     final screenW = MediaQuery.of(context).size.width;
     final padH = 32.w;
     final usable = screenW - padH * 2;
@@ -60,10 +61,9 @@ class _CinemaRowState extends State<CinemaRow> {
     final narrowW = (usable - focusedW - _gap * _visibleNarrowCards) / _visibleNarrowCards;
 
     double offset = 0;
-    for (int i = 0; i < widget.focusedCol; i++) {
+    for (int i = 0; i < col; i++) {
       offset += narrowW + _gap;
     }
-    offset -= 20.w;
 
     _scrollController.animateTo(
       offset.clamp(0.0, _scrollController.position.maxScrollExtent),
@@ -146,8 +146,10 @@ class _CinemaRowState extends State<CinemaRow> {
               addRepaintBoundaries: true,
               itemCount: widget.items.length,
               itemBuilder: (context, index) {
-                final isFocused = widget.isFocusedRow && index == widget.focusedCol.clamp(0, widget.items.length - 1);
-                final w = isFocused ? focusedW : narrowW;
+                final activeCol = widget.isFocusedRow ? widget.focusedCol.clamp(0, widget.items.length - 1) : 0;
+                final isExpanded = index == activeCol;
+                final isFocused = widget.isFocusedRow && isExpanded;
+                final w = isExpanded ? focusedW : narrowW;
 
                 return Padding(
                   padding: EdgeInsets.only(right: _gap),
@@ -156,7 +158,7 @@ class _CinemaRowState extends State<CinemaRow> {
                     isFocused: isFocused,
                     cardWidth: w,
                     cardHeight: cardListHeight,
-                    expanded: isFocused,
+                    expanded: isExpanded,
                     onTap: () => widget.onItemTap(widget.items[index]),
                     onFocusChange: (focused) {
                       widget.onItemFocus?.call(focused ? widget.items[index] : null);
