@@ -121,9 +121,9 @@ const (
 )
 
 type xmlChannel struct {
-	ID          string `xml:"id,attr"`
-	DisplayName string `xml:"display-name"`
-	Icon        struct {
+	ID           string   `xml:"id,attr"`
+	DisplayNames []string `xml:"display-name"`
+	Icon         struct {
 		Src string `xml:"src,attr"`
 	} `xml:"icon"`
 }
@@ -165,7 +165,7 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 	}
 
 	// Stream XML: collect <channel> elements first (small), then process <programme> on the fly
-	epgChannelNames := make(map[string]string, 4000)
+	epgChannelNames := make(map[string][]string, 4000)
 	epgChannelLogos := make(map[string]string, 4000)
 
 	channelsByName, err := s.repo.GetAllChannelsByName()
@@ -197,6 +197,12 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 		}(i)
 	}
 
+	// Build normalized name index for fuzzy matching
+	normalizedDB := make(map[string]int, len(channelsByName))
+	for name, id := range channelsByName {
+		normalizedDB[normalizeChannelName(name)] = id
+	}
+
 	// Streaming parse: decode element-by-element
 	var epgToDBChannel map[string]int
 	batch := make([]*models.EpgProgram, 0, epgBatchSize)
@@ -226,7 +232,7 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 				s.logger.Warnf("skip bad channel element: %v", err)
 				continue
 			}
-			epgChannelNames[ch.ID] = ch.DisplayName
+			epgChannelNames[ch.ID] = ch.DisplayNames
 			if ch.Icon.Src != "" {
 				epgChannelLogos[ch.ID] = ch.Icon.Src
 			}
@@ -236,12 +242,42 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 			// Build mapping lazily on first programme (all channels parsed by this point)
 			if epgToDBChannel == nil {
 				epgToDBChannel = make(map[string]int, len(epgChannelNames))
-				for epgID, displayName := range epgChannelNames {
-					if dbID, ok := channelsByName[displayName]; ok {
-						epgToDBChannel[epgID] = dbID
+				exactMatch := 0
+				fuzzyMatch := 0
+				for epgID, displayNames := range epgChannelNames {
+					matched := false
+					for _, dn := range displayNames {
+						if dbID, ok := channelsByName[dn]; ok {
+							epgToDBChannel[epgID] = dbID
+							exactMatch++
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						for _, dn := range displayNames {
+							if dbID, ok := normalizedDB[normalizeChannelName(dn)]; ok {
+								epgToDBChannel[epgID] = dbID
+								fuzzyMatch++
+								break
+							}
+						}
 					}
 				}
-				s.logger.Infof("Parsed %d EPG channels, matched %d to DB", channelCount, len(epgToDBChannel))
+				s.logger.Infof("Parsed %d EPG channels, matched %d to DB (exact=%d, fuzzy=%d), unmatched=%d",
+					channelCount, len(epgToDBChannel), exactMatch, fuzzyMatch,
+					channelCount-len(epgToDBChannel))
+
+				// Log a sample of unmatched EPG channels for debugging
+				unmatchedSample := 0
+				for epgID, displayNames := range epgChannelNames {
+					if _, ok := epgToDBChannel[epgID]; !ok {
+						if unmatchedSample < 30 {
+							s.logger.Debugf("Unmatched EPG channel id=%s names=%v", epgID, displayNames)
+							unmatchedSample++
+						}
+					}
+				}
 
 				// Update channel logos from EPG
 				dbLogos := make(map[int]string)
@@ -316,6 +352,20 @@ func (s *SyncService) SyncEPG(epgURL string) error {
 		channelCount, programmeCount, atomic.LoadInt64(&totalInserted), epgDBWriters)
 	_ = s.repo.UpdateSyncTime("last_epg_sync")
 	return nil
+}
+
+func normalizeChannelName(name string) string {
+	n := strings.ToLower(strings.TrimSpace(name))
+	for _, suffix := range []string{" hd", " fhd", " sd", " 4k", " uhd", " hevc", " h265", " orig"} {
+		n = strings.TrimSuffix(n, suffix)
+	}
+	n = strings.Map(func(r rune) rune {
+		if r == ' ' || r == '-' || r == '_' || r == '.' || r == '+' {
+			return -1
+		}
+		return r
+	}, n)
+	return n
 }
 
 func parseXMLTVTime(s string) (time.Time, error) {

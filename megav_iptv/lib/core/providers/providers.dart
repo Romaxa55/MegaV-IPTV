@@ -139,19 +139,19 @@ final moviesNotifierProvider = StateNotifierProvider<MoviesNotifier, AsyncValue<
 });
 
 final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
+  final api = ref.watch(apiClientProvider);
   final moviesAsync = ref.watch(moviesNotifierProvider);
   final movies = moviesAsync.value ?? [];
   final nowPlaying = await ref.watch(nowPlayingProvider.future);
   final upcoming = await ref.watch(upcomingAllProvider.future);
+  final allCategories = await ref.watch(categoriesProvider.future);
 
   final categories = <CinemaCategory>[];
 
-  // 1) Фильмы в эфире (из movies endpoint — все каналы где идёт фильм/сериал)
   if (movies.isNotEmpty) {
     categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: movies));
   }
 
-  // 2) Скоро начнётся — фильмы/сериалы
   if (upcoming.isNotEmpty) {
     final movieUpcoming = upcoming.where((i) => _isMovieCategory(i.program.category)).toList();
     if (movieUpcoming.isNotEmpty) {
@@ -159,23 +159,34 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
     }
   }
 
-  // 3) Все категории из плейлиста — группируем nowPlaying по groupTitle
   final byGroup = <String, List<NowPlayingItem>>{};
-  final groupOrder = <String>[];
   for (final item in nowPlaying) {
-    final g = item.groupTitle;
-    if (!byGroup.containsKey(g)) {
-      byGroup[g] = [];
-      groupOrder.add(g);
-    }
-    byGroup[g]!.add(item);
+    (byGroup[item.groupTitle] ??= []).add(item);
   }
 
-  for (final group in groupOrder) {
-    final items = byGroup[group]!;
-    if (items.isEmpty) continue;
-    final id = 'group-${group.toLowerCase().replaceAll(' ', '-')}';
-    categories.add(CinemaCategory(id: id, name: group, items: items));
+  final coveredGroups = <String>{};
+
+  for (final cat in allCategories) {
+    final epgItems = byGroup[cat.name];
+    if (epgItems != null && epgItems.isNotEmpty) {
+      final id = 'group-${cat.name.toLowerCase().replaceAll(' ', '-')}';
+      categories.add(CinemaCategory(id: id, name: cat.name, items: epgItems));
+      coveredGroups.add(cat.name);
+    }
+  }
+
+  final missingGroups = allCategories.where((c) => !coveredGroups.contains(c.name) && c.count > 0).toList();
+  if (missingGroups.isNotEmpty) {
+    final futures = missingGroups.map((g) => api.getChannels(category: g.name, limit: 50));
+    final results = await Future.wait(futures);
+    for (var i = 0; i < missingGroups.length; i++) {
+      final g = missingGroups[i];
+      final channels = results[i].channels;
+      if (channels.isEmpty) continue;
+      final items = channels.map((ch) => NowPlayingItem.fromChannel(ch)).toList();
+      final id = 'group-${g.name.toLowerCase().replaceAll(' ', '-')}';
+      categories.add(CinemaCategory(id: id, name: g.name, items: items));
+    }
   }
 
   return categories;
