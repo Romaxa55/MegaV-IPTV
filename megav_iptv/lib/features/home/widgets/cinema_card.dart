@@ -44,14 +44,14 @@ class _CinemaCardState extends State<CinemaCard> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         width: widget.cardWidth ?? 260.w,
-        height: widget.cardHeight,
+        // Оставляем высоту пустой, чтобы контейнер растягивался на всю высоту ряда
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12.r),
           border: widget.isFocused
               ? Border.all(color: Colors.white.withValues(alpha: 0.35), width: 2)
               : Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
           boxShadow: widget.isFocused
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 4)]
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 2)]
               : null,
         ),
         child: ClipRRect(borderRadius: BorderRadius.circular(12.r), child: _buildCardContent()),
@@ -237,14 +237,16 @@ class _CinemaCardState extends State<CinemaCard> {
 
     if (url == null || url.isEmpty) return _posterPlaceholder();
 
-    return Image.network(
+    final isFallback = !useThumb;
+
+    Widget imageWidget = Image.network(
       url,
       key: ValueKey('$url-$_thumbRetryCount'),
-      fit: BoxFit.cover,
+      fit: isFallback ? BoxFit.contain : BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      cacheWidth: widget.expanded ? 600 : 300,
-      alignment: Alignment.topCenter,
+      cacheWidth: 400,
+      alignment: isFallback ? Alignment.center : Alignment.topCenter,
       frameBuilder: (ctx, child, frame, loaded) {
         if (loaded) return child;
         return AnimatedSwitcher(
@@ -258,20 +260,33 @@ class _CinemaCardState extends State<CinemaCard> {
           _retryThumbnail();
           final fallback = iconUrl ?? logoUrl;
           if (fallback != null && fallback.isNotEmpty) {
-            return Image.network(
-              fallback,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              cacheWidth: widget.expanded ? 600 : 300,
-              alignment: Alignment.topCenter,
-              errorBuilder: (ctx, _, _) => _posterPlaceholder(),
+            return Padding(
+              padding: EdgeInsets.all(24.w),
+              child: Image.network(
+                fallback,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+                cacheWidth: 400,
+                alignment: Alignment.center,
+                errorBuilder: (ctx, _, _) => _posterPlaceholder(),
+              ),
             );
           }
         }
         return _posterPlaceholder();
       },
     );
+
+    if (isFallback) {
+      return Container(
+        color: _cardBg,
+        alignment: Alignment.center,
+        child: Padding(padding: EdgeInsets.all(24.w), child: imageWidget),
+      );
+    }
+
+    return imageWidget;
   }
 
   void _retryThumbnail() {

@@ -158,8 +158,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: KeyboardListener(
+      body: Focus(
         focusNode: FocusNode()..requestFocus(),
+        autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: GestureDetector(
           onTap: () {
@@ -172,8 +173,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (_playerManager.mediaKitEngine != null)
-                _playerManager.mediaKitEngine!.buildVideoWidget(fit: BoxFit.contain),
+              if (_playerManager.activeEngine != null)
+                _playerManager.activeEngine!.buildVideoWidget(fit: BoxFit.contain),
 
               StreamBuilder<PlayerState>(
                 stream: _playerManager.stateStream,
@@ -271,8 +272,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     setState(() => _overlay = PlayerOverlayMode.none);
   }
 
-  void _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     _resetHideTimer();
 
     switch (event.logicalKey) {
@@ -280,29 +281,54 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       case LogicalKeyboardKey.goBack:
         if (_overlay != PlayerOverlayMode.none) {
           setState(() => _overlay = PlayerOverlayMode.none);
+          return KeyEventResult.handled;
         } else {
-          context.pop();
+          return KeyEventResult.ignored; // Let the system back button pop the screen
         }
       case LogicalKeyboardKey.arrowUp:
-        if (_overlay == PlayerOverlayMode.none) _quickSwitch(-1);
+      case LogicalKeyboardKey.channelUp:
+      case LogicalKeyboardKey.pageUp:
+      case LogicalKeyboardKey.mediaTrackPrevious:
+        if (_overlay == PlayerOverlayMode.none) {
+          _quickSwitch(-1);
+          return KeyEventResult.handled;
+        }
+        break;
       case LogicalKeyboardKey.arrowDown:
       case LogicalKeyboardKey.channelDown:
-        if (_overlay == PlayerOverlayMode.none) _quickSwitch(1);
-      case LogicalKeyboardKey.channelUp:
-        if (_overlay == PlayerOverlayMode.none) _quickSwitch(-1);
+      case LogicalKeyboardKey.pageDown:
+      case LogicalKeyboardKey.mediaTrackNext:
+        if (_overlay == PlayerOverlayMode.none) {
+          _quickSwitch(1);
+          return KeyEventResult.handled;
+        }
+        break;
       case LogicalKeyboardKey.select:
       case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.mediaPlayPause:
+      case LogicalKeyboardKey.mediaPlay:
+      case LogicalKeyboardKey.mediaPause:
         _resetHideTimer();
+        if (_overlay == PlayerOverlayMode.none && !_showControls) {
+          setState(() => _showControls = true);
+          return KeyEventResult.handled;
+        }
+        break;
       case LogicalKeyboardKey.keyE:
         _toggleOverlay(PlayerOverlayMode.epg);
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyI:
         _toggleOverlay(PlayerOverlayMode.info);
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyL:
         _toggleOverlay(PlayerOverlayMode.channels);
+        return KeyEventResult.handled;
       case LogicalKeyboardKey.keyR:
         _toggleOverlay(PlayerOverlayMode.similar);
+        return KeyEventResult.handled;
       default:
         break;
     }
+    return KeyEventResult.ignored;
   }
 }

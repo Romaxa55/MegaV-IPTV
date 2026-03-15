@@ -4,11 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'decoder_config.dart';
 import 'media_kit_engine.dart';
+import 'native_video_player_engine.dart';
 import 'media3_engine.dart';
 import 'player_engine.dart';
 
 class PlayerManager {
-  MediaKitEngine? _mediaKitEngine;
+  PlayerEngine? _activeEngine;
   Media3Engine? _media3Engine;
   DecoderConfig _config;
 
@@ -29,7 +30,7 @@ class PlayerManager {
 
   Stream<PlayerState> get stateStream => _stateController.stream;
   Stream<String?> get errorStream => _errorController.stream;
-  MediaKitEngine? get mediaKitEngine => _mediaKitEngine;
+  PlayerEngine? get activeEngine => _activeEngine;
   Media3Engine? get media3Engine => _media3Engine;
   DecoderConfig get config => _config;
   bool get usesMedia3 => _config.usesMedia3;
@@ -39,18 +40,28 @@ class PlayerManager {
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    _mediaKitEngine = MediaKitEngine(config: _config);
-    await _mediaKitEngine!.initialize();
+
+    if (kIsWeb) {
+      _activeEngine = MediaKitEngine(config: _config);
+    } else if (defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
+      _activeEngine = NativeVideoPlayerEngine();
+    } else {
+      _activeEngine = MediaKitEngine(config: _config);
+    }
+
+    await _activeEngine!.initialize();
     _media3Engine = Media3Engine();
-    _listenToMediaKit();
+    _listenToActiveEngine();
     _isInitialized = true;
   }
 
-  void _listenToMediaKit() {
+  void _listenToActiveEngine() {
     _stateSub?.cancel();
     _errorSub?.cancel();
 
-    _stateSub = _mediaKitEngine!.stateStream.listen((state) {
+    _stateSub = _activeEngine!.stateStream.listen((state) {
       _stateController.add(state);
       if (state == PlayerState.playing) {
         _scheduleMarkWorking();
@@ -59,7 +70,7 @@ class PlayerManager {
       }
     });
 
-    _errorSub = _mediaKitEngine!.errorStream.listen((error) {
+    _errorSub = _activeEngine!.errorStream.listen((error) {
       debugPrint('PlayerManager: Error — $error');
       _errorController.add(error);
       _handleError();
@@ -84,10 +95,12 @@ class PlayerManager {
       if (_retryCount == 2 && _config.decoderMode != DecoderMode.software) {
         debugPrint('PlayerManager: Falling back to software decoder');
         _config = _config.copyWith(decoderMode: DecoderMode.software);
-        await _mediaKitEngine!.updateConfig(_config);
+        if (_activeEngine is MediaKitEngine) {
+          await (_activeEngine as MediaKitEngine).updateConfig(_config);
+        }
       }
 
-      await _mediaKitEngine!.open(_currentUrl!);
+      await _activeEngine!.open(_currentUrl!);
     } else {
       debugPrint('PlayerManager: Max retries reached');
     }
@@ -112,7 +125,7 @@ class PlayerManager {
     debugPrint('PlayerManager: Saved decoder ${mode.name} for channel $channelId');
   }
 
-  /// Play a channel via media_kit engine.
+  /// Play a channel via the active engine.
   Future<void> playChannel(String url, {String? channelId}) async {
     _retryCount = 0;
     _currentUrl = url;
@@ -123,11 +136,13 @@ class PlayerManager {
       if (saved != null && saved != _config.decoderMode) {
         debugPrint('PlayerManager: Using saved decoder ${saved.name} for $channelId');
         _config = _config.copyWith(decoderMode: saved);
-        await _mediaKitEngine?.updateConfig(_config);
+        if (_activeEngine is MediaKitEngine) {
+          await (_activeEngine as MediaKitEngine).updateConfig(_config);
+        }
       }
     }
 
-    await _mediaKitEngine?.open(url);
+    await _activeEngine?.open(url);
   }
 
   /// Mark current channel+decoder as working (call after successful playback).
@@ -140,17 +155,19 @@ class PlayerManager {
   Future<void> stop() async {
     _currentUrl = null;
     _currentChannelId = null;
-    await _mediaKitEngine?.stop();
+    await _activeEngine?.stop();
   }
 
   Future<void> setVolume(double volume) async {
-    await _mediaKitEngine?.setVolume(volume);
+    await _activeEngine?.setVolume(volume);
   }
 
   Future<void> updateDecoderConfig(DecoderConfig config) async {
     _config = config;
     if (!config.usesMedia3) {
-      await _mediaKitEngine?.updateConfig(config);
+      if (_activeEngine is MediaKitEngine) {
+        await (_activeEngine as MediaKitEngine).updateConfig(config);
+      }
     }
   }
 
@@ -158,7 +175,7 @@ class PlayerManager {
     _markWorkingTimer?.cancel();
     await _stateSub?.cancel();
     await _errorSub?.cancel();
-    await _mediaKitEngine?.dispose();
+    await _activeEngine?.dispose();
     _media3Engine?.dispose();
     await _stateController.close();
     await _errorController.close();

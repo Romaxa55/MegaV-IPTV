@@ -37,6 +37,9 @@ class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
   int _hoveredCol = -1;
 
+  /// Высота карточек: доля от ряда (0.0–1.0). 1.0 = на всю высоту, 0.9 = 90%.
+  static const double _cardHeightPercent = 1.0;
+
   static const double _gap = 12;
 
   int get _activeCol {
@@ -72,17 +75,21 @@ class _CinemaRowState extends State<CinemaRow> {
     }
   }
 
-  ({double fullW, double narrowW}) _cardSizes(double screenW) {
-    // В дизайне Figma широкая карточка = 28%, узкая = 14% ширины экрана
-    final fullW = screenW * 0.28;
-    final narrowW = screenW * 0.14;
+  ({double fullW, double narrowW}) _cardSizes(double screenW, double horizontalPadding) {
+    // Адаптивно: ~5 карточек (1 расширенная + 4 узкие) на видимой области
+    const gap = _gap;
+    final usableWidth = screenW - horizontalPadding - 4 * gap;
+    if (usableWidth <= 0) return (fullW: 200, narrowW: 100);
+    // expanded ≈ 2 * narrow, итого 6 * narrow на 5 карточек
+    final narrowW = usableWidth / 6;
+    final fullW = narrowW * 2;
     return (fullW: fullW, narrowW: narrowW);
   }
 
   void _scrollToFocused() {
     if (!_scrollController.hasClients) return;
     final col = widget.focusedCol.clamp(0, widget.items.length - 1);
-    final sizes = _cardSizes(MediaQuery.of(context).size.width);
+    final sizes = _cardSizes(MediaQuery.of(context).size.width, 64.w);
 
     double offset = 0;
     for (int i = 0; i < col; i++) {
@@ -117,10 +124,14 @@ class _CinemaRowState extends State<CinemaRow> {
 
     final titleBarHeight = 14.h + 6.h + 18.sp;
     final totalHeight = widget.availableHeight ?? 360.h;
-    final cardListHeight = totalHeight - titleBarHeight;
+    final maxCardHeight = totalHeight - titleBarHeight;
 
     final screenW = MediaQuery.of(context).size.width;
-    final sizes = _cardSizes(screenW);
+    final horizontalPadding = 64.w;
+    final sizes = _cardSizes(screenW, horizontalPadding);
+
+    // Высота карточек — в процентах от ряда. Ширина без изменений.
+    final cardListHeight = maxCardHeight * _cardHeightPercent;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -129,40 +140,44 @@ class _CinemaRowState extends State<CinemaRow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(32.w, 14.h, 32.w, 6.h),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: TextStyle(
-                      fontSize: TS.xs.sp,
-                      fontWeight: FontWeight.w500,
-                      color: widget.isFocusedRow
-                          ? Colors.white.withValues(alpha: 0.8)
-                          : Colors.white.withValues(alpha: 0.5),
+          SizedBox(
+            height: titleBarHeight,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(32.w, 14.h, 32.w, 6.h),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: TS.xs.sp,
+                        fontWeight: FontWeight.w500,
+                        color: widget.isFocusedRow
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : Colors.white.withValues(alpha: 0.5),
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 6.w),
-                Text(
-                  '${widget.items.length}',
-                  style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.15)),
-                ),
-                SizedBox(width: 12.w),
-                _ChevronButton(icon: Icons.chevron_left, onTap: () => _scrollBy(-400.w)),
-                SizedBox(width: 4.w),
-                _ChevronButton(icon: Icons.chevron_right, onTap: () => _scrollBy(400.w)),
-              ],
+                  SizedBox(width: 6.w),
+                  Text(
+                    '${widget.items.length}',
+                    style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                  SizedBox(width: 12.w),
+                  _ChevronButton(icon: Icons.chevron_left, onTap: () => _scrollBy(-400.w)),
+                  SizedBox(width: 4.w),
+                  _ChevronButton(icon: Icons.chevron_right, onTap: () => _scrollBy(400.w)),
+                ],
+              ),
             ),
           ),
-          Expanded(
+          SizedBox(
+            height: cardListHeight,
             child: ListView.builder(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 32.w),
-              cacheExtent: 600,
+              cacheExtent: 150,
               addAutomaticKeepAlives: false,
               addRepaintBoundaries: true,
               itemCount: widget.items.length,

@@ -53,7 +53,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     setState(() => _hoveredItem = item);
     if (item != null) {
-      _previewTimer = Timer(const Duration(milliseconds: 2000), () {
+      _previewTimer = Timer(const Duration(milliseconds: 8000), () {
         if (mounted && _hoveredItem?.channelId == item.channelId) {
           _startPreview(item);
         }
@@ -163,9 +163,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final cardsHeight = screenH - heroHeight;
               final rowHeight = cardsHeight / 2;
 
-              return KeyboardListener(
+              return Focus(
                 focusNode: _focusNode,
-                onKeyEvent: (event) => _handleKeyEvent(event, categories),
+                autofocus: true,
+                onKeyEvent: (node, event) => _handleKeyEvent(node, event, categories),
                 child: Column(
                   children: [
                     SizedBox(
@@ -174,8 +175,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         featuredItems: featured,
                         overrideItem: _hoveredItem,
                         onPlay: _playNowPlaying,
-                        videoWidget: _isPreviewPlaying && _previewPlayer?.mediaKitEngine != null
-                            ? _previewPlayer!.mediaKitEngine!.buildVideoWidget(fit: BoxFit.cover)
+                        videoWidget: _isPreviewPlaying && _previewPlayer?.activeEngine != null
+                            ? _previewPlayer!.activeEngine!.buildVideoWidget(fit: BoxFit.cover)
                             : null,
                       ),
                     ),
@@ -219,23 +220,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return items[col];
   }
 
-  void _handleKeyEvent(KeyEvent event, List<CinemaCategory> categories) {
-    if (event is! KeyDownEvent) return;
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event, List<CinemaCategory> categories) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
       if (_isPreviewPlaying) {
         _stopPreview();
-        return;
+        return KeyEventResult.handled;
       }
       if (_focusedRow >= 0) {
         setState(() {
           _focusedRow = -1;
           _onHoveredItemChanged(null);
         });
-        return;
+        return KeyEventResult.handled;
       }
+      return KeyEventResult.ignored;
     }
 
+    KeyEventResult result = KeyEventResult.ignored;
     setState(() {
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowUp:
@@ -246,6 +249,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _focusedRow--;
             _onHoveredItemChanged(_resolveHoveredItem(categories));
           }
+          result = KeyEventResult.handled;
+          break;
         case LogicalKeyboardKey.arrowDown:
           if (_focusedRow == -1) {
             _focusedRow = 0;
@@ -254,6 +259,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _focusedRow++;
           }
           _onHoveredItemChanged(_resolveHoveredItem(categories));
+          result = KeyEventResult.handled;
+          break;
         case LogicalKeyboardKey.arrowLeft:
           if (_focusedRow >= 0 && _focusedRow < categories.length) {
             if (_focusedCol <= 0) {
@@ -263,6 +270,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             }
             _onHoveredItemChanged(_resolveHoveredItem(categories));
           }
+          result = KeyEventResult.handled;
+          break;
         case LogicalKeyboardKey.arrowRight:
           if (_focusedRow >= 0 && _focusedRow < categories.length) {
             final cat = categories[_focusedRow];
@@ -283,7 +292,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             }
             _onHoveredItemChanged(_resolveHoveredItem(categories));
           }
-        case LogicalKeyboardKey.enter || LogicalKeyboardKey.select:
+          result = KeyEventResult.handled;
+          break;
+        case LogicalKeyboardKey.enter:
+        case LogicalKeyboardKey.select:
           if (_focusedRow == -1) {
             final feat = ref.read(featuredNowPlayingProvider).value;
             if (feat != null && feat.isNotEmpty) {
@@ -296,9 +308,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _playNowPlaying(items[col]);
             }
           }
+          result = KeyEventResult.handled;
+          break;
         default:
           break;
       }
     });
+    return result;
   }
 }

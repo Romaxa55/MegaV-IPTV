@@ -35,16 +35,18 @@ class _HeroSectionState extends State<HeroSection> {
     final item = widget.overrideItem ?? (widget.featuredItems.isNotEmpty ? widget.featuredItems.first : null);
     if (item == null) return const SizedBox.expand();
 
-    return SizedBox.expand(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
-          if (widget.videoWidget != null) widget.videoWidget!,
-          _buildGradients(),
-          HeroTopBar(onSettings: () => context.push('/settings')),
-          _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
-        ],
+    return ClipRect(
+      child: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
+            if (widget.videoWidget != null) widget.videoWidget!,
+            _buildGradients(),
+            HeroTopBar(onSettings: () => context.push('/settings')),
+            _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
+          ],
+        ),
       ),
     );
   }
