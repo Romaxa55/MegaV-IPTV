@@ -121,6 +121,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(cinemaCategoriesProvider);
     final featuredAsync = ref.watch(featuredNowPlayingProvider);
+    final moviesAsync = ref.watch(moviesNotifierProvider);
+    final movies = moviesAsync.value ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -148,7 +150,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         data: (featured) {
-          final categories = categoriesAsync.value ?? [];
+          final baseCats = categoriesAsync.value ?? [];
+          final categories = [
+            if (movies.isNotEmpty) CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: movies),
+            ...baseCats,
+          ];
 
           return LayoutBuilder(
             builder: (context, constraints) {

@@ -207,7 +207,7 @@ func (h *Handler) GetFeaturedNowPlaying(c *gin.Context) {
 func (h *Handler) GetMoviesNowPlaying(c *gin.Context) {
 	limit := 20
 	if v := c.Query("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 500 {
 			limit = n
 		}
 	}
@@ -229,8 +229,6 @@ func (h *Handler) GetMoviesNowPlaying(c *gin.Context) {
 		baseURL := h.buildBaseURL(c)
 		h.posterService.EnrichMoviePosters(items, baseURL)
 	}
-
-	h.enrichNowPlayingThumbnails(c, items)
 
 	c.JSON(http.StatusOK, gin.H{
 		"items":  items,

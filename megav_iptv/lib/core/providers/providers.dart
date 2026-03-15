@@ -98,7 +98,7 @@ class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
   int _total = 0;
   int _offset = 0;
   bool _loading = false;
-  static const _pageSize = 20;
+  static const _pageSize = 50;
 
   MoviesNotifier(this._api) : super(const AsyncValue.loading()) {
     _loadInitial();
@@ -146,8 +146,6 @@ final moviesNotifierProvider = StateNotifierProvider<MoviesNotifier, AsyncValue<
 
 final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
   final api = ref.watch(apiClientProvider);
-  final moviesAsync = ref.watch(moviesNotifierProvider);
-  final movies = moviesAsync.value ?? [];
 
   final results = await Future.wait([
     ref.watch(nowPlayingProvider.future),
@@ -161,10 +159,6 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
 
   final categories = <CinemaCategory>[];
 
-  if (movies.isNotEmpty) {
-    categories.add(CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: movies));
-  }
-
   if (upcoming.isNotEmpty) {
     final movieUpcoming = upcoming.where((i) => _isMovieCategory(i.program.category)).toList();
     if (movieUpcoming.isNotEmpty) {
@@ -177,7 +171,6 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
     (byGroup[item.groupTitle] ??= []).add(item);
   }
 
-  final coveredGroups = <String>{};
   final missingGroupNames = <String>[];
 
   for (final cat in allCategories) {
@@ -185,7 +178,6 @@ final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) asyn
     if (epgItems != null && epgItems.isNotEmpty) {
       final id = 'group-${cat.name.toLowerCase().replaceAll(' ', '-')}';
       categories.add(CinemaCategory(id: id, name: cat.name, items: epgItems));
-      coveredGroups.add(cat.name);
     } else if (cat.count > 0) {
       missingGroupNames.add(cat.name);
     }

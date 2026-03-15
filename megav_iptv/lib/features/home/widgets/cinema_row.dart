@@ -41,6 +41,20 @@ class _CinemaRowState extends State<CinemaRow> {
   static const double _gap = 10;
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (widget.onLoadMore == null || !_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      widget.onLoadMore!();
+    }
+  }
+
+  @override
   void didUpdateWidget(CinemaRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isFocusedRow && widget.focusedCol >= 0) {
