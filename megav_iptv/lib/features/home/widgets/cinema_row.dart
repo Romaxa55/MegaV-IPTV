@@ -110,6 +110,29 @@ class _CinemaRowState extends State<CinemaRow> {
     );
   }
 
+  /// Netflix-style: keep the focused card aligned to the **left** of the row (not centered by
+  /// [Scrollable.ensureVisible], which felt random on TV).
+  void _scrollFocusedCardToLeadingEdge(int index) {
+    if (!_scrollController.hasClients || index < 0 || index >= widget.items.length) return;
+
+    final screenW = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = 64.w;
+    final sizes = _cardSizes(screenW, horizontalPadding);
+
+    // Only [index] is expanded; all items before it are narrow — matches layout after setState.
+    var offset = 0.0;
+    for (var i = 0; i < index; i++) {
+      offset += sizes.narrowW + _gap;
+    }
+
+    final max = _scrollController.position.maxScrollExtent;
+    _scrollController.animateTo(
+      offset.clamp(0.0, max),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -194,12 +217,10 @@ class _CinemaRowState extends State<CinemaRow> {
                         widget.onLoadMore!();
                       }
 
-                      Scrollable.ensureVisible(
-                        context,
-                        alignment: 0.1,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted || _focusedCol != index) return;
+                        _scrollFocusedCardToLeadingEdge(index);
+                      });
                     } else if (_focusedCol == index) {
                       setState(() => _focusedCol = -1);
                       widget.onItemFocus?.call(null);
