@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -40,8 +41,6 @@ class CategoryRowWrapper extends ConsumerWidget {
 class CinemaRow extends StatefulWidget {
   final String title;
   final List<NowPlayingItem> items;
-  final bool isFocusedRow;
-  final int focusedCol;
   final void Function(NowPlayingItem item) onItemTap;
   final void Function(NowPlayingItem? item)? onItemFocus;
   final double? availableHeight;
@@ -52,8 +51,6 @@ class CinemaRow extends StatefulWidget {
     super.key,
     required this.title,
     required this.items,
-    this.isFocusedRow = false,
-    this.focusedCol = -1,
     required this.onItemTap,
     this.onItemFocus,
     this.availableHeight,
@@ -68,16 +65,17 @@ class CinemaRow extends StatefulWidget {
 class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
   int _hoveredCol = -1;
+  int _focusedCol = -1;
 
   static const double _cardHeightPercent = 1.0;
   static const double _gap = 12;
 
+  bool get _isFocusedRow => _focusedCol >= 0;
+
   int get _activeCol {
     if (_hoveredCol >= 0) return _hoveredCol;
-    if (widget.isFocusedRow && widget.focusedCol >= 0) {
-      return widget.focusedCol.clamp(0, widget.items.length - 1);
-    }
-    return 0;
+    if (_focusedCol >= 0) return _focusedCol;
+    return 0; // Netflix-style: default to first item expanded
   }
 
   @override
@@ -94,17 +92,6 @@ class _CinemaRowState extends State<CinemaRow> {
     }
   }
 
-  @override
-  void didUpdateWidget(CinemaRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isFocusedRow && widget.focusedCol >= 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFocused());
-      if (widget.onLoadMore != null && widget.focusedCol >= widget.items.length - 3) {
-        widget.onLoadMore!();
-      }
-    }
-  }
-
   ({double fullW, double narrowW}) _cardSizes(double screenW, double horizontalPadding) {
     const gap = _gap;
     final usableWidth = screenW - horizontalPadding - 4 * gap;
@@ -112,23 +99,6 @@ class _CinemaRowState extends State<CinemaRow> {
     final narrowW = usableWidth / 6;
     final fullW = narrowW * 2;
     return (fullW: fullW, narrowW: narrowW);
-  }
-
-  void _scrollToFocused() {
-    if (!_scrollController.hasClients) return;
-    final col = widget.focusedCol.clamp(0, widget.items.length - 1);
-    final sizes = _cardSizes(MediaQuery.of(context).size.width, 64.w);
-
-    double offset = 0;
-    for (int i = 0; i < col; i++) {
-      offset += sizes.narrowW + _gap;
-    }
-
-    _scrollController.animateTo(
-      offset.clamp(0.0, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
   }
 
   void _scrollBy(double delta) {
@@ -163,7 +133,7 @@ class _CinemaRowState extends State<CinemaRow> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       height: totalHeight,
-      color: widget.isFocusedRow ? Colors.white.withValues(alpha: 0.015) : Colors.transparent,
+      color: _isFocusedRow ? Colors.white.withValues(alpha: 0.015) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -179,7 +149,7 @@ class _CinemaRowState extends State<CinemaRow> {
                       style: TextStyle(
                         fontSize: TS.xs.sp,
                         fontWeight: FontWeight.w500,
-                        color: widget.isFocusedRow
+                        color: _isFocusedRow
                             ? Colors.white.withValues(alpha: 0.8)
                             : Colors.white.withValues(alpha: 0.5),
                       ),
@@ -211,32 +181,66 @@ class _CinemaRowState extends State<CinemaRow> {
               itemBuilder: (context, index) {
                 final active = _activeCol;
                 final isExpanded = index == active;
-                final isFocused = (widget.isFocusedRow || _hoveredCol >= 0) && isExpanded;
+                final isFocused = _focusedCol == index || (_hoveredCol == index && isExpanded);
                 final w = isExpanded ? sizes.fullW : sizes.narrowW;
 
-                return MouseRegion(
-                  onEnter: (_) {
-                    if (_hoveredCol != index) {
-                      setState(() => _hoveredCol = index);
+                return Focus(
+                  onFocusChange: (hasFocus) {
+                    if (hasFocus) {
+                      setState(() => _focusedCol = index);
                       widget.onItemFocus?.call(widget.items[index]);
-                    }
-                  },
-                  onExit: (_) {
-                    if (_hoveredCol == index) {
-                      setState(() => _hoveredCol = -1);
+
+                      if (widget.onLoadMore != null && index >= widget.items.length - 3) {
+                        widget.onLoadMore!();
+                      }
+
+                      Scrollable.ensureVisible(
+                        context,
+                        alignment: 0.1,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    } else if (_focusedCol == index) {
+                      setState(() => _focusedCol = -1);
                       widget.onItemFocus?.call(null);
                     }
                   },
-                  child: Padding(
-                    padding: EdgeInsets.only(right: _gap),
-                    child: CinemaCard(
-                      item: widget.items[index],
-                      isFocused: isFocused,
-                      cardWidth: w,
-                      posterWidth: sizes.fullW,
-                      cardHeight: cardListHeight,
-                      expanded: isExpanded,
-                      onTap: () => widget.onItemTap(widget.items[index]),
+                  onKeyEvent: (node, event) {
+                    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                    final key = event.logicalKey;
+                    if (key == LogicalKeyboardKey.select ||
+                        key == LogicalKeyboardKey.enter ||
+                        key == LogicalKeyboardKey.gameButtonA ||
+                        key == LogicalKeyboardKey.numpadEnter) {
+                      widget.onItemTap(widget.items[index]);
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: MouseRegion(
+                    onEnter: (_) {
+                      if (_hoveredCol != index) {
+                        setState(() => _hoveredCol = index);
+                        widget.onItemFocus?.call(widget.items[index]);
+                      }
+                    },
+                    onExit: (_) {
+                      if (_hoveredCol == index) {
+                        setState(() => _hoveredCol = -1);
+                        widget.onItemFocus?.call(null);
+                      }
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.only(right: _gap),
+                      child: CinemaCard(
+                        item: widget.items[index],
+                        isFocused: isFocused,
+                        cardWidth: w,
+                        posterWidth: sizes.fullW,
+                        cardHeight: cardListHeight,
+                        expanded: isExpanded,
+                        onTap: () => widget.onItemTap(widget.items[index]),
+                      ),
                     ),
                   ),
                 );
