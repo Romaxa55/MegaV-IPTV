@@ -1,9 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/now_playing.dart';
+import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import 'cinema_card.dart';
+
+/// Wrapper that fetches paginated data for a category row.
+class CategoryRowWrapper extends ConsumerWidget {
+  final CinemaCategory category;
+  final void Function(NowPlayingItem item) onItemTap;
+  final void Function(NowPlayingItem? item)? onItemFocus;
+
+  const CategoryRowWrapper({super.key, required this.category, required this.onItemTap, this.onItemFocus});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isMoviesRow = category.id == 'live-movies';
+    final asyncData = isMoviesRow
+        ? ref.watch(moviesNotifierProvider)
+        : ref.watch(categoryNotifierProvider(category.name));
+
+    final items = asyncData.value ?? [];
+
+    return CinemaRow(
+      title: category.name,
+      items: items,
+      wrapAround: isMoviesRow,
+      onLoadMore: isMoviesRow
+          ? () => ref.read(moviesNotifierProvider.notifier).loadMore()
+          : () => ref.read(categoryNotifierProvider(category.name).notifier).loadMore(),
+      onItemTap: onItemTap,
+      onItemFocus: onItemFocus,
+    );
+  }
+}
 
 class CinemaRow extends StatefulWidget {
   final String title;
@@ -37,9 +69,7 @@ class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
   int _hoveredCol = -1;
 
-  /// Высота карточек: доля от ряда (0.0–1.0). 1.0 = на всю высоту, 0.9 = 90%.
   static const double _cardHeightPercent = 1.0;
-
   static const double _gap = 12;
 
   int get _activeCol {
@@ -76,11 +106,9 @@ class _CinemaRowState extends State<CinemaRow> {
   }
 
   ({double fullW, double narrowW}) _cardSizes(double screenW, double horizontalPadding) {
-    // Адаптивно: ~5 карточек (1 расширенная + 4 узкие) на видимой области
     const gap = _gap;
     final usableWidth = screenW - horizontalPadding - 4 * gap;
     if (usableWidth <= 0) return (fullW: 200, narrowW: 100);
-    // expanded ≈ 2 * narrow, итого 6 * narrow на 5 карточек
     final narrowW = usableWidth / 6;
     final fullW = narrowW * 2;
     return (fullW: fullW, narrowW: narrowW);
@@ -130,7 +158,6 @@ class _CinemaRowState extends State<CinemaRow> {
     final horizontalPadding = 64.w;
     final sizes = _cardSizes(screenW, horizontalPadding);
 
-    // Высота карточек — в процентах от ряда. Ширина без изменений.
     final cardListHeight = maxCardHeight * _cardHeightPercent;
 
     return AnimatedContainer(

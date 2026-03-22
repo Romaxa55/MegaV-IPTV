@@ -11,6 +11,7 @@ import '../../core/playlist/models/channel.dart';
 import '../../core/playlist/models/now_playing.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
+import 'widgets/cinema_row.dart';
 import 'widgets/hero_section.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {

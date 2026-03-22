@@ -44,7 +44,6 @@ class _CinemaCardState extends State<CinemaCard> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         width: widget.cardWidth ?? 260.w,
-        // Оставляем высоту пустой, чтобы контейнер растягивался на всю высоту ряда
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12.r),
           border: widget.isFocused
@@ -203,6 +202,8 @@ class _CinemaCardState extends State<CinemaCard> {
           width: size,
           height: size,
           fit: BoxFit.contain,
+          cacheWidth: 64,
+          cacheHeight: 64,
           errorBuilder: (_, _, _) => Icon(Icons.tv_rounded, size: size, color: Colors.white.withValues(alpha: 0.2)),
         ),
       );
@@ -226,7 +227,6 @@ class _CinemaCardState extends State<CinemaCard> {
     return '${d.inMinutes} мин';
   }
 
-  // --- SHARED ---
   Widget _buildPoster() {
     final thumbUrl = widget.item.thumbnailUrl;
     final iconUrl = widget.item.program.icon;
@@ -245,7 +245,7 @@ class _CinemaCardState extends State<CinemaCard> {
       fit: isFallback ? BoxFit.contain : BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      cacheWidth: 400,
+      cacheWidth: 300,
       alignment: isFallback ? Alignment.center : Alignment.topCenter,
       frameBuilder: (ctx, child, frame, loaded) {
         if (loaded) return child;
@@ -267,7 +267,7 @@ class _CinemaCardState extends State<CinemaCard> {
                 fit: BoxFit.contain,
                 width: double.infinity,
                 height: double.infinity,
-                cacheWidth: 400,
+                cacheWidth: 300,
                 alignment: Alignment.center,
                 errorBuilder: (ctx, _, _) => _posterPlaceholder(),
               ),

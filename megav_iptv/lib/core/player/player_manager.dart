@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'decoder_config.dart';
 import 'media_kit_engine.dart';
@@ -21,10 +20,8 @@ class PlayerManager {
   Timer? _markWorkingTimer;
 
   String? _currentUrl;
-  String? _currentChannelId;
   int _retryCount = 0;
   static const int _maxRetries = 3;
-  static const String _decoderPrefsPrefix = 'decoder_';
 
   PlayerManager({DecoderConfig? config}) : _config = config ?? const DecoderConfig();
 
@@ -43,11 +40,10 @@ class PlayerManager {
 
     if (kIsWeb) {
       _activeEngine = MediaKitEngine(config: _config);
-    } else if (defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android) {
+    } else if (defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.iOS) {
       _activeEngine = NativeVideoPlayerEngine();
     } else {
+      // Для Android, Windows, Linux оставляем MediaKit — он лучше справляется с TS/IPTV стримами
       _activeEngine = MediaKitEngine(config: _config);
     }
 
@@ -79,9 +75,7 @@ class PlayerManager {
 
   void _scheduleMarkWorking() {
     _markWorkingTimer?.cancel();
-    _markWorkingTimer = Timer(const Duration(seconds: 3), () {
-      markCurrentDecoderWorking();
-    });
+    // No longer saving per-channel decoder
   }
 
   Future<void> _handleError() async {
@@ -106,55 +100,15 @@ class PlayerManager {
     }
   }
 
-  /// Load saved decoder for a channel, or null if none saved.
-  Future<DecoderMode?> _loadSavedDecoder(String channelId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('$_decoderPrefsPrefix$channelId');
-    if (saved == null) return null;
-    try {
-      return DecoderMode.values.firstWhere((m) => m.name == saved);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Save the working decoder for a channel.
-  Future<void> _saveWorkingDecoder(String channelId, DecoderMode mode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_decoderPrefsPrefix$channelId', mode.name);
-    debugPrint('PlayerManager: Saved decoder ${mode.name} for channel $channelId');
-  }
-
-  /// Play a channel via the active engine.
   Future<void> playChannel(String url, {String? channelId}) async {
     _retryCount = 0;
     _currentUrl = url;
-    _currentChannelId = channelId;
-
-    if (channelId != null && _config.decoderMode == DecoderMode.auto) {
-      final saved = await _loadSavedDecoder(channelId);
-      if (saved != null && saved != _config.decoderMode) {
-        debugPrint('PlayerManager: Using saved decoder ${saved.name} for $channelId');
-        _config = _config.copyWith(decoderMode: saved);
-        if (_activeEngine is MediaKitEngine) {
-          await (_activeEngine as MediaKitEngine).updateConfig(_config);
-        }
-      }
-    }
 
     await _activeEngine?.open(url);
   }
 
-  /// Mark current channel+decoder as working (call after successful playback).
-  Future<void> markCurrentDecoderWorking() async {
-    if (_currentChannelId != null) {
-      await _saveWorkingDecoder(_currentChannelId!, _config.decoderMode);
-    }
-  }
-
   Future<void> stop() async {
     _currentUrl = null;
-    _currentChannelId = null;
     await _activeEngine?.stop();
   }
 

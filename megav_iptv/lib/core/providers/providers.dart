@@ -93,6 +93,59 @@ final featuredNowPlayingProvider = FutureProvider<List<NowPlayingItem>>((ref) as
   }).toList();
 });
 
+class CategoryNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
+  final ApiClient _api;
+  final String _category;
+  int _total = 0;
+  int _offset = 0;
+  bool _loading = false;
+  static const _pageSize = 30;
+
+  CategoryNotifier(this._api, this._category) : super(const AsyncValue.loading()) {
+    _loadInitial();
+  }
+
+  int get total => _total;
+  bool get hasMore => _offset < _total;
+
+  Future<void> _loadInitial() async {
+    try {
+      final result = await _api.getCategoryNowPlaying(_category, limit: _pageSize, offset: 0);
+      _total = result.total;
+      _offset = result.items.length;
+      state = AsyncValue.data(result.items);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (_loading || !hasMore) return;
+    _loading = true;
+    try {
+      final result = await _api.getCategoryNowPlaying(_category, limit: _pageSize, offset: _offset);
+      _total = result.total;
+      _offset += result.items.length;
+      final current = state.value ?? [];
+      state = AsyncValue.data([...current, ...result.items]);
+    } catch (_) {}
+    _loading = false;
+  }
+
+  Future<void> refresh() async {
+    _offset = 0;
+    _total = 0;
+    state = const AsyncValue.loading();
+    await _loadInitial();
+  }
+}
+
+final categoryNotifierProvider =
+    StateNotifierProvider.family<CategoryNotifier, AsyncValue<List<NowPlayingItem>>, String>((ref, category) {
+      final api = ref.watch(apiClientProvider);
+      return CategoryNotifier(api, category);
+    });
+
 class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
   final ApiClient _api;
   int _total = 0;
@@ -145,96 +198,22 @@ final moviesNotifierProvider = StateNotifierProvider<MoviesNotifier, AsyncValue<
 });
 
 final cinemaCategoriesProvider = FutureProvider<List<CinemaCategory>>((ref) async {
-  final api = ref.watch(apiClientProvider);
-
-  final results = await Future.wait([
-    ref.watch(nowPlayingProvider.future),
-    ref.watch(upcomingAllProvider.future),
-    ref.watch(categoriesProvider.future),
-  ]);
-
-  final nowPlaying = results[0] as List<NowPlayingItem>;
-  final upcoming = results[1] as List<NowPlayingItem>;
-  final allCategories = results[2] as List<({String name, int count})>;
-
+  final allCategories = await ref.watch(categoriesProvider.future);
   final categories = <CinemaCategory>[];
-
-  if (upcoming.isNotEmpty) {
-    final movieUpcoming = upcoming.where((i) => _isMovieCategory(i.program.category)).toList();
-    if (movieUpcoming.isNotEmpty) {
-      categories.add(CinemaCategory(id: 'upcoming-movies', name: '⏰  Скоро начнётся', items: movieUpcoming));
-    }
-  }
-
-  final byGroup = <String, List<NowPlayingItem>>{};
-  for (final item in nowPlaying) {
-    (byGroup[item.groupTitle] ??= []).add(item);
-  }
-
-  final missingGroupNames = <String>[];
-
   for (final cat in allCategories) {
-    final epgItems = byGroup[cat.name];
-    if (epgItems != null && epgItems.isNotEmpty) {
+    if (cat.count > 0) {
       final id = 'group-${cat.name.toLowerCase().replaceAll(' ', '-')}';
-      categories.add(CinemaCategory(id: id, name: cat.name, items: epgItems));
-    } else if (cat.count > 0) {
-      missingGroupNames.add(cat.name);
+      categories.add(CinemaCategory(id: id, name: cat.name));
     }
   }
-
-  if (missingGroupNames.isNotEmpty) {
-    final futures = missingGroupNames.map((g) => api.getChannels(category: g, limit: 50));
-    final results = await Future.wait(futures);
-    for (var i = 0; i < missingGroupNames.length; i++) {
-      final channels = results[i].channels;
-      if (channels.isEmpty) continue;
-      final items = channels.map((ch) {
-        final item = NowPlayingItem.fromChannel(ch);
-        return NowPlayingItem(
-          channelId: item.channelId,
-          channelName: item.channelName,
-          groupTitle: item.groupTitle,
-          logoUrl: item.logoUrl,
-          thumbnailUrl: api.thumbnailUrl(item.channelId),
-          program: item.program,
-        );
-      }).toList();
-      final name = missingGroupNames[i];
-      final id = 'group-${name.toLowerCase().replaceAll(' ', '-')}';
-      categories.add(CinemaCategory(id: id, name: name, items: items));
-    }
-  }
-
   return categories;
 });
-
-bool _isMovieCategory(String? cat) {
-  if (cat == null) return false;
-  final lower = cat.toLowerCase();
-  return lower.contains('фильм') ||
-      lower.contains('кино') ||
-      lower.contains('movie') ||
-      lower.contains('film') ||
-      lower.contains('сериал') ||
-      lower.contains('series') ||
-      lower.contains('драма') ||
-      lower.contains('комедия') ||
-      lower.contains('боевик') ||
-      lower.contains('триллер') ||
-      lower.contains('ужас') ||
-      lower.contains('фантаст') ||
-      lower.contains('мелодрам') ||
-      lower.contains('детектив') ||
-      lower.contains('приключен');
-}
 
 class CinemaCategory {
   final String id;
   final String name;
-  final List<NowPlayingItem> items;
 
-  const CinemaCategory({required this.id, required this.name, required this.items});
+  const CinemaCategory({required this.id, required this.name});
 }
 
 // --- Per-channel EPG ---

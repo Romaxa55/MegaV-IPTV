@@ -95,18 +95,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _quickSwitch(int delta) async {
-    final currentIndex = ref.read(currentChannelIndexProvider);
-    final group = ref.read(selectedGroupProvider);
-    final api = ref.read(apiClientProvider);
+    // If a switch is already pending, use the previewed channel as the base
+    final channel = _switchPreview ?? ref.read(currentChannelProvider);
+    if (channel == null) return;
 
-    final nextIdx = currentIndex + delta;
-    if (nextIdx < 0) return;
+    final api = ref.read(apiClientProvider);
+    final group = channel.groupTitle;
 
     try {
-      final result = await api.getChannels(category: group, limit: 1, offset: nextIdx);
-      if (result.channels.isEmpty) return;
+      // Fetch channels of the same group to find next/prev correctly
+      final result = await api.getChannels(category: group, limit: 1000, offset: 0);
+      final channels = result.channels;
+      if (channels.isEmpty) return;
 
-      final next = result.channels.first;
+      final currentIndex = channels.indexWhere((c) => c.id == channel.id);
+
+      int nextIdx;
+      if (currentIndex == -1) {
+        nextIdx = 0;
+      } else {
+        nextIdx = currentIndex + delta;
+        if (nextIdx < 0) {
+          nextIdx = channels.length - 1; // loop around
+        } else if (nextIdx >= channels.length) {
+          nextIdx = 0; // loop around
+        }
+      }
+
+      final next = channels[nextIdx];
       setState(() => _switchPreview = next);
 
       _switchTimer?.cancel();
@@ -300,6 +316,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       case LogicalKeyboardKey.mediaTrackNext:
         if (_overlay == PlayerOverlayMode.none) {
           _quickSwitch(1);
+          return KeyEventResult.handled;
+        }
+        break;
+      case LogicalKeyboardKey.arrowLeft:
+      case LogicalKeyboardKey.arrowRight:
+        if (_overlay == PlayerOverlayMode.none) {
           return KeyEventResult.handled;
         }
         break;

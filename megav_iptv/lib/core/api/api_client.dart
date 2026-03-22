@@ -52,11 +52,17 @@ class ApiClient {
   }
 
   Future<List<NowPlayingItem>> getNowPlaying() async {
-    final response = await _client.get(Uri.parse('$baseUrl/api/epg/now'));
+    final response = await _client.get(Uri.parse('$baseUrl/api/epg/now?limit=5000&offset=0'));
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
-      if (decoded == null || decoded is! List) return [];
-      return decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
+      if (decoded is Map<String, dynamic>) {
+        final List<dynamic> itemsJson = decoded['items'] ?? [];
+        return itemsJson.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
+      }
+      if (decoded is List) {
+        return decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
+      }
+      return [];
     }
     throw Exception('Failed to load now playing');
   }
@@ -69,6 +75,32 @@ class ApiClient {
       return decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList();
     }
     throw Exception('Failed to load upcoming');
+  }
+
+  Future<({List<NowPlayingItem> items, int total})> getCategoryNowPlaying(
+    String category, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/api/epg/now?category=${Uri.encodeComponent(category)}&limit=$limit&offset=$offset'),
+    );
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final List<dynamic> itemsJson = decoded['items'] ?? [];
+        final total = decoded['total'] as int? ?? 0;
+        return (items: itemsJson.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList(), total: total);
+      }
+      if (decoded is List) {
+        return (
+          items: decoded.map((json) => _enrichThumbnail(NowPlayingItem.fromJson(json))).toList(),
+          total: decoded.length,
+        );
+      }
+      return (items: <NowPlayingItem>[], total: 0);
+    }
+    throw Exception('Failed to load category now playing');
   }
 
   Future<({List<NowPlayingItem> items, int total})> getMoviesNowPlaying({int limit = 20, int offset = 0}) async {
