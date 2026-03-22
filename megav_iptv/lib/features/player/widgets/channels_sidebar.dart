@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -108,18 +106,15 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
         alignment: Alignment.centerRight,
         child: ClipRRect(
           borderRadius: BorderRadius.horizontal(left: Radius.circular(16.r)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              width: 320.w,
-              color: Colors.black.withValues(alpha: 0.8),
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  _buildCategoryChips(groupNames),
-                  Expanded(child: _buildChannelList()),
-                ],
-              ),
+          child: Container(
+            width: 320.w,
+            color: Colors.black.withValues(alpha: 0.95),
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildCategoryChips(groupNames),
+                Expanded(child: _buildChannelList()),
+              ],
             ),
           ),
         ),

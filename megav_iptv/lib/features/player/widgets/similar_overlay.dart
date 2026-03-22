@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -66,24 +64,21 @@ class _SimilarOverlayState extends ConsumerState<SimilarOverlay> with SingleTick
         alignment: Alignment.bottomCenter,
         child: ClipRRect(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              constraints: BoxConstraints(maxHeight: 0.50.sh),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.8),
-                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(),
-                  _buildHint(),
-                  if (similar.isEmpty) _buildEmpty() else _buildGrid(similar),
-                  _buildFooter(),
-                ],
-              ),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: 0.50.sh),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.95),
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(),
+                _buildHint(),
+                if (similar.isEmpty) _buildEmpty() else _buildGrid(similar),
+                _buildFooter(),
+              ],
             ),
           ),
         ),

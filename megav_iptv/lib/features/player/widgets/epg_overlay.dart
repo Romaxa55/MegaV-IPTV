@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -69,37 +67,34 @@ class _EpgOverlayState extends ConsumerState<EpgOverlay> with SingleTickerProvid
         alignment: Alignment.bottomCenter,
         child: ClipRRect(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              constraints: BoxConstraints(maxHeight: 0.55.sh),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.8),
-                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(),
-                  if (_loading)
-                    Padding(
-                      padding: EdgeInsets.all(32.w),
-                      child: const CircularProgressIndicator(color: AppColors.primary),
-                    )
-                  else if (_programs.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.all(32.w),
-                      child: Text(
-                        'Нет данных EPG',
-                        style: TextStyle(fontSize: 13.sp, color: Colors.white.withValues(alpha: 0.3)),
-                      ),
-                    )
-                  else
-                    Flexible(child: _buildTimeline()),
-                  _buildFooter(),
-                ],
-              ),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: 0.55.sh),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.95),
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(),
+                if (_loading)
+                  Padding(
+                    padding: EdgeInsets.all(32.w),
+                    child: const CircularProgressIndicator(color: AppColors.primary),
+                  )
+                else if (_programs.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.all(32.w),
+                    child: Text(
+                      'Нет данных EPG',
+                      style: TextStyle(fontSize: 13.sp, color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                  )
+                else
+                  Flexible(child: _buildTimeline()),
+                _buildFooter(),
+              ],
             ),
           ),
         ),

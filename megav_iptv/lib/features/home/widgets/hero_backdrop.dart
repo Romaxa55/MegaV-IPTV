@@ -12,16 +12,7 @@ class HeroBackdrop extends StatelessWidget {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 1200),
       transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(
-              begin: 1.05,
-              end: 1.0,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-            child: child,
-          ),
-        );
+        return FadeTransition(opacity: animation, child: child);
       },
       child: imageUrl == null || imageUrl!.isEmpty
           ? _placeholder(key: const ValueKey('empty'))

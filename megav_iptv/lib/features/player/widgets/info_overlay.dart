@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -54,38 +52,32 @@ class _InfoOverlayState extends ConsumerState<InfoOverlay> with SingleTickerProv
         position: _slideAnimation,
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16.r),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-                padding: EdgeInsets.all(20.w),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildLogo(ch),
-                    SizedBox(width: 16.w),
-                    Expanded(child: _buildInfo(ch, key)),
-                    GestureDetector(
-                      onTap: widget.onClose,
-                      child: Container(
-                        width: 28.w,
-                        height: 28.w,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Icon(Icons.close, size: 14.sp, color: Colors.white.withValues(alpha: 0.4)),
-                      ),
+          child: Container(
+            padding: EdgeInsets.all(20.w),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLogo(ch),
+                SizedBox(width: 16.w),
+                Expanded(child: _buildInfo(ch, key)),
+                GestureDetector(
+                  onTap: widget.onClose,
+                  child: Container(
+                    width: 28.w,
+                    height: 28.w,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                  ],
+                    child: Icon(Icons.close, size: 14.sp, color: Colors.white.withValues(alpha: 0.4)),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

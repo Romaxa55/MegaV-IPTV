@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -193,25 +191,19 @@ class _GlassIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Material(
-          color: AppColors.glassButtonBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            side: BorderSide(color: AppColors.glassBorder),
-          ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12.r),
-            child: SizedBox(
-              width: size.w,
-              height: size.w,
-              child: Icon(icon, size: (size * 0.45).sp, color: Colors.white),
-            ),
-          ),
+    return Material(
+      color: Colors.black.withValues(alpha: 0.85),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        side: BorderSide(color: AppColors.glassBorder),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: SizedBox(
+          width: size.w,
+          height: size.w,
+          child: Icon(icon, size: (size * 0.45).sp, color: Colors.white),
         ),
       ),
     );
@@ -234,25 +226,19 @@ class _OverlayToggleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isActive = activeOverlay == mode;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Material(
-          color: isActive ? AppColors.primary.withValues(alpha: 0.3) : AppColors.glassButtonBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            side: BorderSide(color: AppColors.glassBorder),
-          ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12.r),
-            child: SizedBox(
-              width: 40.w,
-              height: 40.w,
-              child: Icon(icon, size: 18.sp, color: Colors.white.withValues(alpha: 0.5)),
-            ),
-          ),
+    return Material(
+      color: isActive ? AppColors.primary.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.85),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        side: BorderSide(color: AppColors.glassBorder),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12.r),
+        child: SizedBox(
+          width: 40.w,
+          height: 40.w,
+          child: Icon(icon, size: 18.sp, color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.5)),
         ),
       ),
     );

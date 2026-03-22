@@ -11,7 +11,6 @@ import '../../core/playlist/models/channel.dart';
 import '../../core/playlist/models/now_playing.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
-import 'widgets/cinema_row.dart';
 import 'widgets/hero_section.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -22,8 +21,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _focusedRow = -1; // -1 = hero
-  int _focusedCol = 0;
   NowPlayingItem? _hoveredItem;
   late final FocusNode _focusNode;
 
@@ -53,7 +50,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     setState(() => _hoveredItem = item);
     if (item != null) {
-      _previewTimer = Timer(const Duration(milliseconds: 8000), () {
+      _previewTimer = Timer(const Duration(milliseconds: 1500), () {
         if (mounted && _hoveredItem?.channelId == item.channelId) {
           _startPreview(item);
         }
@@ -152,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (featured) {
           final baseCats = categoriesAsync.value ?? [];
           final categories = [
-            if (movies.isNotEmpty) CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире', items: movies),
+            if (movies.isNotEmpty) const CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире'),
             ...baseCats,
           ];
 
@@ -161,12 +158,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final screenH = constraints.maxHeight;
               final heroHeight = screenH * 0.40;
               final cardsHeight = screenH - heroHeight;
-              final rowHeight = cardsHeight / 2;
 
               return Focus(
                 focusNode: _focusNode,
                 autofocus: true,
-                onKeyEvent: (node, event) => _handleKeyEvent(node, event, categories),
+                onKeyEvent: (node, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
+                    if (_isPreviewPlaying) {
+                      _stopPreview();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  return KeyEventResult.ignored;
+                },
                 child: Column(
                   children: [
                     SizedBox(
@@ -187,17 +192,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         itemCount: categories.length,
                         itemBuilder: (context, rowIdx) {
                           final cat = categories[rowIdx];
-                          final isMoviesRow = cat.id == 'live-movies';
-                          return CinemaRow(
-                            title: cat.name,
-                            items: cat.items,
-                            isFocusedRow: _focusedRow == rowIdx,
-                            focusedCol: _focusedRow == rowIdx ? _focusedCol : -1,
-                            availableHeight: rowHeight,
-                            onLoadMore: isMoviesRow ? () => ref.read(moviesNotifierProvider.notifier).loadMore() : null,
-                            wrapAround: isMoviesRow,
-                            onItemTap: _playNowPlaying,
-                            onItemFocus: (item) => _onHoveredItemChanged(item),
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 20.h),
+                            child: CategoryRowWrapper(
+                              category: cat,
+                              onItemTap: _playNowPlaying,
+                              onItemFocus: _onHoveredItemChanged,
+                            ),
                           );
                         },
                       ),
@@ -210,110 +211,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
       ),
     );
-  }
-
-  NowPlayingItem? _resolveHoveredItem(List<CinemaCategory> categories) {
-    if (_focusedRow < 0 || _focusedRow >= categories.length) return null;
-    final items = categories[_focusedRow].items;
-    if (items.isEmpty) return null;
-    final col = _focusedCol.clamp(0, items.length - 1);
-    return items[col];
-  }
-
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event, List<CinemaCategory> categories) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-
-    if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
-      if (_isPreviewPlaying) {
-        _stopPreview();
-        return KeyEventResult.handled;
-      }
-      if (_focusedRow >= 0) {
-        setState(() {
-          _focusedRow = -1;
-          _onHoveredItemChanged(null);
-        });
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
-
-    KeyEventResult result = KeyEventResult.ignored;
-    setState(() {
-      switch (event.logicalKey) {
-        case LogicalKeyboardKey.arrowUp:
-          if (_focusedRow <= 0) {
-            _focusedRow = -1;
-            _onHoveredItemChanged(null);
-          } else {
-            _focusedRow--;
-            _onHoveredItemChanged(_resolveHoveredItem(categories));
-          }
-          result = KeyEventResult.handled;
-          break;
-        case LogicalKeyboardKey.arrowDown:
-          if (_focusedRow == -1) {
-            _focusedRow = 0;
-            _focusedCol = 0;
-          } else if (_focusedRow < categories.length - 1) {
-            _focusedRow++;
-          }
-          _onHoveredItemChanged(_resolveHoveredItem(categories));
-          result = KeyEventResult.handled;
-          break;
-        case LogicalKeyboardKey.arrowLeft:
-          if (_focusedRow >= 0 && _focusedRow < categories.length) {
-            if (_focusedCol <= 0) {
-              _focusedCol = categories[_focusedRow].items.length - 1;
-            } else {
-              _focusedCol--;
-            }
-            _onHoveredItemChanged(_resolveHoveredItem(categories));
-          }
-          result = KeyEventResult.handled;
-          break;
-        case LogicalKeyboardKey.arrowRight:
-          if (_focusedRow >= 0 && _focusedRow < categories.length) {
-            final cat = categories[_focusedRow];
-            final maxCol = cat.items.length - 1;
-            if (_focusedCol >= maxCol) {
-              if (cat.id == 'live-movies') {
-                final notifier = ref.read(moviesNotifierProvider.notifier);
-                if (notifier.hasMore) {
-                  _focusedCol++;
-                } else {
-                  _focusedCol = 0;
-                }
-              } else {
-                _focusedCol = 0;
-              }
-            } else {
-              _focusedCol++;
-            }
-            _onHoveredItemChanged(_resolveHoveredItem(categories));
-          }
-          result = KeyEventResult.handled;
-          break;
-        case LogicalKeyboardKey.enter:
-        case LogicalKeyboardKey.select:
-          if (_focusedRow == -1) {
-            final feat = ref.read(featuredNowPlayingProvider).value;
-            if (feat != null && feat.isNotEmpty) {
-              _playNowPlaying(feat.first);
-            }
-          } else if (_focusedRow >= 0 && _focusedRow < categories.length) {
-            final items = categories[_focusedRow].items;
-            final col = _focusedCol.clamp(0, items.length - 1);
-            if (items.isNotEmpty) {
-              _playNowPlaying(items[col]);
-            }
-          }
-          result = KeyEventResult.handled;
-          break;
-        default:
-          break;
-      }
-    });
-    return result;
   }
 }
