@@ -152,14 +152,36 @@ func (h *Handler) GetChannelEPG(c *gin.Context) {
 }
 
 func (h *Handler) GetNowPlaying(c *gin.Context) {
-	items, err := h.repo.GetNowPlaying()
+	limit := 5000 // High default to keep backward compatibility if not specified
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 5000 {
+			limit = n
+		}
+	}
+	offset := 0
+	if v := c.Query("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	var category *string
+	if v := c.Query("category"); v != "" {
+		category = &v
+	}
+
+	items, total, err := h.repo.GetNowPlaying(category, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get now playing")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load now playing"})
 		return
 	}
 
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, gin.H{
+		"items":  items,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
 }
 
 func (h *Handler) GetUpcomingAll(c *gin.Context) {

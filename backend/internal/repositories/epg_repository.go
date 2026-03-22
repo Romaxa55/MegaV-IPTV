@@ -59,18 +59,45 @@ func (r *IPTVRepository) GetProgramsForChannel(channelID int, limit int) ([]*mod
 	return programs, nil
 }
 
-func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {
+func (r *IPTVRepository) GetNowPlaying(category *string, limit, offset int) ([]*NowPlayingItem, int, error) {
 	now := time.Now()
-	rows, err := r.db.Query(`
+
+	queryStr := `
 		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
 		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
 		       ep.start_time, ep.end_time, ep.lang
 		FROM epg_programs ep
 		JOIN channels c ON c.id = ep.channel_id
 		WHERE ep.start_time <= $1 AND ep.end_time > $1
-		ORDER BY c.name ASC`, now)
+	`
+	countQueryStr := `
+		SELECT COUNT(*)
+		FROM epg_programs ep
+		JOIN channels c ON c.id = ep.channel_id
+		WHERE ep.start_time <= $1 AND ep.end_time > $1
+	`
+
+	args := []interface{}{now}
+	argIdx := 2
+
+	if category != nil {
+		queryStr += fmt.Sprintf(" AND c.group_title = $%d", argIdx)
+		countQueryStr += fmt.Sprintf(" AND c.group_title = $%d", argIdx)
+		args = append(args, *category)
+		argIdx++
+	}
+
+	var total int
+	if err := r.db.QueryRow(countQueryStr, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	queryStr += fmt.Sprintf(" ORDER BY c.name ASC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(queryStr, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -83,12 +110,12 @@ func (r *IPTVRepository) GetNowPlaying() ([]*NowPlayingItem, error) {
 			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
 			&p.StartTime, &p.EndTime, &p.Lang,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		item.Program = p
 		items = append(items, item)
 	}
-	return items, nil
+	return items, total, nil
 }
 
 func (r *IPTVRepository) GetUpcomingAll(withinMinutes int, limit int) ([]*NowPlayingItem, error) {
