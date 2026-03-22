@@ -246,12 +246,21 @@ class _CinemaCardState extends State<CinemaCard> {
       width: double.infinity,
       height: double.infinity,
       cacheWidth: 300,
+      gaplessPlayback: true,
       alignment: isFallback ? Alignment.center : Alignment.topCenter,
-      frameBuilder: (ctx, child, frame, loaded) {
-        if (loaded) return child;
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: frame != null ? child : _posterPlaceholder(),
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        final ready = wasSynchronouslyLoaded || frame != null;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            _posterPlaceholder(),
+            AnimatedOpacity(
+              opacity: ready ? 1 : 0,
+              duration: ready ? const Duration(milliseconds: 320) : Duration.zero,
+              curve: Curves.easeOut,
+              child: child,
+            ),
+          ],
         );
       },
       errorBuilder: (ctx, _, _) {

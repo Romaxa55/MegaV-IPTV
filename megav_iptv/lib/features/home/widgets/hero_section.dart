@@ -111,18 +111,14 @@ class _HeroContent extends StatelessWidget {
       child: SizedBox(
         width: 0.55.sw,
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 500),
+          duration: const Duration(milliseconds: 450),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeOut,
+          layoutBuilder: (currentChild, previousChildren) {
+            return Stack(alignment: Alignment.topLeft, children: <Widget>[...previousChildren, ?currentChild]);
+          },
           transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.1),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-                child: child,
-              ),
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
           child: Column(
             key: ValueKey(prog.id),

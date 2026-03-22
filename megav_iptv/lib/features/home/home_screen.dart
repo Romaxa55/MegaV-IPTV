@@ -49,6 +49,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (item == null || item.channelId != _hoveredItem?.channelId) {
       _stopPreview();
     }
+    if (item != null && mounted) {
+      final thumb = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
+      if (thumb != null && thumb.isNotEmpty) {
+        // Warm cache so hero/backdrop cross-fade feels smooth (no decode hitch).
+        unawaited(precacheImage(NetworkImage(thumb), context));
+      }
+    }
     setState(() => _hoveredItem = item);
     if (item != null) {
       _previewTimer = Timer(const Duration(milliseconds: 1500), () {

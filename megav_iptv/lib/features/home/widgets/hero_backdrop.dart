@@ -3,34 +3,39 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/theme/app_colors.dart';
 
+/// Hero background: avoids thumbnail "blink" on channel change by using
+/// [Image.gaplessPlayback] — old image stays visible until the new one is decoded.
 class HeroBackdrop extends StatelessWidget {
   final String? imageUrl;
   const HeroBackdrop({super.key, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 1200),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(opacity: animation, child: child);
-      },
-      child: imageUrl == null || imageUrl!.isEmpty
-          ? _placeholder(key: const ValueKey('empty'))
-          : Image.network(
-              imageUrl!,
-              key: ValueKey(imageUrl),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              cacheWidth: 800,
-              errorBuilder: (ctx, _, _) => _placeholder(key: ValueKey('${imageUrl}_error')),
-            ),
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return _placeholder();
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Stable base so we never flash to black while the first frame decodes.
+        ColoredBox(color: AppColors.surface),
+        Image.network(
+          imageUrl!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          cacheWidth: 800,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.low,
+          errorBuilder: (_, _, _) => _placeholder(),
+        ),
+      ],
     );
   }
 
-  Widget _placeholder({Key? key}) {
-    return Container(
-      key: key,
+  Widget _placeholder() {
+    return ColoredBox(
       color: AppColors.surface,
       child: Center(
         child: Icon(Icons.tv, size: 80.sp, color: AppColors.textHint.withValues(alpha: 0.3)),
