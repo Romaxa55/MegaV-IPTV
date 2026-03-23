@@ -99,29 +99,27 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleBarHeight = 14.h + 6.h + 18.sp;
-    final cardListHeight = 220.h;
     return SizedBox(
-      height: titleBarHeight + cardListHeight,
+      height: 450.h,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: titleBarHeight,
+            height: 60.h,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(40.w, 12.h, 40.w, 8.h),
+              padding: EdgeInsets.fromLTRB(40.w, 16.h, 40.w, 12.h),
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: TS.xl.sp,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.w600,
                   color: Colors.white.withValues(alpha: 0.35),
                 ),
               ),
             ),
           ),
           SizedBox(
-            height: cardListHeight,
+            height: 336.h,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.w),
               child: Row(
@@ -130,11 +128,11 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
                   (i) => Padding(
                     padding: EdgeInsets.only(right: 24.w),
                     child: Container(
-                      width: 88.w,
-                      height: cardListHeight,
+                      width: 224.w,
+                      height: 336.h,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                       ),
                     ),
@@ -259,7 +257,7 @@ class _CinemaRowState extends State<CinemaRow> {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      height: widget.availableHeight ?? 350.h,
+      height: widget.availableHeight ?? 450.h,
       color: _isFocusedRow ? Colors.white.withValues(alpha: 0.018) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,6 +267,17 @@ class _CinemaRowState extends State<CinemaRow> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (widget.title == 'Фильмы в эфире') ...[
+                  Container(
+                    width: 8.w,
+                    height: 8.w,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFB2C36).withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                ],
                 Text(
                   widget.title,
                   style: TextStyle(
@@ -307,7 +316,8 @@ class _CinemaRowState extends State<CinemaRow> {
               child: ListView.builder(
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: 40.w),
+                clipBehavior: Clip.none,
+                padding: EdgeInsets.only(left: 40.w, right: 40.w, top: 12.h, bottom: 24.h),
                 cacheExtent: 400,
                 addAutomaticKeepAlives: true,
                 addRepaintBoundaries: true,

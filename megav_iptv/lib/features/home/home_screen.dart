@@ -185,7 +185,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         data: (featured) {
           final baseCats = categoriesAsync.value ?? [];
           final categories = [
-            if (movies.isNotEmpty) const CinemaCategory(id: 'live-movies', name: '🔴  Фильмы в эфире'),
+            if (movies.isNotEmpty) const CinemaCategory(id: 'live-movies', name: 'Фильмы в эфире'),
             ...baseCats,
           ];
 

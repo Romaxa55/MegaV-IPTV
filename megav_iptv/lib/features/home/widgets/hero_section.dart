@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
@@ -90,10 +89,7 @@ class _HeroSectionState extends State<HeroSection> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            HeroBackdrop(
-              key: ValueKey('hero_backdrop_${item.channelId}'),
-              imageUrl: item.program.icon ?? item.thumbnailUrl ?? item.logoUrl,
-            ),
+            HeroBackdrop(imageUrl: item.program.icon ?? item.thumbnailUrl ?? item.logoUrl),
             if (widget.videoWidget != null)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
@@ -450,51 +446,43 @@ class _WatchButtonState extends State<_WatchButton> {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
           elevation: 0,
-          child: Focus(
+          child: InkWell(
             onFocusChange: (hasFocus) {
               setState(() => _isFocused = hasFocus);
             },
-            onKeyEvent: (node, event) {
-              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: InkWell(
-              onTap: widget.onPlay,
-              borderRadius: BorderRadius.circular(12.r),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 40.h,
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: _isFocused
-                      ? Border.all(color: const Color(0xFF6366F1), width: 3.w) // Highlight with primary color
-                      : Border.all(color: Colors.transparent, width: 3.w),
-                  boxShadow: _isFocused
-                      ? [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.6),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                          BoxShadow(color: Colors.white.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 2),
-                        ]
-                      : [],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, size: 18.sp, color: const Color(0xFF08080F)),
-                    SizedBox(width: 8.w),
-                    Text(
-                      'Смотреть',
-                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: const Color(0xFF08080F)),
-                    ),
-                  ],
-                ),
+            onTap: widget.onPlay,
+            borderRadius: BorderRadius.circular(12.r),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 44.h, // Слегка увеличим высоту для ТВ-пульта, чтобы не обрезалось
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                border: _isFocused
+                    ? Border.all(color: const Color(0xFF6366F1), width: 3.w) // Highlight with primary color
+                    : Border.all(color: Colors.transparent, width: 3.w),
+                boxShadow: _isFocused
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.6),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                        BoxShadow(color: Colors.white.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 2),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.play_arrow_rounded, size: 20.sp, color: const Color(0xFF08080F)),
+                  SizedBox(width: 8.w),
+                  Text(
+                    'Смотреть',
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: const Color(0xFF08080F)),
+                  ),
+                ],
               ),
             ),
           ),
