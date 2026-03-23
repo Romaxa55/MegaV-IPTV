@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../core/playlist/channel_stream_quality.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/ui_performance.dart';
+import '../../../core/ui/channel_quality_badge.dart';
 import 'channel_thumbnail.dart';
 
 class CinemaCard extends ConsumerStatefulWidget {
@@ -219,17 +221,27 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
                 );
               },
             ),
-            // Channel/program title
-            Text(
-              widget.channel.name,
-              style: TextStyle(
-                fontSize: TS.xs.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            // Channel/program title + качество (HD/UHD из названия)
+            Row(
+              children: [
+                if (widget.channel.streamQuality != null) ...[
+                  ChannelQualityBadge(quality: widget.channel.streamQuality!, compact: true),
+                  SizedBox(width: 6.w),
+                ],
+                Expanded(
+                  child: Text(
+                    widget.channel.name,
+                    style: TextStyle(
+                      fontSize: TS.xs.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      shadows: const [Shadow(blurRadius: 8, color: Colors.black)],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             // Meta row
             SizedBox(height: 2.h),

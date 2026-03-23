@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../core/playlist/channel_stream_quality.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/channel_quality_badge.dart';
 
 class ChannelsSidebar extends ConsumerStatefulWidget {
   final Channel currentChannel;
@@ -222,11 +224,21 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        ch.name,
-                        style: TextStyle(fontSize: 12.sp, color: Colors.white),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          if (ch.streamQuality != null) ...[
+                            ChannelQualityBadge(quality: ch.streamQuality!, compact: true),
+                            SizedBox(width: 6.w),
+                          ],
+                          Expanded(
+                            child: Text(
+                              ch.name,
+                              style: TextStyle(fontSize: 12.sp, color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         ch.groupTitle,

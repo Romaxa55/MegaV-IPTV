@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../core/playlist/channel_stream_quality.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/channel_quality_badge.dart';
 
 class ChannelSwitchPreview extends StatelessWidget {
   final Channel channel;
@@ -43,9 +45,21 @@ class ChannelSwitchPreview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    channel.name,
-                    style: TextStyle(fontSize: 18.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                  Row(
+                    children: [
+                      if (channel.streamQuality != null) ...[
+                        ChannelQualityBadge(quality: channel.streamQuality!, compact: true),
+                        SizedBox(width: 8.w),
+                      ],
+                      Expanded(
+                        child: Text(
+                          channel.name,
+                          style: TextStyle(fontSize: 18.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4.h),
                   Text(
@@ -117,9 +131,21 @@ class BriefChannelOSD extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  channel.name,
-                  style: TextStyle(fontSize: 14.sp, color: Colors.white),
+                Row(
+                  children: [
+                    if (channel.streamQuality != null) ...[
+                      ChannelQualityBadge(quality: channel.streamQuality!, compact: true),
+                      SizedBox(width: 6.w),
+                    ],
+                    Expanded(
+                      child: Text(
+                        channel.name,
+                        style: TextStyle(fontSize: 14.sp, color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   channel.groupTitle,

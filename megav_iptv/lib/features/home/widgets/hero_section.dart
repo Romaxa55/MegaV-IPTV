@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/playlist/channel_stream_quality.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/ui/ui_performance.dart';
 
+import '../../../core/ui/channel_quality_badge.dart';
 import 'hero_backdrop.dart';
 import 'hero_top_bar.dart';
 
@@ -269,6 +271,7 @@ class _HeroContent extends StatelessWidget {
   }
 
   Widget _buildBadges() {
+    final streamQ = detectChannelStreamQuality(item.channelName, groupTitle: item.groupTitle);
     return Row(
       children: [
         if (item.isLive) ...[
@@ -329,6 +332,7 @@ class _HeroContent extends StatelessWidget {
             ),
           ),
         ],
+        if (streamQ != null) ...[SizedBox(width: 8.w), ChannelQualityBadge(quality: streamQ)],
       ],
     );
   }
