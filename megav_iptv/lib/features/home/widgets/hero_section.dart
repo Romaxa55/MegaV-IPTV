@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
@@ -293,21 +294,30 @@ class _HeroContent extends StatelessWidget {
           borderRadius: BorderRadius.circular(12.r),
           elevation: 4,
           shadowColor: Colors.white.withValues(alpha: 0.1),
-          child: InkWell(
-            onTap: onPlay,
-            borderRadius: BorderRadius.circular(12.r),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 12.h),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.play_arrow, size: TS.xl.sp, color: AppColors.background),
-                  SizedBox(width: 8.w),
-                  Text(
-                    'Смотреть',
-                    style: TextStyle(fontSize: TS.lg.sp, fontWeight: FontWeight.w600, color: AppColors.background),
-                  ),
-                ],
+          child: Focus(
+            onKeyEvent: (node, event) {
+              // Prevent jumping from the Play button diagonally into the 6th card of the row below.
+              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: InkWell(
+              onTap: onPlay,
+              borderRadius: BorderRadius.circular(12.r),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 12.h),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow, size: TS.xl.sp, color: AppColors.background),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Смотреть',
+                      style: TextStyle(fontSize: TS.lg.sp, fontWeight: FontWeight.w600, color: AppColors.background),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
