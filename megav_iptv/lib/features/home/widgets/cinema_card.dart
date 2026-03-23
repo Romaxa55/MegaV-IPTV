@@ -232,70 +232,70 @@ class _CinemaCardState extends State<CinemaCard> {
     final iconUrl = widget.item.program.icon;
     final logoUrl = widget.item.logoUrl;
 
-    final useThumb = thumbUrl != null && !_thumbFailed;
-    final url = useThumb ? thumbUrl : (iconUrl ?? logoUrl);
+    final fallbackUrl = (iconUrl != null && iconUrl.isNotEmpty) ? iconUrl : logoUrl;
+    final hasThumb = thumbUrl != null && thumbUrl.isNotEmpty;
 
-    if (url == null || url.isEmpty) return _posterPlaceholder();
-
-    final isFallback = !useThumb;
-
-    Widget imageWidget = Image.network(
-      url,
-      key: ValueKey('${widget.item.channelId}|$url|$_thumbRetryCount'),
-      fit: isFallback ? BoxFit.contain : BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      cacheWidth: 300,
-      gaplessPlayback: true,
-      alignment: isFallback ? Alignment.center : Alignment.topCenter,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        final ready = wasSynchronouslyLoaded || frame != null;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            _posterPlaceholder(),
-            AnimatedOpacity(
-              opacity: ready ? 1 : 0,
-              duration: ready ? const Duration(milliseconds: 320) : Duration.zero,
-              curve: Curves.easeOut,
-              child: child,
-            ),
-          ],
-        );
-      },
-      errorBuilder: (ctx, _, _) {
-        if (useThumb) {
-          _thumbFailed = true;
-          _retryThumbnail();
-          final fallback = iconUrl ?? logoUrl;
-          if (fallback != null && fallback.isNotEmpty) {
-            return Padding(
+    // The fallback layer is always at the bottom so it never blinks out while thumbnails retry.
+    final fallbackLayer = fallbackUrl != null && fallbackUrl.isNotEmpty
+        ? Container(
+            color: _cardBg,
+            alignment: Alignment.center,
+            child: Padding(
               padding: EdgeInsets.all(24.w),
               child: Image.network(
-                fallback,
+                fallbackUrl,
                 fit: BoxFit.contain,
                 width: double.infinity,
                 height: double.infinity,
                 cacheWidth: 300,
-                alignment: Alignment.center,
                 errorBuilder: (ctx, _, _) => _posterPlaceholder(),
               ),
-            );
-          }
-        }
-        return _posterPlaceholder();
-      },
-    );
+            ),
+          )
+        : _posterPlaceholder();
 
-    if (isFallback) {
-      return Container(
-        color: _cardBg,
-        alignment: Alignment.center,
-        child: Padding(padding: EdgeInsets.all(24.w), child: imageWidget),
-      );
+    if (!hasThumb) {
+      return fallbackLayer;
     }
 
-    return imageWidget;
+    // The thumbnail layer tries to load over the fallback.
+    // If it fails, we keep opacity at 0 and retry silently.
+    final thumbAttemptUrl = '$thumbUrl?retry=$_thumbRetryCount';
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        fallbackLayer,
+        if (!_thumbFailed)
+          Image.network(
+            thumbAttemptUrl,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            cacheWidth: 300,
+            gaplessPlayback: true,
+            alignment: Alignment.center,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              final ready = wasSynchronouslyLoaded || frame != null;
+              return AnimatedOpacity(
+                opacity: ready ? 1 : 0,
+                duration: ready ? const Duration(milliseconds: 400) : Duration.zero,
+                curve: Curves.easeOut,
+                child: child,
+              );
+            },
+            errorBuilder: (ctx, error, stackTrace) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && !_thumbFailed) {
+                  setState(() => _thumbFailed = true);
+                  _retryThumbnail();
+                }
+              });
+              return const SizedBox.shrink(); // Transparent error, fallback shows through
+            },
+          ),
+      ],
+    );
   }
 
   void _retryThumbnail() {
