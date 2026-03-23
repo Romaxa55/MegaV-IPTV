@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -187,6 +188,21 @@ class _ContentRowState extends ConsumerState<ContentRow> {
                         FastScrollDetector().onEvent();
                         // Optional: trigger your existing focus callbacks if any
                       }
+                    },
+                    onKeyEvent: (node, event) {
+                      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                      final key = event.logicalKey;
+                      if (key == LogicalKeyboardKey.select ||
+                          key == LogicalKeyboardKey.enter ||
+                          key == LogicalKeyboardKey.gameButtonA ||
+                          key == LogicalKeyboardKey.numpadEnter) {
+                        widget.onChannelTap(_channels[index], index);
+                        return KeyEventResult.handled;
+                      }
+                      if (index == _channels.length - 1 && !_hasMore && key == LogicalKeyboardKey.arrowRight) {
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
                     },
                     child: CinemaCard(
                       channel: _channels[index],

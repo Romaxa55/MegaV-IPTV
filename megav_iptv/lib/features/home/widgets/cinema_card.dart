@@ -122,9 +122,9 @@ class _CinemaCardState extends State<CinemaCard> {
           children: [
             _buildTopBadges(prog, context),
             const Spacer(),
-            _buildAgeAndGenre(prog),
+            if (prog != null) _buildAgeAndGenre(prog),
             SizedBox(height: 4.h),
-            if (prog.isNow) ...[_buildProgressSection(prog, isExp), SizedBox(height: 6.h)],
+            if (prog?.isNow == true) ...[_buildProgressSection(prog!, isExp), SizedBox(height: 6.h)],
             _buildBottomInfo(prog, isExp),
           ],
         ),
@@ -132,10 +132,10 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  Widget _buildTopBadges(EpgProgram prog, BuildContext context) {
+  Widget _buildTopBadges(EpgProgram? prog, BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [if (prog.isNow) _liveBadge(context) else const SizedBox.shrink(), _ratingBadge()],
+      children: [if (prog?.isNow == true) _liveBadge(context) else const SizedBox.shrink(), _ratingBadge()],
     );
   }
 
@@ -275,12 +275,12 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  Widget _buildBottomInfo(EpgProgram prog, bool isExp) {
+  Widget _buildBottomInfo(EpgProgram? prog, bool isExp) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          prog.title,
+          prog?.title ?? 'Нет данных EPG',
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.w400,
@@ -294,17 +294,17 @@ class _CinemaCardState extends State<CinemaCard> {
         SizedBox(height: 4.h),
         Row(
           children: [
-            if (prog.parsedYear != null) ...[
+            if (prog?.parsedYear != null) ...[
               Text(
-                prog.parsedYear!,
+                prog!.parsedYear!,
                 style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.50)),
               ),
               if (prog.category != null) _dot(),
             ],
-            if (prog.category != null)
+            if (prog?.category != null)
               Flexible(
                 child: Text(
-                  prog.category!,
+                  prog!.category!,
                   style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.50)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -359,13 +359,15 @@ class _CinemaCardState extends State<CinemaCard> {
   );
 
   String _pseudoRating() {
-    final hash = widget.item.program.title.hashCode.abs();
+    final title = widget.item.program?.title ?? widget.item.channelName;
+    final hash = title.hashCode.abs();
     final r = 6.0 + (hash % 40) / 10.0;
     return r.toStringAsFixed(1);
   }
 
   String _pseudoAgeRating() {
-    final hash = widget.item.program.title.hashCode.abs();
+    final title = widget.item.program?.title ?? widget.item.channelName;
+    final hash = title.hashCode.abs();
     final ages = ['0+', '6+', '12+', '16+', '18+'];
     return ages[hash % ages.length];
   }
@@ -394,7 +396,7 @@ class _CinemaCardState extends State<CinemaCard> {
   }
 
   Widget _buildPoster() {
-    final iconUrl = widget.item.program.icon;
+    final iconUrl = widget.item.program?.icon;
     final thumbUrl = widget.item.thumbnailUrl;
     final logoUrl = widget.item.logoUrl;
 

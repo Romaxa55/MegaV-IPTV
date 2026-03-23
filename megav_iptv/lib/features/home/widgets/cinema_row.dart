@@ -13,7 +13,7 @@ import 'cinema_card.dart';
 
 void _precacheRowPosters(BuildContext context, List<NowPlayingItem> items, {int max = 28}) {
   for (final item in items.take(max)) {
-    final u = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
+    final u = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
     if (u == null || u.isEmpty) continue;
     unawaited(precacheImage(NetworkImage(u), context));
   }
@@ -377,6 +377,9 @@ class _CinemaRowState extends State<CinemaRow> {
                                 key == LogicalKeyboardKey.gameButtonA ||
                                 key == LogicalKeyboardKey.numpadEnter) {
                               widget.onItemTap(widget.items[index]);
+                              return KeyEventResult.handled;
+                            }
+                            if (index == widget.items.length - 1 && key == LogicalKeyboardKey.arrowRight) {
                               return KeyEventResult.handled;
                             }
                             return KeyEventResult.ignored;

@@ -67,15 +67,14 @@ func (r *IPTVRepository) GetNowPlaying(category *string, limit, offset int) ([]*
 			SELECT DISTINCT ON (c.id) c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
 				   ep.id as ep_id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
 				   ep.start_time, ep.end_time, ep.lang
-			FROM epg_programs ep
-			JOIN channels c ON c.id = ep.channel_id
-			WHERE ep.start_time <= $1 AND ep.end_time > $1
+			FROM channels c
+			LEFT JOIN epg_programs ep ON c.id = ep.channel_id AND ep.start_time <= $1 AND ep.end_time > $1
+			WHERE 1=1
 	`
 	countQueryStr := `
 		SELECT COUNT(DISTINCT c.id)
-		FROM epg_programs ep
-		JOIN channels c ON c.id = ep.channel_id
-		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		FROM channels c
+		WHERE 1=1
 	`
 
 	args := []interface{}{now}
@@ -83,21 +82,24 @@ func (r *IPTVRepository) GetNowPlaying(category *string, limit, offset int) ([]*
 
 	if category != nil {
 		queryStr += fmt.Sprintf(" AND c.group_title = $%d", argIdx)
-		countQueryStr += fmt.Sprintf(" AND c.group_title = $%d", argIdx)
+		countQueryStr += fmt.Sprintf(" AND c.group_title = $%d", argIdx-1) // countQueryStr doesn't use $1 (now), so category is $1
 		args = append(args, *category)
 		argIdx++
 	}
 
 	var total int
-	if err := r.db.QueryRow(countQueryStr, args...).Scan(&total); err != nil {
+	// Note: count query uses only category arg
+	countArgs := args[1:]
+	if err := r.db.QueryRow(countQueryStr, countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
+	// We order by c.id, then start_time DESC for DISTINCT ON
 	queryStr += fmt.Sprintf(`
 			ORDER BY c.id, ep.start_time DESC
 		)
 		SELECT * FROM unique_channels
-		ORDER BY name ASC, id ASC
+		ORDER BY (ep_id IS NOT NULL) DESC, name ASC, id ASC
 		LIMIT $%d OFFSET $%d`, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
@@ -110,15 +112,45 @@ func (r *IPTVRepository) GetNowPlaying(category *string, limit, offset int) ([]*
 	var items []*NowPlayingItem
 	for rows.Next() {
 		item := &NowPlayingItem{}
-		p := &models.EpgProgram{}
+		var epID sql.NullInt64
+		var epChannelID sql.NullInt64
+		var epTitle sql.NullString
+		var epDesc sql.NullString
+		var epCategory sql.NullString
+		var epIcon sql.NullString
+		var epStart sql.NullTime
+		var epEnd sql.NullTime
+		var epLang sql.NullString
+
 		if err := rows.Scan(
 			&item.ChannelID, &item.ChannelName, &item.GroupTitle, &item.LogoURL, &item.ThumbnailURL,
-			&p.ID, &p.ChannelID, &p.Title, &p.Description, &p.Category, &p.Icon,
-			&p.StartTime, &p.EndTime, &p.Lang,
+			&epID, &epChannelID, &epTitle, &epDesc, &epCategory, &epIcon,
+			&epStart, &epEnd, &epLang,
 		); err != nil {
 			return nil, 0, err
 		}
-		item.Program = p
+
+		if epID.Valid {
+			var desc, cat, icon, lang *string
+			if epDesc.Valid { desc = &epDesc.String }
+			if epCategory.Valid { cat = &epCategory.String }
+			if epIcon.Valid { icon = &epIcon.String }
+			if epLang.Valid { lang = &epLang.String }
+
+			item.Program = &models.EpgProgram{
+				ID:          int(epID.Int64),
+				ChannelID:   int(epChannelID.Int64),
+				Title:       epTitle.String,
+				Description: desc,
+				Category:    cat,
+				Icon:        icon,
+				StartTime:   epStart.Time,
+				EndTime:     epEnd.Time,
+				Lang:        lang,
+			}
+		} else {
+			item.Program = nil
+		}
 		items = append(items, item)
 	}
 	return items, total, nil

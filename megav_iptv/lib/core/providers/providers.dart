@@ -24,6 +24,8 @@ bool _sameEpgSlot(NowPlayingItem a, NowPlayingItem b) {
   if (a.channelId != b.channelId) return false;
   final pa = a.program;
   final pb = b.program;
+  if (pa == null && pb == null) return true;
+  if (pa == null || pb == null) return false;
   if (pa.id != 0 && pb.id != 0 && pa.id == pb.id) return true;
   return pa.start == pb.start && pa.end == pb.end && pa.title == pb.title;
 }

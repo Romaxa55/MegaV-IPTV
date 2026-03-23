@@ -89,7 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       final futures = <Future<void>>[];
       for (final item in allItems) {
-        final thumb = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
+        final thumb = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
         if (thumb != null && thumb.isNotEmpty) {
           futures.add(precacheImage(NetworkImage(thumb), context).catchError((_) {}));
         }
@@ -147,7 +147,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _stopPreview();
       }
       if (mounted) {
-        final thumb = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
+        final thumb = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
         if (thumb != null && thumb.isNotEmpty) {
           unawaited(precacheImage(NetworkImage(thumb), context));
         }

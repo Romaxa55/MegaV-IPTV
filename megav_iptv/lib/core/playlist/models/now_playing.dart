@@ -7,7 +7,7 @@ class NowPlayingItem {
   final String groupTitle;
   final String? logoUrl;
   final String? thumbnailUrl;
-  final EpgProgram program;
+  final EpgProgram? program;
 
   const NowPlayingItem({
     required this.channelId,
@@ -15,27 +15,20 @@ class NowPlayingItem {
     this.groupTitle = '',
     this.logoUrl,
     this.thumbnailUrl,
-    required this.program,
+    this.program,
   });
 
-  bool get isLive => program.isNow;
+  bool get isLive => program?.isNow ?? false;
 
   String? get primaryCategory => groupTitle.isNotEmpty ? groupTitle : null;
 
   factory NowPlayingItem.fromChannel(Channel channel) {
-    final now = DateTime.now();
     return NowPlayingItem(
       channelId: channel.id,
       channelName: channel.name,
       groupTitle: channel.groupTitle,
       logoUrl: channel.logoUrl,
-      program: EpgProgram(
-        id: 0,
-        channelId: channel.id,
-        title: channel.name,
-        start: now,
-        end: now.add(const Duration(hours: 1)),
-      ),
+      program: null,
     );
   }
 
@@ -46,7 +39,7 @@ class NowPlayingItem {
       groupTitle: json['groupTitle'] as String? ?? '',
       logoUrl: json['logoUrl'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
-      program: EpgProgram.fromJson(json['program'] as Map<String, dynamic>),
+      program: json['program'] != null ? EpgProgram.fromJson(json['program'] as Map<String, dynamic>) : null,
     );
   }
 }

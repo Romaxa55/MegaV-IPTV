@@ -98,7 +98,7 @@ class _HeroSectionState extends State<HeroSection> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            HeroBackdrop(imageUrl: item.program.icon ?? item.thumbnailUrl ?? item.logoUrl),
+            HeroBackdrop(imageUrl: item.program?.icon ?? item.thumbnailUrl ?? item.logoUrl),
             if (widget.videoWidget != null)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.0, end: 1.0),
@@ -224,14 +224,14 @@ class _HeroContent extends StatelessWidget {
                 return FadeTransition(opacity: animation, child: child);
               },
               child: Column(
-                key: ValueKey('hero_${item.channelId}_${prog.id}_${prog.title}'),
+                key: ValueKey('hero_${item.channelId}_${prog?.id}_${prog?.title ?? item.channelName}'),
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildBadges(),
                   SizedBox(height: 8.h),
                   Text(
-                    prog.title,
+                    prog?.title ?? item.channelName,
                     style: TextStyle(
                       fontSize: 36.sp,
                       fontWeight: FontWeight.w600,
@@ -246,19 +246,19 @@ class _HeroContent extends StatelessWidget {
                   ),
                   SizedBox(height: 4.h),
                   _buildMetaRow(),
-                  if (prog.synopsis != null) ...[
+                  if (prog?.synopsis != null) ...[
                     SizedBox(height: 8.h),
                     SizedBox(
                       width: 672.w,
                       child: Text(
-                        prog.synopsis!,
+                        prog!.synopsis!,
                         style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.50), height: 1.5),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
-                  if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
+                  if (prog?.isNow == true) ...[SizedBox(height: 10.h), _buildProgressBar()],
                 ],
               ),
             ),
@@ -318,7 +318,7 @@ class _HeroContent extends StatelessWidget {
             ],
           ),
         ),
-        if (item.program.category != null) ...[
+        if (item.program?.category != null) ...[
           SizedBox(width: 8.w),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
@@ -327,7 +327,7 @@ class _HeroContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Text(
-              item.program.category!,
+              item.program!.category!,
               style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.60)),
             ),
           ),
@@ -339,6 +339,18 @@ class _HeroContent extends StatelessWidget {
 
   Widget _buildMetaRow() {
     final prog = item.program;
+    if (prog == null) {
+      return Row(
+        children: [
+          Icon(Icons.live_tv_rounded, size: 20.sp, color: Colors.white.withValues(alpha: 0.40)),
+          SizedBox(width: 6.w),
+          Text(
+            'Нет данных EPG',
+            style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.60)),
+          ),
+        ],
+      );
+    }
     final hash = prog.title.hashCode.abs();
     final rating = 6.0 + (hash % 40) / 10.0;
     final year = prog.parsedYear;
@@ -384,6 +396,7 @@ class _HeroContent extends StatelessWidget {
 
   Widget _buildProgressBar() {
     final prog = item.program;
+    if (prog == null) return const SizedBox.shrink();
     return SizedBox(
       width: 448.w,
       child: Column(
