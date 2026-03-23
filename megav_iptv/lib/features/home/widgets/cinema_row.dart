@@ -197,8 +197,8 @@ class _CinemaRowState extends State<CinemaRow> {
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 32.w),
-              cacheExtent: 150,
-              addAutomaticKeepAlives: false,
+              cacheExtent: 400,
+              addAutomaticKeepAlives: true,
               addRepaintBoundaries: true,
               itemCount: widget.items.length,
               itemBuilder: (context, index) {

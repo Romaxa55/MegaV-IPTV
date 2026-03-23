@@ -26,6 +26,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late final FocusNode _focusNode;
 
   Timer? _previewTimer;
+
+  /// D-pad / focus fires `null` between old and new card; without debounce hero + video preview tear down for one frame → visible blink.
+  Timer? _hoveredClearDebounce;
   NowPlayingItem? _previewingItem;
   bool _isPreviewPlaying = false;
   PlayerManager? _previewPlayer;
@@ -39,6 +42,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _previewTimer?.cancel();
+    _hoveredClearDebounce?.cancel();
     _stopPreview();
     _focusNode.dispose();
     super.dispose();
@@ -46,24 +50,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onHoveredItemChanged(NowPlayingItem? item) {
     _previewTimer?.cancel();
-    if (item == null || item.channelId != _hoveredItem?.channelId) {
-      _stopPreview();
-    }
-    if (item != null && mounted) {
-      final thumb = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
-      if (thumb != null && thumb.isNotEmpty) {
-        // Warm cache so hero/backdrop cross-fade feels smooth (no decode hitch).
-        unawaited(precacheImage(NetworkImage(thumb), context));
-      }
-    }
-    setState(() => _hoveredItem = item);
+    _hoveredClearDebounce?.cancel();
+
     if (item != null) {
+      if (item.channelId != _hoveredItem?.channelId) {
+        _stopPreview();
+      }
+      if (mounted) {
+        final thumb = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
+        if (thumb != null && thumb.isNotEmpty) {
+          unawaited(precacheImage(NetworkImage(thumb), context));
+        }
+      }
+      setState(() => _hoveredItem = item);
       _previewTimer = Timer(const Duration(milliseconds: 1500), () {
         if (mounted && _hoveredItem?.channelId == item.channelId) {
           _startPreview(item);
         }
       });
+      return;
     }
+
+    // Lost focus (often briefly between two cards). Clear hero/preview only if focus doesn't land on another card soon.
+    _hoveredClearDebounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      setState(() => _hoveredItem = null);
+      _stopPreview();
+    });
   }
 
   Future<void> _startPreview(NowPlayingItem item) async {
