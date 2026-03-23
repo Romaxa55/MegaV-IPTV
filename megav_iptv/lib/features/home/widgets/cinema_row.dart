@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,8 +10,16 @@ import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import 'cinema_card.dart';
 
+void _precacheRowPosters(BuildContext context, List<NowPlayingItem> items, {int max = 28}) {
+  for (final item in items.take(max)) {
+    final u = item.thumbnailUrl ?? item.program.icon ?? item.logoUrl;
+    if (u == null || u.isEmpty) continue;
+    unawaited(precacheImage(NetworkImage(u), context));
+  }
+}
+
 /// Wrapper that fetches paginated data for a category row.
-class CategoryRowWrapper extends ConsumerWidget {
+class CategoryRowWrapper extends ConsumerStatefulWidget {
   final CinemaCategory category;
   final void Function(NowPlayingItem item) onItemTap;
   final void Function(NowPlayingItem? item)? onItemFocus;
@@ -17,23 +27,124 @@ class CategoryRowWrapper extends ConsumerWidget {
   const CategoryRowWrapper({super.key, required this.category, required this.onItemTap, this.onItemFocus});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isMoviesRow = category.id == 'live-movies';
-    final asyncData = isMoviesRow
-        ? ref.watch(moviesNotifierProvider)
-        : ref.watch(categoryNotifierProvider(category.name));
+  ConsumerState<CategoryRowWrapper> createState() => _CategoryRowWrapperState();
+}
+
+class _CategoryRowWrapperState extends ConsumerState<CategoryRowWrapper> {
+  /// Bumps when the visible prefix of the row changes (new data / pagination) so we precache again.
+  int _precacheSignature = 0;
+
+  void _schedulePrecache(BuildContext context, List<NowPlayingItem> list) {
+    if (list.isEmpty) return;
+    final sig = Object.hash(
+      list.length,
+      list.first.channelId,
+      list.length > 1 ? list[list.length ~/ 2].channelId : 0,
+      list.last.channelId,
+    );
+    if (sig == _precacheSignature) return;
+    _precacheSignature = sig;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _precacheRowPosters(context, list);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMoviesRow = widget.category.id == 'live-movies';
+    final provider = isMoviesRow ? moviesNotifierProvider : categoryNotifierProvider(widget.category.name);
+    final asyncData = ref.watch(provider);
+
+    ref.listen<AsyncValue<List<NowPlayingItem>>>(provider, (previous, next) {
+      next.whenData((list) => _schedulePrecache(context, list));
+    });
 
     final items = asyncData.value ?? [];
+    if (items.isNotEmpty) {
+      _schedulePrecache(context, items);
+    }
+
+    if (asyncData.isLoading && !asyncData.hasValue) {
+      return _CinemaRowLoadingPlaceholder(title: widget.category.name);
+    }
+
+    if (items.isEmpty && asyncData.hasError) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+        child: Text(
+          'Не удалось загрузить ряд',
+          style: TextStyle(fontSize: TS.xs.sp, color: Colors.white.withValues(alpha: 0.4)),
+        ),
+      );
+    }
 
     return CinemaRow(
-      title: category.name,
+      title: widget.category.name,
       items: items,
       wrapAround: isMoviesRow,
       onLoadMore: isMoviesRow
           ? () => ref.read(moviesNotifierProvider.notifier).loadMore()
-          : () => ref.read(categoryNotifierProvider(category.name).notifier).loadMore(),
-      onItemTap: onItemTap,
-      onItemFocus: onItemFocus,
+          : () => ref.read(categoryNotifierProvider(widget.category.name).notifier).loadMore(),
+      onItemTap: widget.onItemTap,
+      onItemFocus: widget.onItemFocus,
+    );
+  }
+}
+
+/// Same vertical space as a loaded row — avoids layout jump; greys instead of empty flash.
+class _CinemaRowLoadingPlaceholder extends StatelessWidget {
+  final String title;
+  const _CinemaRowLoadingPlaceholder({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final titleBarHeight = 14.h + 6.h + 18.sp;
+    final cardListHeight = 220.h;
+    return SizedBox(
+      height: titleBarHeight + cardListHeight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: titleBarHeight,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(32.w, 14.h, 32.w, 6.h),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: TS.xs.sp,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.35),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: cardListHeight,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32.w),
+              child: Row(
+                children: List.generate(
+                  7,
+                  (i) => Padding(
+                    padding: EdgeInsets.only(right: 12.w),
+                    child: Container(
+                      width: 88.w,
+                      height: cardListHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -208,6 +319,7 @@ class _CinemaRowState extends State<CinemaRow> {
                 final w = isExpanded ? sizes.fullW : sizes.narrowW;
 
                 return Focus(
+                  key: ValueKey<int>(widget.items[index].channelId),
                   onFocusChange: (hasFocus) {
                     if (hasFocus) {
                       setState(() => _focusedCol = index);
@@ -254,6 +366,7 @@ class _CinemaRowState extends State<CinemaRow> {
                     child: Padding(
                       padding: EdgeInsets.only(right: _gap),
                       child: CinemaCard(
+                        key: ValueKey<int>(widget.items[index].channelId),
                         item: widget.items[index],
                         isFocused: isFocused,
                         cardWidth: w,

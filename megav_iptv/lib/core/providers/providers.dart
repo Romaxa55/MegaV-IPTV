@@ -7,6 +7,27 @@ import '../playlist/models/channel.dart';
 import '../playlist/models/epg_program.dart';
 import '../playlist/models/now_playing.dart';
 
+/// When EPG refetches, keep previous [NowPlayingItem] instances if the same channel still has
+/// the same program — avoids Image.network resetting and visible poster "blinks".
+List<NowPlayingItem> mergeNowPlayingPreserveInstances(List<NowPlayingItem>? previous, List<NowPlayingItem> incoming) {
+  if (previous == null || previous.isEmpty) return incoming;
+  final byChannel = <int, NowPlayingItem>{for (final p in previous) p.channelId: p};
+  return incoming.map((nw) {
+    final old = byChannel[nw.channelId];
+    if (old == null) return nw;
+    if (!_sameEpgSlot(old, nw)) return nw;
+    return old;
+  }).toList();
+}
+
+bool _sameEpgSlot(NowPlayingItem a, NowPlayingItem b) {
+  if (a.channelId != b.channelId) return false;
+  final pa = a.program;
+  final pb = b.program;
+  if (pa.id != 0 && pb.id != 0 && pa.id == pb.id) return true;
+  return pa.start == pb.start && pa.end == pb.end && pa.title == pb.title;
+}
+
 // --- API ---
 
 final baseUrlProvider = StateProvider<String>((ref) => 'https://iptv.megav.app');
@@ -113,7 +134,8 @@ class CategoryNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
       final result = await _api.getCategoryNowPlaying(_category, limit: _pageSize, offset: 0);
       _total = result.total;
       _offset = result.items.length;
-      state = AsyncValue.data(result.items);
+      final merged = mergeNowPlayingPreserveInstances(state.valueOrNull, result.items);
+      state = AsyncValue.data(merged);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -132,11 +154,19 @@ class CategoryNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
     _loading = false;
   }
 
+  /// Silent refresh: keep current posters on screen while new data loads (no loading → empty flash).
   Future<void> refresh() async {
     _offset = 0;
     _total = 0;
-    state = const AsyncValue.loading();
-    await _loadInitial();
+    try {
+      final result = await _api.getCategoryNowPlaying(_category, limit: _pageSize, offset: 0);
+      _total = result.total;
+      _offset = result.items.length;
+      final merged = mergeNowPlayingPreserveInstances(state.valueOrNull, result.items);
+      state = AsyncValue.data(merged);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 }
 
@@ -165,7 +195,8 @@ class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
       final result = await _api.getMoviesNowPlaying(limit: _pageSize, offset: 0);
       _total = result.total;
       _offset = result.items.length;
-      state = AsyncValue.data(result.items);
+      final merged = mergeNowPlayingPreserveInstances(state.valueOrNull, result.items);
+      state = AsyncValue.data(merged);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -187,8 +218,15 @@ class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
   Future<void> refresh() async {
     _offset = 0;
     _total = 0;
-    state = const AsyncValue.loading();
-    await _loadInitial();
+    try {
+      final result = await _api.getMoviesNowPlaying(limit: _pageSize, offset: 0);
+      _total = result.total;
+      _offset = result.items.length;
+      final merged = mergeNowPlayingPreserveInstances(state.valueOrNull, result.items);
+      state = AsyncValue.data(merged);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 }
 

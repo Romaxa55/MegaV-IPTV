@@ -343,7 +343,15 @@ func (h *Handler) GetChannelThumbnail(c *gin.Context) {
 		if age > thumbnailStaleDuration {
 			h.enqueueThumbnail(id)
 		}
-		c.Header("Cache-Control", "public, max-age=60")
+		// Strong ETag lets clients reuse decoded images when the file on disk is unchanged (less poster flicker).
+		etag := fmt.Sprintf(`"%x-%x"`, info.ModTime().Unix(), info.Size())
+		if c.GetHeader("If-None-Match") == etag {
+			c.Status(http.StatusNotModified)
+			return
+		}
+		c.Header("ETag", etag)
+		// stale-while-revalidate: keep showing the old JPEG while a refresh happens in the background.
+		c.Header("Cache-Control", "public, max-age=120, stale-while-revalidate=600")
 		c.Header("X-Thumbnail-Age", age.Round(time.Second).String())
 		c.File(thumbPath)
 		return

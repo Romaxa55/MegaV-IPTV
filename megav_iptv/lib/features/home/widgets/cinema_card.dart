@@ -241,7 +241,7 @@ class _CinemaCardState extends State<CinemaCard> {
 
     Widget imageWidget = Image.network(
       url,
-      key: ValueKey('$url-$_thumbRetryCount'),
+      key: ValueKey('${widget.item.channelId}|$url|$_thumbRetryCount'),
       fit: isFallback ? BoxFit.contain : BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
