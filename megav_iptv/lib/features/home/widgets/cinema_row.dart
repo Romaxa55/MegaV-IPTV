@@ -304,81 +304,84 @@ class _CinemaRowState extends State<CinemaRow> {
           ),
           SizedBox(
             height: cardListHeight,
-            child: ListView.builder(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: 32.w),
-              cacheExtent: 400,
-              addAutomaticKeepAlives: true,
-              addRepaintBoundaries: true,
-              itemCount: widget.items.length,
-              itemBuilder: (context, index) {
-                final active = _activeCol;
-                final isExpanded = index == active;
-                final isFocused = _focusedCol == index || (_hoveredCol == index && isExpanded);
-                final w = isExpanded ? sizes.fullW : sizes.narrowW;
+            child: FocusTraversalGroup(
+              policy: WidgetOrderTraversalPolicy(),
+              child: ListView.builder(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(horizontal: 32.w),
+                cacheExtent: 400,
+                addAutomaticKeepAlives: true,
+                addRepaintBoundaries: true,
+                itemCount: widget.items.length,
+                itemBuilder: (context, index) {
+                  final active = _activeCol;
+                  final isExpanded = index == active;
+                  final isFocused = _focusedCol == index || (_hoveredCol == index && isExpanded);
+                  final w = isExpanded ? sizes.fullW : sizes.narrowW;
 
-                return Focus(
-                  key: ValueKey<int>(widget.items[index].channelId),
-                  onFocusChange: (hasFocus) {
-                    if (hasFocus) {
-                      setState(() => _focusedCol = index);
-                      widget.onItemFocus?.call(widget.items[index]);
-
-                      if (widget.onLoadMore != null && index >= widget.items.length - 3) {
-                        widget.onLoadMore!();
-                      }
-
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (!mounted || _focusedCol != index) return;
-                        _scrollFocusedCardToLeadingEdge(index);
-                      });
-                    } else if (_focusedCol == index) {
-                      setState(() => _focusedCol = -1);
-                      widget.onItemFocus?.call(null);
-                    }
-                  },
-                  onKeyEvent: (node, event) {
-                    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                    final key = event.logicalKey;
-                    if (key == LogicalKeyboardKey.select ||
-                        key == LogicalKeyboardKey.enter ||
-                        key == LogicalKeyboardKey.gameButtonA ||
-                        key == LogicalKeyboardKey.numpadEnter) {
-                      widget.onItemTap(widget.items[index]);
-                      return KeyEventResult.handled;
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: MouseRegion(
-                    onEnter: (_) {
-                      if (_hoveredCol != index) {
-                        setState(() => _hoveredCol = index);
+                  return Focus(
+                    key: ValueKey('${widget.items[index].channelId}_$index'),
+                    onFocusChange: (hasFocus) {
+                      if (hasFocus) {
+                        setState(() => _focusedCol = index);
                         widget.onItemFocus?.call(widget.items[index]);
-                      }
-                    },
-                    onExit: (_) {
-                      if (_hoveredCol == index) {
-                        setState(() => _hoveredCol = -1);
+
+                        if (widget.onLoadMore != null && index >= widget.items.length - 3) {
+                          widget.onLoadMore!();
+                        }
+
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted || _focusedCol != index) return;
+                          _scrollFocusedCardToLeadingEdge(index);
+                        });
+                      } else if (_focusedCol == index) {
+                        setState(() => _focusedCol = -1);
                         widget.onItemFocus?.call(null);
                       }
                     },
-                    child: Padding(
-                      padding: EdgeInsets.only(right: _gap),
-                      child: CinemaCard(
-                        key: ValueKey<int>(widget.items[index].channelId),
-                        item: widget.items[index],
-                        isFocused: isFocused,
-                        cardWidth: w,
-                        posterWidth: sizes.fullW,
-                        cardHeight: cardListHeight,
-                        expanded: isExpanded,
-                        onTap: () => widget.onItemTap(widget.items[index]),
+                    onKeyEvent: (node, event) {
+                      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                      final key = event.logicalKey;
+                      if (key == LogicalKeyboardKey.select ||
+                          key == LogicalKeyboardKey.enter ||
+                          key == LogicalKeyboardKey.gameButtonA ||
+                          key == LogicalKeyboardKey.numpadEnter) {
+                        widget.onItemTap(widget.items[index]);
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: MouseRegion(
+                      onEnter: (_) {
+                        if (_hoveredCol != index) {
+                          setState(() => _hoveredCol = index);
+                          widget.onItemFocus?.call(widget.items[index]);
+                        }
+                      },
+                      onExit: (_) {
+                        if (_hoveredCol == index) {
+                          setState(() => _hoveredCol = -1);
+                          widget.onItemFocus?.call(null);
+                        }
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.only(right: _gap),
+                        child: CinemaCard(
+                          key: ValueKey('card_${widget.items[index].channelId}_$index'),
+                          item: widget.items[index],
+                          isFocused: isFocused,
+                          cardWidth: w,
+                          posterWidth: sizes.fullW,
+                          cardHeight: cardListHeight,
+                          expanded: isExpanded,
+                          onTap: () => widget.onItemTap(widget.items[index]),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],
