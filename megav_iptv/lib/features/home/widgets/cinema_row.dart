@@ -254,56 +254,55 @@ class _CinemaRowState extends State<CinemaRow> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    final titleBarHeight = 14.h + 6.h + 18.sp;
-    final totalHeight = widget.availableHeight ?? 360.h;
-    final maxCardHeight = totalHeight - titleBarHeight;
-
     final screenW = MediaQuery.of(context).size.width;
     final horizontalPadding = 80.w;
     final sizes = _cardSizes(screenW, horizontalPadding);
 
-    final cardListHeight = maxCardHeight * _cardHeightPercent;
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      height: totalHeight,
+      height: widget.availableHeight ?? 350.h,
       color: _isFocusedRow ? Colors.white.withValues(alpha: 0.018) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: titleBarHeight,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(40.w, 12.h, 40.w, 8.h),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: TextStyle(
-                        fontSize: TS.xl.sp,
-                        fontWeight: FontWeight.w500,
-                        color: _isFocusedRow
-                            ? Colors.white.withValues(alpha: 0.90)
-                            : Colors.white.withValues(alpha: 0.60),
-                      ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(40.w, 16.h, 40.w, 12.h),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                    color: _isFocusedRow ? Colors.white.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.60),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Text(
+                    '${widget.items.length}',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.5),
                     ),
                   ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    '${widget.items.length}',
-                    style: TextStyle(fontSize: TS.base.sp, color: Colors.white.withValues(alpha: 0.25)),
-                  ),
-                  SizedBox(width: 16.w),
-                  _ChevronButton(icon: Icons.chevron_left, onTap: () => _scrollBy(-600.w)),
-                  SizedBox(width: 6.w),
-                  _ChevronButton(icon: Icons.chevron_right, onTap: () => _scrollBy(600.w)),
-                ],
-              ),
+                ),
+                const Spacer(),
+                _ChevronButton(icon: Icons.chevron_left, onTap: () => _scrollBy(-600.w)),
+                SizedBox(width: 6.w),
+                _ChevronButton(icon: Icons.chevron_right, onTap: () => _scrollBy(600.w)),
+              ],
             ),
           ),
-          SizedBox(
-            height: cardListHeight,
+          Expanded(
             child: FocusTraversalGroup(
               policy: WidgetOrderTraversalPolicy(),
               child: ListView.builder(
@@ -373,7 +372,6 @@ class _CinemaRowState extends State<CinemaRow> {
                           isFocused: isFocused,
                           cardWidth: w,
                           posterWidth: sizes.fullW,
-                          cardHeight: cardListHeight,
                           expanded: isExpanded,
                           onTap: () => widget.onItemTap(widget.items[index]),
                         ),

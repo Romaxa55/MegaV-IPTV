@@ -13,7 +13,6 @@ class CinemaCard extends StatefulWidget {
   final ValueChanged<bool>? onFocusChange;
   final double? cardWidth;
   final double? posterWidth;
-  final double? cardHeight;
 
   const CinemaCard({
     super.key,
@@ -24,7 +23,6 @@ class CinemaCard extends StatefulWidget {
     this.onFocusChange,
     this.cardWidth,
     this.posterWidth,
-    this.cardHeight,
   });
 
   @override
@@ -70,24 +68,19 @@ class _CinemaCardState extends State<CinemaCard> {
 
   Widget _buildGradient() {
     return Positioned.fill(
-      child: Opacity(
-        opacity: 0.90,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: const [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 1.0],
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                const Color(0xFF020203).withValues(alpha: 0.6),
-                const Color(0xFF010101).withValues(alpha: 0.4),
-                const Color(0xFF000000).withValues(alpha: 0.2),
-                Colors.transparent,
-                Colors.transparent,
-              ].reversed.toList(),
-            ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.35, 0.55, 0.75, 1.0],
+            colors: [
+              Colors.transparent,
+              Colors.transparent,
+              const Color(0xFF08080F).withValues(alpha: 0.50),
+              const Color(0xFF08080F).withValues(alpha: 0.85),
+              const Color(0xFF08080F).withValues(alpha: 0.95),
+            ],
           ),
         ),
       ),

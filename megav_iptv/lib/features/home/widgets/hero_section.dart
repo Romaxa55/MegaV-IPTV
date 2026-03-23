@@ -85,8 +85,6 @@ class _HeroSectionState extends State<HeroSection> {
     final item = _effectiveItem;
     if (item == null) return const SizedBox.expand();
 
-    final showDots = widget.overrideItem == null && widget.featuredItems.length > 1;
-
     return ClipRect(
       child: SizedBox.expand(
         child: Stack(
@@ -107,37 +105,7 @@ class _HeroSectionState extends State<HeroSection> {
             _buildGradients(),
             HeroTopBar(onSettings: () => context.push('/settings')),
             _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
-            if (showDots) _buildPageDots(),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPageDots() {
-    final n = widget.featuredItems.length;
-    final maxDots = n > 8 ? 8 : n;
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Align(
-          alignment: const Alignment(0.12, 0.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(maxDots, (i) {
-              final active = i == _carouselIndex;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOut,
-                margin: EdgeInsets.symmetric(horizontal: 3.w),
-                width: active ? 24.w : 6.w,
-                height: 6.h,
-                decoration: BoxDecoration(
-                  color: active ? Colors.white : Colors.white.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(999.r),
-                ),
-              );
-            }),
-          ),
         ),
       ),
     );
@@ -230,15 +198,15 @@ class _HeroContent extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildBadges(),
-              SizedBox(height: 10.h),
+              SizedBox(height: 8.h),
               Text(
                 prog.title,
                 style: TextStyle(
-                  fontSize: 48.sp,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 36.sp,
+                  fontWeight: FontWeight.w600,
                   color: Colors.white,
-                  height: 1.0,
-                  shadows: const [Shadow(blurRadius: 25, color: Colors.black54, offset: Offset(0, 25))],
+                  height: 1.1,
+                  shadows: const [Shadow(blurRadius: 20, color: Colors.black54, offset: Offset(0, 4))],
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -259,7 +227,7 @@ class _HeroContent extends StatelessWidget {
               ],
               if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
               SizedBox(height: 12.h),
-              _buildActions(),
+              _WatchButton(onPlay: onPlay),
             ],
           ),
         ),
@@ -433,52 +401,6 @@ class _HeroContent extends StatelessWidget {
     );
   }
 
-  Widget _buildActions() {
-    return Row(
-      children: [
-        Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.r),
-          elevation: 0,
-          child: Focus(
-            onKeyEvent: (node, event) {
-              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: InkWell(
-              onTap: onPlay,
-              borderRadius: BorderRadius.circular(16.r),
-              child: Container(
-                height: 56.h,
-                padding: EdgeInsets.symmetric(horizontal: 32.w),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: [
-                    BoxShadow(color: Colors.white.withValues(alpha: 0.10), blurRadius: 15, offset: const Offset(0, 10)),
-                    BoxShadow(color: Colors.white.withValues(alpha: 0.10), blurRadius: 6, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, size: 20.sp, color: const Color(0xFF08080F)),
-                    SizedBox(width: 12.w),
-                    Text(
-                      'Смотреть',
-                      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w500, color: const Color(0xFF08080F)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildChannelLogo(double size) {
     final logoUrl = item.logoUrl;
     if (logoUrl != null && logoUrl.isNotEmpty) {
@@ -506,5 +428,78 @@ class _HeroContent extends StatelessWidget {
   String _formatDuration(Duration d) {
     if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes.remainder(60)} мин';
     return '${d.inMinutes} мин';
+  }
+}
+
+class _WatchButton extends StatefulWidget {
+  final VoidCallback onPlay;
+  const _WatchButton({required this.onPlay});
+
+  @override
+  State<_WatchButton> createState() => _WatchButtonState();
+}
+
+class _WatchButtonState extends State<_WatchButton> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12.r),
+          elevation: 0,
+          child: Focus(
+            onFocusChange: (hasFocus) {
+              setState(() => _isFocused = hasFocus);
+            },
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: InkWell(
+              onTap: widget.onPlay,
+              borderRadius: BorderRadius.circular(12.r),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 40.h,
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: _isFocused
+                      ? Border.all(color: const Color(0xFF6366F1), width: 3.w) // Highlight with primary color
+                      : Border.all(color: Colors.transparent, width: 3.w),
+                  boxShadow: _isFocused
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.6),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(color: Colors.white.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 2),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, size: 18.sp, color: const Color(0xFF08080F)),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Смотреть',
+                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: const Color(0xFF08080F)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

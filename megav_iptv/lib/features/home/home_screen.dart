@@ -66,7 +66,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       }
       setState(() => _hoveredItem = item);
-      _previewTimer = Timer(const Duration(milliseconds: 1500), () {
+      _previewTimer = Timer(const Duration(milliseconds: 7000), () {
         if (mounted && _hoveredItem?.channelId == item.channelId) {
           _startPreview(item);
         }
