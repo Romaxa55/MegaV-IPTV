@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../core/playlist/models/epg_program.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -40,20 +41,25 @@ class _CinemaCardState extends State<CinemaCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        width: widget.cardWidth ?? 260.w,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
-          border: widget.isFocused
-              ? Border.all(color: Colors.white.withValues(alpha: 0.35), width: 2)
-              : Border.all(color: Colors.white.withValues(alpha: 0.06), width: 1),
-          boxShadow: widget.isFocused
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 2)]
-              : null,
+        scale: widget.isFocused ? 1.05 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          width: widget.cardWidth ?? 260.w,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.r),
+            border: widget.isFocused
+                ? Border.all(color: AppColors.primary, width: 3)
+                : Border.all(color: Colors.transparent, width: 0),
+            boxShadow: widget.isFocused
+                ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.30), blurRadius: 50, spreadRadius: -12)]
+                : null,
+          ),
+          child: ClipRRect(borderRadius: BorderRadius.circular(16.r), child: _buildCardContent()),
         ),
-        child: ClipRRect(borderRadius: BorderRadius.circular(12.r), child: _buildCardContent()),
       ),
     );
   }
@@ -64,13 +70,24 @@ class _CinemaCardState extends State<CinemaCard> {
 
   Widget _buildGradient() {
     return Positioned.fill(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: const [0.0, 0.45, 1.0],
-            colors: [Colors.black.withValues(alpha: 0.3), Colors.transparent, Colors.black.withValues(alpha: 0.9)],
+      child: Opacity(
+        opacity: 0.90,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 1.0],
+              colors: [
+                Colors.transparent,
+                Colors.transparent,
+                const Color(0xFF020203).withValues(alpha: 0.6),
+                const Color(0xFF010101).withValues(alpha: 0.4),
+                const Color(0xFF000000).withValues(alpha: 0.2),
+                Colors.transparent,
+                Colors.transparent,
+              ].reversed.toList(),
+            ),
           ),
         ),
       ),
@@ -80,136 +97,242 @@ class _CinemaCardState extends State<CinemaCard> {
   Widget _buildOverlay() {
     final prog = widget.item.program;
     final isExp = widget.expanded;
-    final padH = isExp ? 14.w : 10.w;
-    final titleSize = isExp ? TS.sm.sp : TS.xs.sp;
-    final metaSize = isExp ? TS.t11.sp : TS.t9.sp;
 
     return Positioned.fill(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(padH, 10.h, padH, 10.h),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (prog.isNow) _badge('LIVE', AppColors.liveBadge, size: metaSize),
-                if (!prog.isNow) const Spacer(),
-                _badge(_pseudoRating(), const Color(0xFF1DB954), icon: Icons.star_rounded, size: metaSize),
-              ],
-            ),
+            _buildTopBadges(prog),
             const Spacer(),
-            Text(
-              prog.title,
-              style: TextStyle(
-                fontSize: titleSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                height: 1.2,
-                shadows: [Shadow(color: Colors.black, blurRadius: 10)],
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 6.h),
-            Row(
-              children: [
-                if (prog.category != null) ...[
-                  Text(
-                    prog.category!,
-                    style: TextStyle(fontSize: metaSize, color: Colors.white.withValues(alpha: 0.6)),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4.w),
-                    child: Text(
-                      '·',
-                      style: TextStyle(fontSize: metaSize, color: Colors.white.withValues(alpha: 0.3)),
-                    ),
-                  ),
-                ],
-                Text(
-                  _fmtTime(prog.start),
-                  style: TextStyle(fontSize: metaSize, color: Colors.white.withValues(alpha: 0.5)),
-                ),
-                if (prog.isNow && isExp) ...[
-                  const Spacer(),
-                  Text(
-                    '-${_fmtDuration(prog.remaining)}',
-                    style: TextStyle(fontSize: metaSize, color: Colors.white.withValues(alpha: 0.8)),
-                  ),
-                ],
-              ],
-            ),
-            if (prog.isNow) ...[
-              SizedBox(height: 8.h),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2.r),
-                child: LinearProgressIndicator(
-                  value: prog.progress,
-                  minHeight: isExp ? 4.h : 3.h,
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                ),
-              ),
-            ],
-            SizedBox(height: 8.h),
-            Row(
-              children: [
-                _buildChannelLogo(isExp ? 18.w : 14.w),
-                SizedBox(width: 6.w),
-                Expanded(
-                  child: Text(
-                    widget.item.channelName,
-                    style: TextStyle(fontSize: metaSize, color: Colors.white.withValues(alpha: 0.6)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+            _buildAgeAndGenre(prog),
+            SizedBox(height: 4.h),
+            if (prog.isNow) ...[_buildProgressSection(prog, isExp), SizedBox(height: 6.h)],
+            _buildBottomInfo(prog, isExp),
           ],
         ),
       ),
     );
   }
 
-  Widget _badge(String text, Color bg, {IconData? icon, required double size}) {
+  Widget _buildTopBadges(EpgProgram prog) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [if (prog.isNow) _liveBadge() else const SizedBox.shrink(), _ratingBadge()],
+    );
+  }
+
+  Widget _liveBadge() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4.r)),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFB2C36).withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(14.r),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFB2C36).withValues(alpha: 0.20),
+            blurRadius: 15,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(color: const Color(0xFFFB2C36).withValues(alpha: 0.20), blurRadius: 6, offset: const Offset(0, 4)),
+        ],
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[Icon(icon, size: size, color: Colors.white), SizedBox(width: 2.w)],
+          Container(
+            width: 8.w,
+            height: 8.w,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.77), shape: BoxShape.circle),
+          ),
+          SizedBox(width: 8.w),
           Text(
-            text,
-            style: TextStyle(fontSize: size, fontWeight: FontWeight.w600, color: Colors.white),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            'LIVE',
+            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: Colors.white, letterSpacing: 0.35),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildChannelLogo(double size) {
+  Widget _ratingBadge() {
+    final rating = _pseudoRating();
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF22C55E).withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star_rounded, size: 16.sp, color: const Color(0xFF22C55E)),
+          SizedBox(width: 4.w),
+          Text(
+            rating,
+            style: TextStyle(fontSize: 14.sp, color: const Color(0xFF22C55E)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAgeAndGenre(EpgProgram prog) {
+    final ageRating = _pseudoAgeRating();
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: const Color(0xFF08080F).withValues(alpha: 0.80),
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.19)),
+          ),
+          child: Text(
+            ageRating,
+            style: TextStyle(fontSize: 14.sp, color: const Color(0xFFF97316)),
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.40),
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          child: Text(
+            _genreEmoji(prog.category),
+            style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.50)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressSection(EpgProgram prog, bool isExp) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999.r),
+          child: SizedBox(
+            height: 8.h,
+            child: Stack(
+              children: [
+                Container(color: Colors.white.withValues(alpha: 0.10)),
+                FractionallySizedBox(
+                  widthFactor: prog.progress,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(),
+                      gradient: LinearGradient(colors: [Color(0xFF6366F1), Color(0xFFA78BFA)]),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 4.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _fmtDuration(prog.elapsed),
+              style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.40)),
+            ),
+            Text(
+              '−${_fmtDuration(prog.remaining)}',
+              style: TextStyle(fontSize: 12.sp, color: Colors.white.withValues(alpha: 0.55)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomInfo(EpgProgram prog, bool isExp) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          prog.title,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w400,
+            color: Colors.white,
+            height: 1.5,
+            shadows: [const Shadow(color: Colors.black, blurRadius: 8)],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        SizedBox(height: 4.h),
+        Row(
+          children: [
+            if (prog.parsedYear != null) ...[
+              Text(
+                prog.parsedYear!,
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.50)),
+              ),
+              if (prog.category != null) _dot(),
+            ],
+            if (prog.category != null)
+              Flexible(
+                child: Text(
+                  prog.category!,
+                  style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.50)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        ),
+        SizedBox(height: 4.h),
+        Row(
+          children: [
+            _buildChannelIcon(),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                widget.item.channelName,
+                style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.65)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChannelIcon() {
     final logoUrl = widget.item.logoUrl;
     if (logoUrl != null && logoUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(4.r),
         child: Image.network(
           logoUrl,
-          width: size,
-          height: size,
+          width: 18.w,
+          height: 18.w,
           fit: BoxFit.contain,
           cacheWidth: 64,
           cacheHeight: 64,
-          errorBuilder: (_, _, _) => Icon(Icons.tv_rounded, size: size, color: Colors.white.withValues(alpha: 0.2)),
+          errorBuilder: (_, _, _) => Text('📺', style: TextStyle(fontSize: 18.sp)),
         ),
       );
     }
-    return Icon(Icons.tv_rounded, size: size, color: Colors.white.withValues(alpha: 0.2));
+    return Text('📺', style: TextStyle(fontSize: 18.sp));
   }
+
+  Widget _dot() => Padding(
+    padding: EdgeInsets.symmetric(horizontal: 4.w),
+    child: Text(
+      '•',
+      style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.20)),
+    ),
+  );
 
   String _pseudoRating() {
     final hash = widget.item.program.title.hashCode.abs();
@@ -217,62 +340,61 @@ class _CinemaCardState extends State<CinemaCard> {
     return r.toStringAsFixed(1);
   }
 
-  String _fmtTime(DateTime dt) {
-    final l = dt.toLocal();
-    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+  String _pseudoAgeRating() {
+    final hash = widget.item.program.title.hashCode.abs();
+    final ages = ['0+', '6+', '12+', '16+', '18+'];
+    return ages[hash % ages.length];
+  }
+
+  String _genreEmoji(String? category) {
+    if (category == null) return '🎬';
+    final lower = category.toLowerCase();
+    if (lower.contains('спорт') || lower.contains('футбол')) return '⚽';
+    if (lower.contains('драма')) return '🎭';
+    if (lower.contains('комед')) return '😂';
+    if (lower.contains('ужас') || lower.contains('хоррор')) return '👻';
+    if (lower.contains('боевик') || lower.contains('экшн')) return '💥';
+    if (lower.contains('фантаст') || lower.contains('sci')) return '🚀';
+    if (lower.contains('детектив') || lower.contains('крим')) return '🔍';
+    if (lower.contains('мультфильм') || lower.contains('аним')) return '🎨';
+    if (lower.contains('документ')) return '📹';
+    if (lower.contains('музык')) return '🎵';
+    if (lower.contains('новост')) return '📰';
+    if (lower.contains('военн')) return '⚔️';
+    return '🎬';
   }
 
   String _fmtDuration(Duration d) {
-    if (d.inHours > 0) return '${d.inHours}ч ${d.inMinutes.remainder(60)}м';
+    if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes.remainder(60)} мин';
     return '${d.inMinutes} мин';
   }
 
   Widget _buildPoster() {
-    final thumbUrl = widget.item.thumbnailUrl;
     final iconUrl = widget.item.program.icon;
+    final thumbUrl = widget.item.thumbnailUrl;
     final logoUrl = widget.item.logoUrl;
 
-    final fallbackUrl = (iconUrl != null && iconUrl.isNotEmpty) ? iconUrl : logoUrl;
-    final hasThumb = thumbUrl != null && thumbUrl.isNotEmpty;
+    // Priority: KP poster (icon) → stream thumbnail → channel logo
+    final primaryUrl = (iconUrl != null && iconUrl.isNotEmpty) ? iconUrl : null;
+    final secondaryUrl = (thumbUrl != null && thumbUrl.isNotEmpty) ? thumbUrl : null;
+    final tertiaryUrl = (logoUrl != null && logoUrl.isNotEmpty) ? logoUrl : null;
+    final bestUrl = primaryUrl ?? secondaryUrl ?? tertiaryUrl;
 
-    // The fallback layer is always at the bottom so it never blinks out while thumbnails retry.
-    final fallbackLayer = fallbackUrl != null && fallbackUrl.isNotEmpty
-        ? Container(
-            color: _cardBg,
-            alignment: Alignment.center,
-            child: Padding(
-              padding: EdgeInsets.all(24.w),
-              child: Image.network(
-                fallbackUrl,
-                fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
-                cacheWidth: 300,
-                errorBuilder: (ctx, _, _) => _posterPlaceholder(),
-              ),
-            ),
-          )
-        : _posterPlaceholder();
+    if (bestUrl == null) return _posterPlaceholder();
 
-    if (!hasThumb) {
-      return fallbackLayer;
-    }
-
-    // The thumbnail layer tries to load over the fallback.
-    // If it fails, we keep opacity at 0 and retry silently.
-    final thumbAttemptUrl = '$thumbUrl?retry=$_thumbRetryCount';
+    final attemptUrl = bestUrl == secondaryUrl && _thumbRetryCount > 0 ? '$bestUrl?retry=$_thumbRetryCount' : bestUrl;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        fallbackLayer,
+        ColoredBox(color: _cardBg),
         if (!_thumbFailed)
           Image.network(
-            thumbAttemptUrl,
+            attemptUrl,
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            cacheWidth: 300,
+            cacheWidth: 400,
             gaplessPlayback: true,
             alignment: Alignment.center,
             frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
@@ -291,7 +413,7 @@ class _CinemaCardState extends State<CinemaCard> {
                   _retryThumbnail();
                 }
               });
-              return const SizedBox.shrink(); // Transparent error, fallback shows through
+              return const SizedBox.shrink();
             },
           ),
       ],

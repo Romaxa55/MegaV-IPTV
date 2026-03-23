@@ -34,6 +34,11 @@ class AppColors {
 
   static const Color ratingGold = Color(0xFFF59E0B);
   static const Color indigo300 = Color(0xFFA5B4FC);
+
+  // Figma tokens — card / chip / glass
+  static const Color cardBg = Color(0xFF12121E);
+  static const Color chipBg = Color(0x14FFFFFF); // white/8%
+  static const Color chipBorder = Color(0x0FFFFFFF); // white/6%
 }
 
 /// Tailwind-aligned typography scale (px values, use with .sp)

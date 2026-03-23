@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/player/player_engine.dart';
 import '../../core/player/player_manager.dart';
 import '../../core/playlist/models/channel.dart';
 import '../../core/playlist/models/now_playing.dart';
@@ -31,7 +32,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _hoveredClearDebounce;
   NowPlayingItem? _previewingItem;
   bool _isPreviewPlaying = false;
+  bool _isPreviewVideoReady = false;
   PlayerManager? _previewPlayer;
+  StreamSubscription<PlayerState>? _previewStateSub;
 
   @override
   void initState() {
@@ -89,6 +92,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!_previewPlayer!.isInitialized) {
       await _previewPlayer!.initialize();
     }
+
+    _previewStateSub?.cancel();
+    _previewStateSub = _previewPlayer!.stateStream.listen((state) {
+      if (!mounted) return;
+      if (state == PlayerState.playing && !_isPreviewVideoReady) {
+        setState(() => _isPreviewVideoReady = true);
+      }
+    });
+
     await _previewPlayer!.playChannel(streamUrl, channelId: item.channelId.toString());
     if (mounted) {
       setState(() {
@@ -99,10 +111,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _stopPreview() {
+    _previewStateSub?.cancel();
+    _previewStateSub = null;
     if (_isPreviewPlaying) {
       _previewPlayer?.stop();
       setState(() {
         _isPreviewPlaying = false;
+        _isPreviewVideoReady = false;
         _previewingItem = null;
       });
     }
@@ -177,7 +192,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return LayoutBuilder(
             builder: (context, constraints) {
               final screenH = constraints.maxHeight;
-              final heroHeight = screenH * 0.40;
+              final heroHeight = screenH * 0.42;
               final cardsHeight = screenH - heroHeight;
 
               return Focus(
@@ -201,7 +216,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         featuredItems: featured,
                         overrideItem: _hoveredItem,
                         onPlay: _playNowPlaying,
-                        videoWidget: _isPreviewPlaying && _previewPlayer?.activeEngine != null
+                        videoWidget: _isPreviewVideoReady && _previewPlayer?.activeEngine != null
                             ? _previewPlayer!.activeEngine!.buildVideoWidget(fit: BoxFit.cover)
                             : null,
                       ),

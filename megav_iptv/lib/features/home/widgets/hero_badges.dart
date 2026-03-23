@@ -6,6 +6,7 @@ class HeroBadge extends StatelessWidget {
   final String text;
   final Color color;
   final Color? textColor;
+  final Color? borderColor;
   final bool showPulse;
   final IconData? icon;
 
@@ -14,6 +15,7 @@ class HeroBadge extends StatelessWidget {
     required this.text,
     required this.color,
     this.textColor,
+    this.borderColor,
     this.showPulse = false,
     this.icon,
   });
@@ -21,24 +23,25 @@ class HeroBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8.r),
-        boxShadow: showPulse ? [BoxShadow(color: AppColors.liveBadge.withValues(alpha: 0.2), blurRadius: 8)] : null,
+        borderRadius: BorderRadius.circular(12.r),
+        border: borderColor != null ? Border.all(color: borderColor!) : null,
+        boxShadow: showPulse ? [BoxShadow(color: AppColors.liveBadge.withValues(alpha: 0.20), blurRadius: 8)] : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showPulse) ...[const _PulsingDot(), SizedBox(width: 6.w)],
           if (icon != null && !showPulse) ...[
-            Icon(icon, size: TS.t11.sp, color: textColor ?? Colors.white),
+            Icon(icon, size: TS.sm.sp, color: textColor ?? Colors.white),
             SizedBox(width: 4.w),
           ],
           Text(
             text,
             style: TextStyle(
-              fontSize: TS.t11.sp,
+              fontSize: TS.sm.sp,
               color: textColor ?? Colors.white,
               letterSpacing: 0.3,
               fontWeight: FontWeight.w500,

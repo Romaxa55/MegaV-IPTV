@@ -11,18 +11,18 @@ class GlassButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withValues(alpha: 0.85),
+      color: AppColors.chipBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.r),
-        side: BorderSide(color: AppColors.glassBorder),
+        side: BorderSide(color: AppColors.chipBorder),
       ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.r),
         child: SizedBox(
-          width: 40.w,
-          height: 40.w,
-          child: Icon(icon, size: 18.sp, color: Colors.white.withValues(alpha: 0.35)),
+          width: 48.w,
+          height: 48.w,
+          child: Icon(icon, size: 20.sp, color: Colors.white.withValues(alpha: 0.50)),
         ),
       ),
     );

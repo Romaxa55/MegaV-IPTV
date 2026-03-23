@@ -61,6 +61,27 @@ class EpgProgram {
     );
   }
 
+  /// Parses year from the first line of description (e.g. "1981 г." → "1981")
+  String? get parsedYear {
+    if (description == null) return null;
+    final match = RegExp(r'(\d{4})\s*г?\.?').firstMatch(description!.split('\n').first);
+    return match?.group(1);
+  }
+
+  /// Returns the actual synopsis (everything after the first blank line in description).
+  /// Strips the leading year line (e.g. "1981 г.") so it's not duplicated.
+  String? get synopsis {
+    if (description == null) return null;
+    final idx = description!.indexOf('\n\n');
+    if (idx >= 0) {
+      final text = description!.substring(idx + 2).trim();
+      return text.isEmpty ? null : text;
+    }
+    // No double-newline — check if the whole description is just a year
+    if (RegExp(r'^\d{4}\s*г?\.?\s*$').hasMatch(description!.trim())) return null;
+    return description;
+  }
+
   @override
   String toString() => 'EpgProgram(title: $title, ${isNow ? "NOW" : ""})';
 }

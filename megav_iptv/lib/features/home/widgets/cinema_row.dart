@@ -109,11 +109,11 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
           SizedBox(
             height: titleBarHeight,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(32.w, 14.h, 32.w, 6.h),
+              padding: EdgeInsets.fromLTRB(40.w, 12.h, 40.w, 8.h),
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: TS.xs.sp,
+                  fontSize: TS.xl.sp,
                   fontWeight: FontWeight.w500,
                   color: Colors.white.withValues(alpha: 0.35),
                 ),
@@ -123,12 +123,12 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
           SizedBox(
             height: cardListHeight,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32.w),
+              padding: EdgeInsets.symmetric(horizontal: 40.w),
               child: Row(
                 children: List.generate(
                   7,
                   (i) => Padding(
-                    padding: EdgeInsets.only(right: 12.w),
+                    padding: EdgeInsets.only(right: 24.w),
                     child: Container(
                       width: 88.w,
                       height: cardListHeight,
@@ -179,7 +179,7 @@ class _CinemaRowState extends State<CinemaRow> {
   int _focusedCol = -1;
 
   static const double _cardHeightPercent = 1.0;
-  static const double _gap = 12;
+  static const double _gap = 24;
 
   bool get _isFocusedRow => _focusedCol >= 0;
 
@@ -227,7 +227,7 @@ class _CinemaRowState extends State<CinemaRow> {
     if (!_scrollController.hasClients || index < 0 || index >= widget.items.length) return;
 
     final screenW = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = 64.w;
+    final horizontalPadding = 80.w;
     final sizes = _cardSizes(screenW, horizontalPadding);
 
     // Only [index] is expanded; all items before it are narrow — matches layout after setState.
@@ -259,7 +259,7 @@ class _CinemaRowState extends State<CinemaRow> {
     final maxCardHeight = totalHeight - titleBarHeight;
 
     final screenW = MediaQuery.of(context).size.width;
-    final horizontalPadding = 64.w;
+    final horizontalPadding = 80.w;
     final sizes = _cardSizes(screenW, horizontalPadding);
 
     final cardListHeight = maxCardHeight * _cardHeightPercent;
@@ -267,37 +267,37 @@ class _CinemaRowState extends State<CinemaRow> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       height: totalHeight,
-      color: _isFocusedRow ? Colors.white.withValues(alpha: 0.015) : Colors.transparent,
+      color: _isFocusedRow ? Colors.white.withValues(alpha: 0.018) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             height: titleBarHeight,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(32.w, 14.h, 32.w, 6.h),
+              padding: EdgeInsets.fromLTRB(40.w, 12.h, 40.w, 8.h),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       widget.title,
                       style: TextStyle(
-                        fontSize: TS.xs.sp,
+                        fontSize: TS.xl.sp,
                         fontWeight: FontWeight.w500,
                         color: _isFocusedRow
-                            ? Colors.white.withValues(alpha: 0.8)
-                            : Colors.white.withValues(alpha: 0.5),
+                            ? Colors.white.withValues(alpha: 0.90)
+                            : Colors.white.withValues(alpha: 0.60),
                       ),
                     ),
                   ),
-                  SizedBox(width: 6.w),
+                  SizedBox(width: 8.w),
                   Text(
                     '${widget.items.length}',
-                    style: TextStyle(fontSize: TS.t10.sp, color: Colors.white.withValues(alpha: 0.15)),
+                    style: TextStyle(fontSize: TS.base.sp, color: Colors.white.withValues(alpha: 0.25)),
                   ),
-                  SizedBox(width: 12.w),
-                  _ChevronButton(icon: Icons.chevron_left, onTap: () => _scrollBy(-400.w)),
-                  SizedBox(width: 4.w),
-                  _ChevronButton(icon: Icons.chevron_right, onTap: () => _scrollBy(400.w)),
+                  SizedBox(width: 16.w),
+                  _ChevronButton(icon: Icons.chevron_left, onTap: () => _scrollBy(-600.w)),
+                  SizedBox(width: 6.w),
+                  _ChevronButton(icon: Icons.chevron_right, onTap: () => _scrollBy(600.w)),
                 ],
               ),
             ),
@@ -309,7 +309,7 @@ class _CinemaRowState extends State<CinemaRow> {
               child: ListView.builder(
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: 32.w),
+                padding: EdgeInsets.symmetric(horizontal: 40.w),
                 cacheExtent: 400,
                 addAutomaticKeepAlives: true,
                 addRepaintBoundaries: true,
@@ -400,14 +400,14 @@ class _ChevronButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 28.w,
-        height: 28.w,
+        width: 40.w,
+        height: 40.w,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+          color: AppColors.chipBg,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: AppColors.chipBorder),
         ),
-        child: Icon(icon, size: TS.sm.sp, color: Colors.white.withValues(alpha: 0.25)),
+        child: Icon(icon, size: 24.sp, color: Colors.white.withValues(alpha: 0.40)),
       ),
     );
   }
