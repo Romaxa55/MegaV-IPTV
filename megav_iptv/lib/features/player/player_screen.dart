@@ -55,8 +55,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _openChannel(Channel channel) async {
     final config = ref.read(decoderConfigProvider);
 
-    final streamUrl = channel.streamUrl;
-    if (streamUrl.isEmpty) return;
+    String streamUrl = channel.streamUrl;
+    if (streamUrl.isEmpty) {
+      final api = ref.read(apiClientProvider);
+      final url = await api.getBestStreamUrl(channel.id);
+      if (url == null || url.isEmpty) return;
+      streamUrl = url;
+    }
 
     if (config.usesMedia3) {
       if (!context.mounted) return;
@@ -64,7 +69,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _playerManager.media3Engine?.openChannel(context: context, channel: channel, streamUrl: streamUrl);
     } else {
       _openedViaMedia3 = false;
-      await _playerManager.playChannel(streamUrl, channelId: channel.id.toString());
+      final isAlreadyPlaying =
+          _playerManager.currentUrl == streamUrl &&
+          (_playerManager.activeEngine?.currentState == PlayerState.playing ||
+              _playerManager.activeEngine?.currentState == PlayerState.loading);
+
+      if (!isAlreadyPlaying) {
+        await _playerManager.playChannel(streamUrl, channelId: channel.id.toString());
+      }
     }
     _showBriefOSDFor();
   }

@@ -31,6 +31,7 @@ class PlayerManager {
   Media3Engine? get media3Engine => _media3Engine;
   DecoderConfig get config => _config;
   bool get usesMedia3 => _config.usesMedia3;
+  String? get currentUrl => _currentUrl;
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
