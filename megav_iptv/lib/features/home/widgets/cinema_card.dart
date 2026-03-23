@@ -5,6 +5,7 @@ import '../../../core/playlist/models/epg_program.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/ui_performance.dart';
+import '../../../core/ui/utils/fast_scroll_detector.dart';
 
 class CinemaCard extends StatefulWidget {
   final NowPlayingItem item;
@@ -41,16 +42,19 @@ class _CinemaCardState extends State<CinemaCard> {
   @override
   Widget build(BuildContext context) {
     final isLowPower = effectiveLowPowerUi(context);
+    final isFastScroll = context.isFastScrolling;
+
+    final animationDuration = isFastScroll ? Duration.zero : const Duration(milliseconds: 200);
 
     return GestureDetector(
       onTap: widget.onTap,
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 200),
+        duration: animationDuration,
         curve: Curves.easeOutCubic,
         alignment: Alignment.bottomCenter,
         scale: widget.isFocused ? 1.05 : 1.0,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: animationDuration,
           curve: Curves.easeOutCubic,
           width: widget.cardWidth ?? 260.w,
           height: widget.cardHeight,

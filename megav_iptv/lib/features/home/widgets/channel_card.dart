@@ -8,6 +8,7 @@ import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/ui_performance.dart';
 import '../../../core/ui/channel_quality_badge.dart';
+import '../../../core/ui/utils/fast_scroll_detector.dart';
 import 'channel_thumbnail.dart';
 
 class CinemaCard extends ConsumerStatefulWidget {
@@ -29,6 +30,10 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
     final isHighlighted = widget.isFocused || _isHovered;
     final key = widget.channel.id;
     final isLowPower = effectiveLowPowerUi(context);
+    final isFastScroll = context.isFastScrolling;
+
+    // Use zero duration if fast scrolling to prevent animation backlogs on TV GPUs
+    final animationDuration = isFastScroll ? Duration.zero : const Duration(milliseconds: 200);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -37,9 +42,9 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: isHighlighted ? 1.05 : 1.0,
-          duration: const Duration(milliseconds: 200),
+          duration: animationDuration,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: animationDuration,
             width: 220.w,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14.r),

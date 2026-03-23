@@ -8,6 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/utils/fast_scroll_detector.dart';
 import 'cinema_card.dart';
 
 void _precacheRowPosters(BuildContext context, List<NowPlayingItem> items, {int max = 28}) {
@@ -346,6 +347,7 @@ class _CinemaRowState extends State<CinemaRow> {
                           key: ValueKey('${widget.items[index].channelId}_$index'),
                           onFocusChange: (hasFocus) {
                             if (hasFocus) {
+                              FastScrollDetector().onEvent();
                               setState(() {
                                 _focusedCol = index;
                                 _lastActiveCol = index;

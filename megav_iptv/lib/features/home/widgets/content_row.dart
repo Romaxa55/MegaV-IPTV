@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/utils/fast_scroll_detector.dart';
 import 'channel_card.dart';
 
 /// Page size for lazy loading channels in a group row.
@@ -180,10 +181,18 @@ class _ContentRowState extends ConsumerState<ContentRow> {
                 final isFocused = widget.isFocusedRow && index == widget.focusedCol.clamp(0, _channels.length - 1);
                 return Padding(
                   padding: EdgeInsets.only(right: 12.w),
-                  child: CinemaCard(
-                    channel: _channels[index],
-                    isFocused: isFocused,
-                    onTap: () => widget.onChannelTap(_channels[index], index),
+                  child: Focus(
+                    onFocusChange: (hasFocus) {
+                      if (hasFocus) {
+                        FastScrollDetector().onEvent();
+                        // Optional: trigger your existing focus callbacks if any
+                      }
+                    },
+                    child: CinemaCard(
+                      channel: _channels[index],
+                      isFocused: isFocused,
+                      onTap: () => widget.onChannelTap(_channels[index], index),
+                    ),
                   ),
                 );
               },
