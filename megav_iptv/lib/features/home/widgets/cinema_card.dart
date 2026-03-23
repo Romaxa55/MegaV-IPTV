@@ -13,6 +13,7 @@ class CinemaCard extends StatefulWidget {
   final ValueChanged<bool>? onFocusChange;
   final double? cardWidth;
   final double? posterWidth;
+  final double? cardHeight;
 
   const CinemaCard({
     super.key,
@@ -23,6 +24,7 @@ class CinemaCard extends StatefulWidget {
     this.onFocusChange,
     this.cardWidth,
     this.posterWidth,
+    this.cardHeight,
   });
 
   @override
@@ -42,11 +44,13 @@ class _CinemaCardState extends State<CinemaCard> {
       child: AnimatedScale(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
+        alignment: Alignment.bottomCenter,
         scale: widget.isFocused ? 1.05 : 1.0,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           width: widget.cardWidth ?? 260.w,
+          height: widget.cardHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.r),
             border: widget.isFocused

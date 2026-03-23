@@ -80,11 +80,7 @@ class _HeroBackdropState extends State<HeroBackdrop> with SingleTickerProviderSt
           animation: _controller,
           builder: (context, child) {
             final currentAlign = Alignment.lerp(Alignment.center, _alignEnd, _controller.value)!;
-            return Transform(
-              alignment: currentAlign,
-              transform: Matrix4.identity()..scale(_scaleAnimation.value),
-              child: child,
-            );
+            return Transform.scale(alignment: currentAlign, scale: _scaleAnimation.value, child: child);
           },
           child: Image.network(
             widget.imageUrl!,

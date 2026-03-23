@@ -121,13 +121,16 @@ class CategoryNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
   int _offset = 0;
   bool _loading = false;
   static const _pageSize = 30;
+  Future<void>? _initFuture;
 
   CategoryNotifier(this._api, this._category) : super(const AsyncValue.loading()) {
-    _loadInitial();
+    _initFuture = _loadInitial();
   }
 
   int get total => _total;
   bool get hasMore => _offset < _total;
+
+  Future<void> waitForInit() => _initFuture ?? Future.value();
 
   Future<void> _loadInitial() async {
     try {
@@ -182,13 +185,16 @@ class MoviesNotifier extends StateNotifier<AsyncValue<List<NowPlayingItem>>> {
   int _offset = 0;
   bool _loading = false;
   static const _pageSize = 50;
+  Future<void>? _initFuture;
 
   MoviesNotifier(this._api) : super(const AsyncValue.loading()) {
-    _loadInitial();
+    _initFuture = _loadInitial();
   }
 
   int get total => _total;
   bool get hasMore => _offset < _total;
+
+  Future<void> waitForInit() => _initFuture ?? Future.value();
 
   Future<void> _loadInitial() async {
     try {

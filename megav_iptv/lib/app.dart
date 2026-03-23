@@ -5,13 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
-import 'features/playlist_loader/playlist_loader_screen.dart';
 import 'features/settings/settings_screen.dart';
 
 final _router = GoRouter(
   initialLocation: '/home',
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const SplashLoaderScreen()),
+    GoRoute(path: '/', redirect: (context, state) => '/home'),
     GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
     GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),

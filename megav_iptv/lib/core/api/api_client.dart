@@ -169,7 +169,20 @@ class ApiClient {
   String thumbnailUrl(int channelId) => '$baseUrl/api/channels/$channelId/thumbnail.jpg';
 
   NowPlayingItem _enrichThumbnail(NowPlayingItem item) {
-    if (item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty) return item;
+    String? thumbUrl = item.thumbnailUrl;
+    if (thumbUrl != null && thumbUrl.isNotEmpty) {
+      if (thumbUrl.startsWith('/')) {
+        thumbUrl = '$baseUrl$thumbUrl';
+      }
+      return NowPlayingItem(
+        channelId: item.channelId,
+        channelName: item.channelName,
+        groupTitle: item.groupTitle,
+        logoUrl: item.logoUrl,
+        thumbnailUrl: thumbUrl,
+        program: item.program,
+      );
+    }
     return NowPlayingItem(
       channelId: item.channelId,
       channelName: item.channelName,

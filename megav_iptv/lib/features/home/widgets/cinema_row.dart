@@ -175,6 +175,7 @@ class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
   int _hoveredCol = -1;
   int _focusedCol = -1;
+  int _lastActiveCol = 0;
 
   static const double _gap = 24;
 
@@ -183,7 +184,7 @@ class _CinemaRowState extends State<CinemaRow> {
   int get _activeCol {
     if (_hoveredCol >= 0) return _hoveredCol;
     if (_focusedCol >= 0) return _focusedCol;
-    return 0; // Netflix-style: default to first item expanded
+    return _lastActiveCol;
   }
 
   @override
@@ -221,7 +222,9 @@ class _CinemaRowState extends State<CinemaRow> {
   /// Netflix-style: keep the focused card aligned to the **left** of the row (not centered by
   /// [Scrollable.ensureVisible], which felt random on TV).
   void _scrollFocusedCardToLeadingEdge(int index) {
-    if (!_scrollController.hasClients || index < 0 || index >= widget.items.length) return;
+    if (!_scrollController.hasClients || index < 0 || index >= widget.items.length) {
+      return;
+    }
 
     final screenW = MediaQuery.sizeOf(context).width;
     final horizontalPadding = 80.w;
@@ -311,84 +314,115 @@ class _CinemaRowState extends State<CinemaRow> {
             ),
           ),
           Expanded(
-            child: FocusTraversalGroup(
-              policy: WidgetOrderTraversalPolicy(),
-              child: ListView.builder(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                padding: EdgeInsets.only(left: 40.w, right: 40.w, top: 12.h, bottom: 24.h),
-                cacheExtent: 400,
-                addAutomaticKeepAlives: true,
-                addRepaintBoundaries: true,
-                itemCount: widget.items.length,
-                itemBuilder: (context, index) {
-                  final active = _activeCol;
-                  final isExpanded = index == active;
-                  final isFocused = _focusedCol == index || (_hoveredCol == index && isExpanded);
-                  final w = isExpanded ? sizes.fullW : sizes.narrowW;
+            child: Stack(
+              clipBehavior: Clip.none,
+              fit: StackFit.expand,
+              children: [
+                // Поднимаем вьюпорт списка вверх: свечение/scale активной карточки не режутся
+                // заголовком ряда и границей Expanded.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: -72.h,
+                  bottom: 0,
+                  child: FocusTraversalGroup(
+                    policy: WidgetOrderTraversalPolicy(),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      padding: EdgeInsets.only(left: 40.w, right: 40.w, top: 56.h, bottom: 24.h),
+                      cacheExtent: 400,
+                      addAutomaticKeepAlives: true,
+                      addRepaintBoundaries: true,
+                      itemCount: widget.items.length,
+                      itemBuilder: (context, index) {
+                        final active = _activeCol;
+                        final isExpanded = index == active;
+                        final isFocused = _focusedCol == index || (_hoveredCol == index && isExpanded);
+                        final w = isExpanded ? sizes.fullW : sizes.narrowW;
 
-                  return Focus(
-                    key: ValueKey('${widget.items[index].channelId}_$index'),
-                    onFocusChange: (hasFocus) {
-                      if (hasFocus) {
-                        setState(() => _focusedCol = index);
-                        widget.onItemFocus?.call(widget.items[index]);
+                        return Focus(
+                          key: ValueKey('${widget.items[index].channelId}_$index'),
+                          onFocusChange: (hasFocus) {
+                            if (hasFocus) {
+                              setState(() {
+                                _focusedCol = index;
+                                _lastActiveCol = index;
+                              });
+                              widget.onItemFocus?.call(widget.items[index]);
 
-                        if (widget.onLoadMore != null && index >= widget.items.length - 3) {
-                          widget.onLoadMore!();
-                        }
+                              if (widget.onLoadMore != null && index >= widget.items.length - 3) {
+                                widget.onLoadMore!();
+                              }
 
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (!mounted || _focusedCol != index) return;
-                          _scrollFocusedCardToLeadingEdge(index);
-                        });
-                      } else if (_focusedCol == index) {
-                        setState(() => _focusedCol = -1);
-                        widget.onItemFocus?.call(null);
-                      }
-                    },
-                    onKeyEvent: (node, event) {
-                      if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                      final key = event.logicalKey;
-                      if (key == LogicalKeyboardKey.select ||
-                          key == LogicalKeyboardKey.enter ||
-                          key == LogicalKeyboardKey.gameButtonA ||
-                          key == LogicalKeyboardKey.numpadEnter) {
-                        widget.onItemTap(widget.items[index]);
-                        return KeyEventResult.handled;
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: MouseRegion(
-                      onEnter: (_) {
-                        if (_hoveredCol != index) {
-                          setState(() => _hoveredCol = index);
-                          widget.onItemFocus?.call(widget.items[index]);
-                        }
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!mounted || _focusedCol != index) return;
+                                _scrollFocusedCardToLeadingEdge(index);
+                              });
+                            } else if (_focusedCol == index) {
+                              setState(() => _focusedCol = -1);
+                              widget.onItemFocus?.call(null);
+                            }
+                          },
+                          onKeyEvent: (node, event) {
+                            if (event is! KeyDownEvent) {
+                              return KeyEventResult.ignored;
+                            }
+                            final key = event.logicalKey;
+                            if (key == LogicalKeyboardKey.select ||
+                                key == LogicalKeyboardKey.enter ||
+                                key == LogicalKeyboardKey.gameButtonA ||
+                                key == LogicalKeyboardKey.numpadEnter) {
+                              widget.onItemTap(widget.items[index]);
+                              return KeyEventResult.handled;
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: MouseRegion(
+                            onEnter: (_) {
+                              if (_hoveredCol != index) {
+                                setState(() => _hoveredCol = index);
+                                widget.onItemFocus?.call(widget.items[index]);
+                              }
+                            },
+                            onExit: (_) {
+                              if (_hoveredCol == index) {
+                                setState(() => _hoveredCol = -1);
+                                widget.onItemFocus?.call(null);
+                              }
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.only(right: _gap),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  // Неактивные — на всю высоту вьюпорта ряда (как раньше).
+                                  // Активная (расширенная) — чуть выше, за счёт нижнего padding и clipBehavior: none.
+                                  final rowH = constraints.maxHeight;
+                                  final cardH = isExpanded ? rowH + 36.h : rowH;
+                                  return Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: CinemaCard(
+                                      key: ValueKey('card_${widget.items[index].channelId}_$index'),
+                                      item: widget.items[index],
+                                      isFocused: isFocused,
+                                      cardWidth: w,
+                                      cardHeight: cardH,
+                                      posterWidth: sizes.fullW,
+                                      expanded: isExpanded,
+                                      onTap: () => widget.onItemTap(widget.items[index]),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
                       },
-                      onExit: (_) {
-                        if (_hoveredCol == index) {
-                          setState(() => _hoveredCol = -1);
-                          widget.onItemFocus?.call(null);
-                        }
-                      },
-                      child: Padding(
-                        padding: EdgeInsets.only(right: _gap),
-                        child: CinemaCard(
-                          key: ValueKey('card_${widget.items[index].channelId}_$index'),
-                          item: widget.items[index],
-                          isFocused: isFocused,
-                          cardWidth: w,
-                          posterWidth: sizes.fullW,
-                          expanded: isExpanded,
-                          onTap: () => widget.onItemTap(widget.items[index]),
-                        ),
-                      ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

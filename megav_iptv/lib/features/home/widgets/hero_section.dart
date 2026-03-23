@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,12 +16,16 @@ class HeroSection extends StatefulWidget {
   final void Function(NowPlayingItem item) onPlay;
   final Widget? videoWidget;
 
+  /// Явный узел фокуса для «Смотреть»: нужен после бутстрапа (ExcludeFocus) и чтобы не терять фокус из‑за обёртки Focus на экране.
+  final FocusNode? watchFocusNode;
+
   const HeroSection({
     super.key,
     required this.featuredItems,
     this.overrideItem,
     required this.onPlay,
     this.videoWidget,
+    this.watchFocusNode,
   });
 
   @override
@@ -32,6 +37,7 @@ class _HeroSectionState extends State<HeroSection> {
 
   Timer? _carouselTimer;
   int _carouselIndex = 0;
+  bool _isWatchFocused = false;
 
   NowPlayingItem? get _effectiveItem {
     if (widget.overrideItem != null) return widget.overrideItem;
@@ -64,7 +70,7 @@ class _HeroSectionState extends State<HeroSection> {
     if (widget.overrideItem != null) return;
     if (widget.featuredItems.length < 2) return;
     _carouselTimer = Timer.periodic(_carouselInterval, (_) {
-      if (!mounted || widget.overrideItem != null) return;
+      if (!mounted || widget.overrideItem != null || _isWatchFocused) return;
       setState(() {
         _carouselIndex = (_carouselIndex + 1) % widget.featuredItems.length;
       });
@@ -100,7 +106,17 @@ class _HeroSectionState extends State<HeroSection> {
               ),
             _buildGradients(),
             HeroTopBar(onSettings: () => context.push('/settings')),
-            _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
+            _HeroContent(
+              item: item,
+              onPlay: () => widget.onPlay(item),
+              watchFocusNode: widget.watchFocusNode,
+              onWatchFocusChange: (focused) {
+                if (!mounted) return;
+                setState(() {
+                  _isWatchFocused = focused;
+                });
+              },
+            ),
           ],
         ),
       ),
@@ -165,8 +181,10 @@ class _HeroSectionState extends State<HeroSection> {
 class _HeroContent extends StatelessWidget {
   final NowPlayingItem item;
   final VoidCallback onPlay;
+  final FocusNode? watchFocusNode;
+  final ValueChanged<bool>? onWatchFocusChange;
 
-  const _HeroContent({required this.item, required this.onPlay});
+  const _HeroContent({required this.item, required this.onPlay, this.watchFocusNode, this.onWatchFocusChange});
 
   @override
   Widget build(BuildContext context) {
@@ -178,54 +196,60 @@ class _HeroContent extends StatelessWidget {
       right: 40.w,
       child: SizedBox(
         width: 0.45.sw,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 450),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeOut,
-          layoutBuilder: (currentChild, previousChildren) {
-            return Stack(alignment: Alignment.topLeft, children: <Widget>[...previousChildren, ?currentChild]);
-          },
-          transitionBuilder: (child, animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          child: Column(
-            key: ValueKey('hero_${item.channelId}_${prog.id}_${prog.title}'),
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildBadges(),
-              SizedBox(height: 8.h),
-              Text(
-                prog.title,
-                style: TextStyle(
-                  fontSize: 36.sp,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  height: 1.1,
-                  shadows: const [Shadow(blurRadius: 20, color: Colors.black54, offset: Offset(0, 4))],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: 4.h),
-              _buildMetaRow(),
-              if (prog.synopsis != null) ...[
-                SizedBox(height: 8.h),
-                SizedBox(
-                  width: 672.w,
-                  child: Text(
-                    prog.synopsis!,
-                    style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.50), height: 1.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 450),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeOut,
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(alignment: Alignment.topLeft, children: <Widget>[...previousChildren, ?currentChild]);
+              },
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Column(
+                key: ValueKey('hero_${item.channelId}_${prog.id}_${prog.title}'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildBadges(),
+                  SizedBox(height: 8.h),
+                  Text(
+                    prog.title,
+                    style: TextStyle(
+                      fontSize: 36.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 1.1,
+                      shadows: const [Shadow(blurRadius: 20, color: Colors.black54, offset: Offset(0, 4))],
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-              if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
-              SizedBox(height: 12.h),
-              _WatchButton(onPlay: onPlay),
-            ],
-          ),
+                  SizedBox(height: 4.h),
+                  _buildMetaRow(),
+                  if (prog.synopsis != null) ...[
+                    SizedBox(height: 8.h),
+                    SizedBox(
+                      width: 672.w,
+                      child: Text(
+                        prog.synopsis!,
+                        style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.50), height: 1.5),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                  if (prog.isNow) ...[SizedBox(height: 10.h), _buildProgressBar()],
+                ],
+              ),
+            ),
+            SizedBox(height: 12.h),
+            _WatchButton(focusNode: watchFocusNode, onPlay: onPlay, onFocusChange: onWatchFocusChange),
+          ],
         ),
       ),
     );
@@ -428,8 +452,11 @@ class _HeroContent extends StatelessWidget {
 }
 
 class _WatchButton extends StatefulWidget {
+  final FocusNode? focusNode;
   final VoidCallback onPlay;
-  const _WatchButton({required this.onPlay});
+  final ValueChanged<bool>? onFocusChange;
+
+  const _WatchButton({this.focusNode, required this.onPlay, this.onFocusChange});
 
   @override
   State<_WatchButton> createState() => _WatchButtonState();
@@ -446,43 +473,57 @@ class _WatchButtonState extends State<_WatchButton> {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
           elevation: 0,
-          child: InkWell(
+          child: Focus(
+            focusNode: widget.focusNode,
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                      event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                      event.logicalKey == LogicalKeyboardKey.arrowUp)) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
             onFocusChange: (hasFocus) {
               setState(() => _isFocused = hasFocus);
+              widget.onFocusChange?.call(hasFocus);
             },
-            onTap: widget.onPlay,
-            borderRadius: BorderRadius.circular(12.r),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              height: 44.h, // Слегка увеличим высоту для ТВ-пульта, чтобы не обрезалось
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12.r),
-                border: _isFocused
-                    ? Border.all(color: const Color(0xFF6366F1), width: 3.w) // Highlight with primary color
-                    : Border.all(color: Colors.transparent, width: 3.w),
-                boxShadow: _isFocused
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.6),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                        BoxShadow(color: Colors.white.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 2),
-                      ]
-                    : [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.play_arrow_rounded, size: 20.sp, color: const Color(0xFF08080F)),
-                  SizedBox(width: 8.w),
-                  Text(
-                    'Смотреть',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: const Color(0xFF08080F)),
-                  ),
-                ],
+            child: InkWell(
+              onTap: widget.onPlay,
+              borderRadius: BorderRadius.circular(12.r),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 44.h, // Слегка увеличим высоту для ТВ-пульта, чтобы не обрезалось
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: _isFocused
+                      ? Border.all(color: const Color(0xFF6366F1), width: 3.w) // Highlight with primary color
+                      : Border.all(color: Colors.transparent, width: 3.w),
+                  boxShadow: _isFocused
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.6),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(color: Colors.white.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 2),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, size: 20.sp, color: const Color(0xFF08080F)),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Смотреть',
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: const Color(0xFF08080F)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
