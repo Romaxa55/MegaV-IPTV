@@ -64,7 +64,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     if (config.usesMedia3) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       _openedViaMedia3 = true;
       _playerManager.media3Engine?.openChannel(context: context, channel: channel, streamUrl: streamUrl);
     } else {
