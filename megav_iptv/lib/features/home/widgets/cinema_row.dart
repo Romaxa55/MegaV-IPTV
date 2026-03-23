@@ -178,7 +178,6 @@ class _CinemaRowState extends State<CinemaRow> {
   int _hoveredCol = -1;
   int _focusedCol = -1;
 
-  static const double _cardHeightPercent = 1.0;
   static const double _gap = 24;
 
   bool get _isFocusedRow => _focusedCol >= 0;
