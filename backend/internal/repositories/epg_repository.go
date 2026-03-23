@@ -128,14 +128,18 @@ func (r *IPTVRepository) GetUpcomingAll(withinMinutes int, limit int) ([]*NowPla
 	now := time.Now()
 	until := now.Add(time.Duration(withinMinutes) * time.Minute)
 	rows, err := r.db.Query(`
-		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM epg_programs ep
-		JOIN channels c ON c.id = ep.channel_id
-		WHERE ep.start_time > $1 AND ep.start_time <= $2
-		  AND c.group_title NOT IN ('Взрослые')
-		ORDER BY ep.start_time ASC
+		WITH unique_channels AS (
+			SELECT DISTINCT ON (c.id) c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+				   ep.id as ep_id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+				   ep.start_time, ep.end_time, ep.lang
+			FROM epg_programs ep
+			JOIN channels c ON c.id = ep.channel_id
+			WHERE ep.start_time > $1 AND ep.start_time <= $2
+			  AND c.group_title NOT IN ('Взрослые')
+			ORDER BY c.id, ep.start_time ASC
+		)
+		SELECT * FROM unique_channels
+		ORDER BY start_time ASC
 		LIMIT $3`, now, until, limit)
 	if err != nil {
 		return nil, err
