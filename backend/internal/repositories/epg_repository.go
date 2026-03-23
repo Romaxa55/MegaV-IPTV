@@ -163,9 +163,10 @@ func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, er
 		JOIN channels c ON c.id = ep.channel_id
 		WHERE ep.start_time <= $1 AND ep.end_time > $1
 		  AND c.group_title NOT IN ('Взрослые')
+		  AND EXTRACT(EPOCH FROM ($1 - ep.start_time)) / NULLIF(EXTRACT(EPOCH FROM (ep.end_time - ep.start_time)), 0) < 0.30
 		ORDER BY
 		  CASE WHEN ep.icon IS NOT NULL AND ep.icon != '' THEN 0 ELSE 1 END,
-		  ep.end_time - ep.start_time DESC
+		  ep.start_time DESC
 		LIMIT $2`, now, limit)
 	if err != nil {
 		return nil, err

@@ -48,7 +48,20 @@ func (s *SyncService) SyncPlaylist(playlistURL string) error {
 		return fmt.Errorf("parse m3u: %w", err)
 	}
 
-	s.logger.Infof("Parsed %d channels from playlist", len(entries))
+	// Deduplicate channels by name to prevent identical channels from showing up twice
+	seenNames := make(map[string]bool)
+	var uniqueEntries []m3uEntry
+	for _, e := range entries {
+		nameKey := strings.ToLower(strings.TrimSpace(e.Name))
+		if nameKey == "" || seenNames[nameKey] {
+			continue
+		}
+		seenNames[nameKey] = true
+		uniqueEntries = append(uniqueEntries, e)
+	}
+	entries = uniqueEntries
+
+	s.logger.Infof("Parsed %d unique channels from playlist", len(entries))
 
 	channels := make([]*models.Channel, 0, len(entries))
 	for _, e := range entries {
