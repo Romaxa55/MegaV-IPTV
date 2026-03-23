@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,24 +31,107 @@ class HeroSection extends StatefulWidget {
 }
 
 class _HeroSectionState extends State<HeroSection> {
+  static const Duration _carouselInterval = Duration(seconds: 8);
+
+  Timer? _carouselTimer;
+  int _carouselIndex = 0;
+
+  NowPlayingItem? get _effectiveItem {
+    if (widget.overrideItem != null) return widget.overrideItem;
+    if (widget.featuredItems.isEmpty) return null;
+    return widget.featuredItems[_carouselIndex % widget.featuredItems.length];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _restartCarousel();
+  }
+
+  @override
+  void didUpdateWidget(HeroSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldLen = oldWidget.featuredItems.length;
+    final newLen = widget.featuredItems.length;
+    final oldOverride = oldWidget.overrideItem?.channelId;
+    final newOverride = widget.overrideItem?.channelId;
+    if (_carouselIndex >= newLen) _carouselIndex = 0;
+    if (oldOverride != newOverride || oldLen != newLen) {
+      _restartCarousel();
+    }
+  }
+
+  void _restartCarousel() {
+    _carouselTimer?.cancel();
+    _carouselTimer = null;
+    if (widget.overrideItem != null) return;
+    if (widget.featuredItems.length < 2) return;
+    _carouselTimer = Timer.periodic(_carouselInterval, (_) {
+      if (!mounted || widget.overrideItem != null) return;
+      setState(() {
+        _carouselIndex = (_carouselIndex + 1) % widget.featuredItems.length;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.featuredItems.isEmpty && widget.overrideItem == null) return const SizedBox.expand();
 
-    final item = widget.overrideItem ?? (widget.featuredItems.isNotEmpty ? widget.featuredItems.first : null);
+    final item = _effectiveItem;
     if (item == null) return const SizedBox.expand();
+
+    final showDots = widget.overrideItem == null && widget.featuredItems.length > 1;
 
     return ClipRect(
       child: SizedBox.expand(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            HeroBackdrop(imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl),
+            HeroBackdrop(
+              key: ValueKey('hero_backdrop_${item.channelId}'),
+              imageUrl: item.thumbnailUrl ?? item.program.icon ?? item.logoUrl,
+            ),
             if (widget.videoWidget != null) widget.videoWidget!,
             _buildGradients(),
             HeroTopBar(onSettings: () => context.push('/settings')),
             _HeroContent(item: item, onPlay: () => widget.onPlay(item)),
+            if (showDots) _buildPageDots(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageDots() {
+    final n = widget.featuredItems.length;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 10.h,
+      child: IgnorePointer(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(n, (i) {
+            final active = i == _carouselIndex;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOut,
+              margin: EdgeInsets.symmetric(horizontal: 3.w),
+              width: active ? 18.w : 6.w,
+              height: 6.h,
+              decoration: BoxDecoration(
+                color: active ? AppColors.primaryLight : Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(999.r),
+              ),
+            );
+          }),
         ),
       ),
     );
@@ -122,7 +207,7 @@ class _HeroContent extends StatelessWidget {
             return FadeTransition(opacity: animation, child: child);
           },
           child: Column(
-            key: ValueKey(prog.id),
+            key: ValueKey('hero_${item.channelId}_${prog.id}_${prog.title}'),
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
