@@ -56,9 +56,7 @@ class _CinemaCardState extends State<CinemaCard> {
           height: widget.cardHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16.r),
-            border: widget.isFocused
-                ? Border.all(color: AppColors.primary, width: 3)
-                : Border.all(color: Colors.transparent, width: 0),
+            border: Border.all(color: widget.isFocused ? AppColors.primary : Colors.transparent, width: 3),
             boxShadow: widget.isFocused
                 ? [
                     BoxShadow(

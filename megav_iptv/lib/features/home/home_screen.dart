@@ -270,7 +270,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               builder: (context, constraints) {
                 final screenH = constraints.maxHeight;
                 final heroHeight = screenH * 0.42;
-                final cardsHeight = screenH - heroHeight;
 
                 return Focus(
                   focusNode: _focusNode,
@@ -286,22 +285,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     }
                     return KeyEventResult.ignored;
                   },
-                  child: Column(
+                  child: Stack(
                     children: [
-                      SizedBox(
-                        height: heroHeight,
-                        child: HeroSection(
-                          featuredItems: featured,
-                          overrideItem: _hoveredItem,
-                          watchFocusNode: _heroWatchFocusNode,
-                          onPlay: _playNowPlaying,
-                          videoWidget: _isPreviewVideoReady && _previewPlayer?.activeEngine != null
-                              ? _previewPlayer!.activeEngine!.buildVideoWidget(fit: BoxFit.cover)
-                              : null,
-                        ),
-                      ),
-                      SizedBox(
-                        height: cardsHeight,
+                      Positioned(
+                        top: heroHeight,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                         child: ListView.builder(
                           clipBehavior: Clip.none,
                           padding: EdgeInsets.zero,
@@ -317,6 +307,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             );
                           },
+                        ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: heroHeight,
+                        child: HeroSection(
+                          featuredItems: featured,
+                          overrideItem: _hoveredItem,
+                          watchFocusNode: _heroWatchFocusNode,
+                          onPlay: _playNowPlaying,
+                          videoWidget: _isPreviewVideoReady && _previewPlayer?.activeEngine != null
+                              ? _previewPlayer!.activeEngine!.buildVideoWidget(fit: BoxFit.cover)
+                              : null,
                         ),
                       ),
                     ],

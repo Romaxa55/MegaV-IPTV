@@ -163,6 +163,7 @@ class _ContentRowState extends ConsumerState<ContentRow> {
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 32.w),
+              cacheExtent: 1500.w,
               // +1 for loading indicator at the end
               itemCount: _channels.length + (_hasMore ? 1 : 0),
               itemBuilder: (context, index) {

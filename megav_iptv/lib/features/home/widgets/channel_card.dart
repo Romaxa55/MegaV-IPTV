@@ -41,7 +41,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
             width: 220.w,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14.r),
-              border: isHighlighted ? Border.all(color: AppColors.primary, width: 2) : null,
+              border: Border.all(color: isHighlighted ? AppColors.primary : Colors.transparent, width: 2),
               boxShadow: isHighlighted
                   ? [
                       BoxShadow(

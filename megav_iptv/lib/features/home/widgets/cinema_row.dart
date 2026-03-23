@@ -332,7 +332,7 @@ class _CinemaRowState extends State<CinemaRow> {
                       scrollDirection: Axis.horizontal,
                       clipBehavior: Clip.none,
                       padding: EdgeInsets.only(left: 40.w, right: 40.w, top: 56.h, bottom: 24.h),
-                      cacheExtent: 400,
+                      cacheExtent: 1500.w, // Увеличено для рендера виджетов за экраном
                       addAutomaticKeepAlives: true,
                       addRepaintBoundaries: true,
                       itemCount: widget.items.length,
