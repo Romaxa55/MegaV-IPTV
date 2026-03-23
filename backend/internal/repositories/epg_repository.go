@@ -63,15 +63,16 @@ func (r *IPTVRepository) GetNowPlaying(category *string, limit, offset int) ([]*
 	now := time.Now()
 
 	queryStr := `
-		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM epg_programs ep
-		JOIN channels c ON c.id = ep.channel_id
-		WHERE ep.start_time <= $1 AND ep.end_time > $1
+		WITH unique_channels AS (
+			SELECT DISTINCT ON (c.id) c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+				   ep.id as ep_id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+				   ep.start_time, ep.end_time, ep.lang
+			FROM epg_programs ep
+			JOIN channels c ON c.id = ep.channel_id
+			WHERE ep.start_time <= $1 AND ep.end_time > $1
 	`
 	countQueryStr := `
-		SELECT COUNT(*)
+		SELECT COUNT(DISTINCT c.id)
 		FROM epg_programs ep
 		JOIN channels c ON c.id = ep.channel_id
 		WHERE ep.start_time <= $1 AND ep.end_time > $1
@@ -92,7 +93,12 @@ func (r *IPTVRepository) GetNowPlaying(category *string, limit, offset int) ([]*
 		return nil, 0, err
 	}
 
-	queryStr += fmt.Sprintf(" ORDER BY c.name ASC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	queryStr += fmt.Sprintf(`
+			ORDER BY c.id, ep.start_time DESC
+		)
+		SELECT * FROM unique_channels
+		ORDER BY name ASC, id ASC
+		LIMIT $%d OFFSET $%d`, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(queryStr, args...)
@@ -156,17 +162,21 @@ func (r *IPTVRepository) GetUpcomingAll(withinMinutes int, limit int) ([]*NowPla
 func (r *IPTVRepository) GetFeaturedNowPlaying(limit int) ([]*NowPlayingItem, error) {
 	now := time.Now()
 	rows, err := r.db.Query(`
-		SELECT c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
-		       ep.id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
-		       ep.start_time, ep.end_time, ep.lang
-		FROM epg_programs ep
-		JOIN channels c ON c.id = ep.channel_id
-		WHERE ep.start_time <= $1 AND ep.end_time > $1
-		  AND c.group_title NOT IN ('Взрослые')
-		  AND EXTRACT(EPOCH FROM ($1 - ep.start_time)) / NULLIF(EXTRACT(EPOCH FROM (ep.end_time - ep.start_time)), 0) < 0.30
+		WITH unique_channels AS (
+			SELECT DISTINCT ON (c.id) c.id, c.name, c.group_title, c.logo_url, c.thumbnail_url,
+				   ep.id as ep_id, ep.channel_id, ep.title, ep.description, ep.category, ep.icon,
+				   ep.start_time, ep.end_time, ep.lang
+			FROM epg_programs ep
+			JOIN channels c ON c.id = ep.channel_id
+			WHERE ep.start_time <= $1 AND ep.end_time > $1
+			  AND c.group_title NOT IN ('Взрослые')
+			  AND EXTRACT(EPOCH FROM ($1 - ep.start_time)) / NULLIF(EXTRACT(EPOCH FROM (ep.end_time - ep.start_time)), 0) < 0.30
+			ORDER BY c.id, ep.start_time DESC
+		)
+		SELECT * FROM unique_channels
 		ORDER BY
-		  CASE WHEN ep.icon IS NOT NULL AND ep.icon != '' THEN 0 ELSE 1 END,
-		  ep.start_time DESC
+		  CASE WHEN icon IS NOT NULL AND icon != '' THEN 0 ELSE 1 END,
+		  start_time DESC
 		LIMIT $2`, now, limit)
 	if err != nil {
 		return nil, err

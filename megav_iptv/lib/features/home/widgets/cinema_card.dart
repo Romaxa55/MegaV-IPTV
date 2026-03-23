@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/playlist/models/epg_program.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/ui_performance.dart';
 
 class CinemaCard extends StatefulWidget {
   final NowPlayingItem item;
@@ -39,6 +40,8 @@ class _CinemaCardState extends State<CinemaCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isLowPower = effectiveLowPowerUi(context);
+
     return GestureDetector(
       onTap: widget.onTap,
       child: AnimatedScale(
@@ -57,41 +60,55 @@ class _CinemaCardState extends State<CinemaCard> {
                 ? Border.all(color: AppColors.primary, width: 3)
                 : Border.all(color: Colors.transparent, width: 0),
             boxShadow: widget.isFocused
-                ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.30), blurRadius: 50, spreadRadius: -12)]
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: isLowPower ? 0.20 : 0.30),
+                      blurRadius: isLowPower ? 8 : 50,
+                      spreadRadius: isLowPower ? 0 : -12,
+                    ),
+                  ]
                 : null,
           ),
-          child: ClipRRect(borderRadius: BorderRadius.circular(16.r), child: _buildCardContent()),
+          child: ClipRRect(borderRadius: BorderRadius.circular(16.r), child: _buildCardContent(context)),
         ),
       ),
     );
   }
 
-  Widget _buildCardContent() {
-    return Stack(fit: StackFit.expand, children: [_buildPoster(), _buildGradient(), _buildOverlay()]);
+  Widget _buildCardContent(BuildContext context) {
+    return Stack(fit: StackFit.expand, children: [_buildPoster(), _buildGradient(context), _buildOverlay(context)]);
   }
 
-  Widget _buildGradient() {
+  Widget _buildGradient(BuildContext context) {
+    final isLowPower = effectiveLowPowerUi(context);
+
     return Positioned.fill(
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.35, 0.55, 0.75, 1.0],
-            colors: [
-              Colors.transparent,
-              Colors.transparent,
-              const Color(0xFF08080F).withValues(alpha: 0.50),
-              const Color(0xFF08080F).withValues(alpha: 0.85),
-              const Color(0xFF08080F).withValues(alpha: 0.95),
-            ],
+            stops: isLowPower ? const [0.0, 0.75, 1.0] : const [0.0, 0.35, 0.55, 0.75, 1.0],
+            colors: isLowPower
+                ? [
+                    Colors.transparent,
+                    const Color(0xFF08080F).withValues(alpha: 0.85),
+                    const Color(0xFF08080F).withValues(alpha: 0.95),
+                  ]
+                : [
+                    Colors.transparent,
+                    Colors.transparent,
+                    const Color(0xFF08080F).withValues(alpha: 0.50),
+                    const Color(0xFF08080F).withValues(alpha: 0.85),
+                    const Color(0xFF08080F).withValues(alpha: 0.95),
+                  ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildOverlay() {
+  Widget _buildOverlay(BuildContext context) {
     final prog = widget.item.program;
     final isExp = widget.expanded;
 
@@ -101,7 +118,7 @@ class _CinemaCardState extends State<CinemaCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopBadges(prog),
+            _buildTopBadges(prog, context),
             const Spacer(),
             _buildAgeAndGenre(prog),
             SizedBox(height: 4.h),
@@ -113,27 +130,35 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  Widget _buildTopBadges(EpgProgram prog) {
+  Widget _buildTopBadges(EpgProgram prog, BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [if (prog.isNow) _liveBadge() else const SizedBox.shrink(), _ratingBadge()],
+      children: [if (prog.isNow) _liveBadge(context) else const SizedBox.shrink(), _ratingBadge()],
     );
   }
 
-  Widget _liveBadge() {
+  Widget _liveBadge(BuildContext context) {
+    final isLowPower = effectiveLowPowerUi(context);
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: const Color(0xFFFB2C36).withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(14.r),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFB2C36).withValues(alpha: 0.20),
-            blurRadius: 15,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(color: const Color(0xFFFB2C36).withValues(alpha: 0.20), blurRadius: 6, offset: const Offset(0, 4)),
-        ],
+        boxShadow: isLowPower
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFFFB2C36).withValues(alpha: 0.20),
+                  blurRadius: 15,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: const Color(0xFFFB2C36).withValues(alpha: 0.20),
+                  blurRadius: 6,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

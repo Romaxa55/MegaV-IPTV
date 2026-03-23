@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/ui_performance.dart';
 import 'channel_thumbnail.dart';
 
 class CinemaCard extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
   Widget build(BuildContext context) {
     final isHighlighted = widget.isFocused || _isHovered;
     final key = widget.channel.id;
+    final isLowPower = effectiveLowPowerUi(context);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -41,7 +43,13 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
               borderRadius: BorderRadius.circular(14.r),
               border: isHighlighted ? Border.all(color: AppColors.primary, width: 2) : null,
               boxShadow: isHighlighted
-                  ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2)]
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: isLowPower ? 0.15 : 0.2),
+                        blurRadius: isLowPower ? 8 : 20,
+                        spreadRadius: isLowPower ? 0 : 2,
+                      ),
+                    ]
                   : null,
             ),
             child: ClipRRect(

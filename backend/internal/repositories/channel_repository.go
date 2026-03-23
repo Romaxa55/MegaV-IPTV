@@ -52,7 +52,7 @@ func (r *IPTVRepository) GetChannels(filters ChannelFilters) ([]*ChannelWithEPG,
 		       EXISTS(SELECT 1 FROM epg_programs ep WHERE ep.channel_id = c.id LIMIT 1) as has_epg
 		FROM channels c
 		%s
-		ORDER BY c.name ASC
+		ORDER BY c.name ASC, c.id ASC
 		LIMIT $%d OFFSET $%d`, where, argIdx, argIdx+1)
 
 	args = append(args, filters.Limit, filters.Offset)

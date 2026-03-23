@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/playlist/models/now_playing.dart';
+import '../../../core/ui/ui_performance.dart';
 
 import 'hero_backdrop.dart';
 import 'hero_top_bar.dart';
@@ -104,7 +105,7 @@ class _HeroSectionState extends State<HeroSection> {
                 builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
                 child: widget.videoWidget!,
               ),
-            _buildGradients(),
+            _buildGradients(context),
             HeroTopBar(onSettings: () => context.push('/settings')),
             _HeroContent(
               item: item,
@@ -123,8 +124,10 @@ class _HeroSectionState extends State<HeroSection> {
     );
   }
 
-  Widget _buildGradients() {
+  Widget _buildGradients(BuildContext context) {
     const bg = Color(0xFF08080F);
+    final isLowPower = effectiveLowPowerUi(context);
+
     return IgnorePointer(
       child: Stack(
         fit: StackFit.expand,
@@ -135,20 +138,25 @@ class _HeroSectionState extends State<HeroSection> {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 stops: const [0.0, 0.5, 1.0],
-                colors: [bg, bg.withValues(alpha: 0.70), Colors.transparent],
+                colors: [
+                  bg,
+                  bg.withValues(alpha: isLowPower ? 0.0 : 0.70),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                stops: const [0.0, 0.5, 1.0],
-                colors: [bg, Colors.transparent, bg.withValues(alpha: 0.50)],
+          if (!isLowPower)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  stops: const [0.0, 0.5, 1.0],
+                  colors: [bg, Colors.transparent, bg.withValues(alpha: 0.50)],
+                ),
               ),
             ),
-          ),
           Positioned(
             bottom: 0,
             left: 0,
@@ -159,15 +167,17 @@ class _HeroSectionState extends State<HeroSection> {
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  stops: const [0.0, 0.20, 0.40, 0.60, 0.80, 1.0],
-                  colors: [
-                    bg,
-                    const Color(0xFF040408).withValues(alpha: 0.80),
-                    const Color(0xFF020203).withValues(alpha: 0.60),
-                    const Color(0xFF010101).withValues(alpha: 0.40),
-                    Colors.black.withValues(alpha: 0.20),
-                    Colors.transparent,
-                  ],
+                  stops: isLowPower ? const [0.0, 1.0] : const [0.0, 0.20, 0.40, 0.60, 0.80, 1.0],
+                  colors: isLowPower
+                      ? [bg, Colors.transparent]
+                      : [
+                          bg,
+                          const Color(0xFF040408).withValues(alpha: 0.80),
+                          const Color(0xFF020203).withValues(alpha: 0.60),
+                          const Color(0xFF010101).withValues(alpha: 0.40),
+                          Colors.black.withValues(alpha: 0.20),
+                          Colors.transparent,
+                        ],
                 ),
               ),
             ),
@@ -189,6 +199,7 @@ class _HeroContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prog = item.program;
+    final isLowPower = effectiveLowPowerUi(context);
 
     return Positioned(
       bottom: 32.h,
@@ -224,7 +235,9 @@ class _HeroContent extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                       height: 1.1,
-                      shadows: const [Shadow(blurRadius: 20, color: Colors.black54, offset: Offset(0, 4))],
+                      shadows: isLowPower
+                          ? null
+                          : const [Shadow(blurRadius: 20, color: Colors.black54, offset: Offset(0, 4))],
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -477,10 +490,20 @@ class _WatchButtonState extends State<_WatchButton> {
             focusNode: widget.focusNode,
             autofocus: true,
             onKeyEvent: (node, event) {
-              if (event is KeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.arrowRight ||
-                      event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                      event.logicalKey == LogicalKeyboardKey.arrowUp)) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              final key = event.logicalKey;
+              // ТВ OK / центр D-pad не всегда триггерит InkWell.onTap — явно запускаем просмотр.
+              if (key == LogicalKeyboardKey.select ||
+                  key == LogicalKeyboardKey.enter ||
+                  key == LogicalKeyboardKey.numpadEnter ||
+                  key == LogicalKeyboardKey.gameButtonA ||
+                  key == LogicalKeyboardKey.space) {
+                widget.onPlay();
+                return KeyEventResult.handled;
+              }
+              if (key == LogicalKeyboardKey.arrowRight ||
+                  key == LogicalKeyboardKey.arrowLeft ||
+                  key == LogicalKeyboardKey.arrowUp) {
                 return KeyEventResult.handled;
               }
               return KeyEventResult.ignored;

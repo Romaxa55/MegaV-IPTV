@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flag/flag.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/ui/ui_performance.dart';
 import '../providers/weather_provider.dart';
 
 class HeroTopBar extends ConsumerStatefulWidget {
@@ -65,6 +66,7 @@ class _HeroTopBarState extends ConsumerState<HeroTopBar> {
     }
 
     final weatherAsync = ref.watch(weatherProvider);
+    final isLowPower = effectiveLowPowerUi(context);
 
     return Positioned(
       top: 0,
@@ -86,13 +88,15 @@ class _HeroTopBarState extends ConsumerState<HeroTopBar> {
                     end: Alignment.bottomRight,
                     colors: [AppColors.primary, AppColors.primaryLight],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  boxShadow: isLowPower
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                 ),
                 child: Icon(Icons.tv_rounded, size: 24.sp, color: Colors.white),
               ),
