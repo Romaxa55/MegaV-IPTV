@@ -6,25 +6,13 @@ import '../../../core/theme/app_colors.dart';
 enum PlayerOverlayMode { none, epg, channels, info, similar }
 
 class PlayerControlsOverlay extends StatelessWidget {
-  final String channelName;
-  final String? groupName;
-  final int channelId;
-  final String? logoUrl;
   final VoidCallback onBack;
-  final VoidCallback onChannelUp;
-  final VoidCallback onChannelDown;
   final PlayerOverlayMode activeOverlay;
   final void Function(PlayerOverlayMode) onToggleOverlay;
 
   const PlayerControlsOverlay({
     super.key,
-    required this.channelName,
-    this.groupName,
-    required this.channelId,
-    this.logoUrl,
     required this.onBack,
-    required this.onChannelUp,
-    required this.onChannelDown,
     required this.activeOverlay,
     required this.onToggleOverlay,
   });
@@ -48,23 +36,7 @@ class PlayerControlsOverlay extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 140.h,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
-              ),
-            ),
-          ),
-        ),
         _buildTopBar(context),
-        _buildBottomBar(),
       ],
     );
   }
@@ -81,35 +53,7 @@ class PlayerControlsOverlay extends StatelessWidget {
           child: Row(
             children: [
               _GlassIconButton(icon: Icons.arrow_back, onTap: onBack),
-              SizedBox(width: 12.w),
-              if (logoUrl != null && logoUrl!.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: Image.network(
-                    logoUrl!,
-                    width: 32.w,
-                    height: 32.w,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, st) => SizedBox(width: 32.w),
-                  ),
-                ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      channelName,
-                      style: TextStyle(fontSize: 16.sp, color: Colors.white, fontWeight: FontWeight.w600),
-                    ),
-                    if (groupName != null)
-                      Text(
-                        groupName!,
-                        style: TextStyle(fontSize: 11.sp, color: Colors.white.withValues(alpha: 0.4)),
-                      ),
-                  ],
-                ),
-              ),
+              const Spacer(),
               _OverlayToggleButton(
                 icon: Icons.info_outline,
                 mode: PlayerOverlayMode.info,
@@ -143,43 +87,6 @@ class PlayerControlsOverlay extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildBottomBar() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.all(20.w),
-          child: Row(
-            children: [
-              _GlassIconButton(icon: Icons.skip_previous, onTap: onChannelDown),
-              SizedBox(width: 8.w),
-              Container(
-                width: 56.w,
-                height: 56.w,
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: Icon(Icons.pause, size: 24.sp, color: AppColors.background),
-              ),
-              SizedBox(width: 8.w),
-              _GlassIconButton(icon: Icons.skip_next, onTap: onChannelUp),
-              const Spacer(),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _GlassIconButton(icon: Icons.keyboard_arrow_up, size: 36, onTap: onChannelUp),
-                  SizedBox(height: 2.h),
-                  _GlassIconButton(icon: Icons.keyboard_arrow_down, size: 36, onTap: onChannelDown),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _GlassIconButton extends StatelessWidget {
@@ -187,7 +94,7 @@ class _GlassIconButton extends StatelessWidget {
   final VoidCallback onTap;
   final double size;
 
-  const _GlassIconButton({required this.icon, required this.onTap, this.size = 44});
+  const _GlassIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

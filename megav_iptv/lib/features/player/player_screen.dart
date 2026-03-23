@@ -10,10 +10,10 @@ import '../../core/player/player_manager.dart';
 import '../../core/playlist/models/channel.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
-import 'widgets/channel_switch_osd.dart';
 import 'widgets/channels_sidebar.dart';
 import 'widgets/epg_overlay.dart';
 import 'widgets/info_overlay.dart';
+import 'widgets/player_bottom_info.dart';
 import 'widgets/player_overlay.dart';
 import 'widgets/similar_overlay.dart';
 
@@ -26,6 +26,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final PlayerManager _playerManager;
+  late final FocusNode _playerFocusNode;
   bool _showControls = true;
   PlayerOverlayMode _overlay = PlayerOverlayMode.none;
   Timer? _hideTimer;
@@ -40,6 +41,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    _playerFocusNode = FocusNode(debugLabel: 'PlayerScreen');
     _playerManager = ref.read(playerManagerProvider);
     _init();
   }
@@ -50,6 +52,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (channel != null) await _openChannel(channel);
     _resetHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _playerFocusNode.requestFocus();
+    });
   }
 
   Future<void> _openChannel(Channel channel) async {
@@ -152,6 +157,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _hideTimer?.cancel();
     _osdTimer?.cancel();
     _switchTimer?.cancel();
+    _playerFocusNode.dispose();
     if (!_openedViaMedia3) {
       _playerManager.stop();
     }
@@ -187,7 +193,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Focus(
-        focusNode: FocusNode()..requestFocus(),
+        focusNode: _playerFocusNode,
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: GestureDetector(
@@ -230,32 +236,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 },
               ),
 
-              // Channel switch preview OSD
-              if (_switchPreview != null) ChannelSwitchPreview(channel: _switchPreview!),
-
-              // Brief OSD
-              if (_showBriefOSD &&
-                  !_showControls &&
-                  _overlay == PlayerOverlayMode.none &&
-                  _switchPreview == null &&
-                  channel != null)
-                BriefChannelOSD(channel: channel),
-
               // Controls overlay
               if (_showControls && channel != null)
                 AnimatedOpacity(
                   opacity: 1.0,
                   duration: const Duration(milliseconds: 200),
                   child: PlayerControlsOverlay(
-                    channelName: channel.name,
-                    groupName: channel.groupTitle,
-                    channelId: channel.id,
-                    logoUrl: channel.logoUrl,
                     onBack: () => context.pop(),
-                    onChannelUp: () => _quickSwitch(1),
-                    onChannelDown: () => _quickSwitch(-1),
                     activeOverlay: _overlay,
                     onToggleOverlay: _toggleOverlay,
+                  ),
+                ),
+
+              // Bottom Info (Hero OSD) — [Positioned] must sit directly under [Stack].
+              if ((_showControls || _showBriefOSD || _switchPreview != null) &&
+                  _overlay == PlayerOverlayMode.none &&
+                  (_switchPreview ?? channel) != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: AnimatedOpacity(
+                    opacity: 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: PlayerBottomInfo(channel: (_switchPreview ?? channel)!, isSwitching: _switchPreview != null),
                   ),
                 ),
 
