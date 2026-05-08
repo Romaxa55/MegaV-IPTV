@@ -92,12 +92,12 @@ class PlayerControlsOverlay extends StatelessWidget {
 class _GlassIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final double size;
 
   const _GlassIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    const double side = 44;
     return Material(
       color: Colors.black.withValues(alpha: 0.85),
       shape: RoundedRectangleBorder(
@@ -108,9 +108,9 @@ class _GlassIconButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.r),
         child: SizedBox(
-          width: size.w,
-          height: size.w,
-          child: Icon(icon, size: (size * 0.45).sp, color: Colors.white),
+          width: side.w,
+          height: side.w,
+          child: Icon(icon, size: (side * 0.45).sp, color: Colors.white),
         ),
       ),
     );
