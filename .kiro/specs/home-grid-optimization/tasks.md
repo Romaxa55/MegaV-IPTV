@@ -20,7 +20,7 @@
 
 ## 2. Core: рефакторинг визуала карточки
 
-- [ ] 2.1 Кэшировать псевдо-данные через `late final` поля
+- [x] 2.1 Кэшировать псевдо-данные через `late final` поля
   - В `_CinemaCardState` (`lib/features/home/widgets/cinema_card.dart`) объявить три `late final` поля: `_ratingCached`, `_ageRatingCached`, `_genreEmojiCached`. Инициализировать через приватные методы, читающие `widget.item`.
   - Удалить вызовы `_pseudoRating()`, `_pseudoAgeRating()`, `_genreEmoji(...)` из `build`/`_buildOverlay`/etc; вместо них читать кэшированные поля.
   - Наблюдаемое: после первого `build` карточки повторные ребилды (например, на смену `isFocused`) не вызывают `String.hashCode` от `widget.item.program?.title`. Подтверждается отсутствием упомянутых вызовов в горячем пути `build`.
@@ -28,7 +28,7 @@
   - _Depends: 1.1_
   - _Boundary: CinemaCard_
 
-- [ ] 2.2 Заменить `boxShadow` blur=50 на лёгкий вариант, не зависящий от `effectiveLowPowerUi`
+- [x] 2.2 Заменить `boxShadow` blur=50 на лёгкий вариант, не зависящий от `effectiveLowPowerUi`
   - В `cinema_card.dart` в `BoxDecoration` карточки: при `widget.isFocused == true` использовать **без размытой тени** (или `BoxShadow.blurRadius` ≤ 12); сделать рамку толще/ярче (`Border.all(width: GridTokens.focusBorderWidth, color: AppColors.primary)`) для визуального компенсаторного выделения.
   - Удалить ветку «`isLowPower ? blur=8 : blur=50`», оставить единый дешёвый стиль для всех устройств.
   - Наблюдаемое: на референсном TV сфокусированная плитка не «прорисовывается» с заметной задержкой при многократной смене фокуса; визуально активная плитка выделяется рамкой.
@@ -36,7 +36,7 @@
   - _Depends: 1.1_
   - _Boundary: CinemaCard_
 
-- [ ] 2.3 Убрать `AnimatedContainer` для ширины; оставить только border/decoration анимацию
+- [x] 2.3 Убрать `AnimatedContainer` для ширины; оставить только border/decoration анимацию
   - В `cinema_card.dart` `cardWidth` и `cardHeight` сделать обязательными (non-nullable) параметрами; удалить параметры `expanded` и `posterWidth` из публичного API виджета.
   - `AnimatedContainer.width` принимает `widget.cardWidth` без подмены при `isExpanded`; при смене `isFocused` width не анимируется (потому что не меняется).
   - `AnimatedScale.duration` и `AnimatedContainer.duration` равны `GridTokens.focusAnimation` (150 мс), curve = `GridTokens.focusCurve`.
@@ -45,7 +45,7 @@
   - _Depends: 1.1, 2.2_
   - _Boundary: CinemaCard_
 
-- [ ] 2.4 Разделить overlay на compact (всегда) и full (под `AnimatedOpacity`)
+- [x] 2.4 Разделить overlay на compact (всегда) и full (под `AnimatedOpacity`)
   - В `cinema_card.dart` создать два метода: `_buildCompactOverlay()` — рендерит `Positioned.fill` с нижней полоской (постер виден, компактная полоска занимает ≤ 25% высоты), внутри которой `_buildChannelIcon()`, `widget.item.channelName` (одной строкой) и LIVE-индикатор `_liveBadge` если `widget.item.program?.isNow == true`. `_buildFullOverlay()` — содержит всё, что сейчас в `_buildOverlay` **без** имени канала и без LIVE-бейджа в верхнем углу (избегаем дублирования с compact).
   - В `_buildCardContent` после `_buildPoster()` и `_buildGradient()` рендерить: `_buildCompactOverlay()`, затем `AnimatedOpacity(opacity: widget.isFocused ? 1 : 0, duration: GridTokens.overlayFade, curve: GridTokens.overlayCurve, child: _buildFullOverlay())`.
   - Сохранить существующие helper'ы (`_ratingBadge`, `_buildAgeAndGenre`, `_buildProgressSection`, `_buildBottomInfo` в его части про название программы и год). Не дублировать имя канала в full overlay (оно уже в compact).
@@ -54,7 +54,7 @@
   - _Depends: 1.1, 2.3_
   - _Boundary: CinemaCard_
 
-- [ ] 2.5 Учесть `FastScrollDetector`: scale обнуляется при fast-scroll, debounce от него независим
+- [x] 2.5 Учесть `FastScrollDetector`: scale обнуляется при fast-scroll, debounce от него независим
   - В `cinema_card.dart` сохранить ветку: `final isFastScroll = context.isFastScrolling; final animationDuration = isFastScroll ? Duration.zero : GridTokens.focusAnimation;` для `AnimatedScale`.
   - Опционально: при fast-scroll скрывать full overlay мгновенно (чтобы fade-out не «отставал» от прокрутки). `AnimatedOpacity.duration` остаётся `GridTokens.overlayFade` — это достаточно быстро.
   - Наблюдаемое: при удержании стрелки на пульте scale-эффекты исчезают, плитки «не моргают»; FastScrollDetector в логах подтверждает state.
