@@ -9,6 +9,7 @@ import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/utils/fast_scroll_detector.dart';
+import '_grid_tokens.dart';
 import 'cinema_card.dart';
 
 void _precacheRowPosters(BuildContext context, List<NowPlayingItem> items, {int max = 28}) {
@@ -94,12 +95,23 @@ class _CategoryRowWrapperState extends ConsumerState<CategoryRowWrapper> {
 }
 
 /// Same vertical space as a loaded row — avoids layout jump; greys instead of empty flash.
+///
+/// Number of silhouettes matches `pickColumns(screenW)` so that, when real data
+/// loads, the number of tiles already shown is identical and no layout jump
+/// occurs (Req 11.1, 11.2, 11.5).
 class _CinemaRowLoadingPlaceholder extends StatelessWidget {
   final String title;
   const _CinemaRowLoadingPlaceholder({required this.title});
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final n = pickColumns(screenW);
+    final pad = GridTokens.horizontalPaddingDp.w;
+    final gap = GridTokens.gapDp.w;
+    final usable = screenW - 2 * pad - (n - 1) * gap;
+    final cardW = usable > 0 ? usable / n : 200.0;
+
     return SizedBox(
       height: 450.h,
       child: Column(
@@ -122,14 +134,14 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
           SizedBox(
             height: 336.h,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40.w),
+              padding: EdgeInsets.symmetric(horizontal: pad),
               child: Row(
                 children: List.generate(
-                  7,
+                  n,
                   (i) => Padding(
-                    padding: EdgeInsets.only(right: 24.w),
+                    padding: EdgeInsets.only(right: i == n - 1 ? 0 : gap),
                     child: Container(
-                      width: 224.w,
+                      width: cardW,
                       height: 336.h,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.05),
@@ -152,6 +164,9 @@ class CinemaRow extends StatefulWidget {
   final String title;
   final List<NowPlayingItem> items;
   final void Function(NowPlayingItem item) onItemTap;
+
+  /// Вызывается ПОСЛЕ debounce 400 мс стабильного фокуса (Req 4.1, 4.2, 10.5).
+  /// `null`-clear при потере фокуса — синхронный, без debounce.
   final void Function(NowPlayingItem? item)? onItemFocus;
   final double? availableHeight;
   final VoidCallback? onLoadMore;
@@ -174,19 +189,14 @@ class CinemaRow extends StatefulWidget {
 
 class _CinemaRowState extends State<CinemaRow> {
   final ScrollController _scrollController = ScrollController();
-  int _hoveredCol = -1;
-  int _focusedCol = -1;
-  int _lastActiveCol = 0;
 
-  static const double _gap = 24;
+  /// Один источник истины для фокуса в ряду. `-1` если фокус вне ряда.
+  /// (Req 3.6, 4.1) — заменяет старую тройку `_hoveredCol`/`_focusedCol`/`_lastActiveCol`.
+  int _focusedIndex = -1;
 
-  bool get _isFocusedRow => _focusedCol >= 0;
-
-  int get _activeCol {
-    if (_hoveredCol >= 0) return _hoveredCol;
-    if (_focusedCol >= 0) return _focusedCol;
-    return _lastActiveCol;
-  }
+  /// Debounce-таймер: вызов `widget.onItemFocus(item)` задержан на 400 мс
+  /// от последнего стабильного фокуса (Req 4.1, 4.2, 10.5).
+  Timer? _focusStableTimer;
 
   @override
   void initState() {
@@ -202,51 +212,71 @@ class _CinemaRowState extends State<CinemaRow> {
     }
   }
 
-  ({double fullW, double narrowW}) _cardSizes(double screenW, double horizontalPadding) {
-    const gap = _gap;
-    final usableWidth = screenW - horizontalPadding - 4 * gap;
-    if (usableWidth <= 0) return (fullW: 200, narrowW: 100);
-    final narrowW = usableWidth / 6;
-    final fullW = narrowW * 2;
-    return (fullW: fullW, narrowW: narrowW);
+  /// Геометрия сетки для текущей ширины экрана.
+  /// `n` — число колонок (3/4/5), `cardW` — общая ширина каждой плитки.
+  ({int n, double cardW}) _gridLayoutFor(double screenW) {
+    final n = pickColumns(screenW);
+    final pad = GridTokens.horizontalPaddingDp.w;
+    final gap = GridTokens.gapDp.w;
+    final usable = screenW - 2 * pad - (n - 1) * gap;
+    final cardW = usable > 0 ? usable / n : 200.0;
+    return (n: n, cardW: cardW);
   }
 
   void _scrollBy(double delta) {
     if (!_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
     _scrollController.animateTo(
-      (_scrollController.offset + delta).clamp(0.0, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+      (_scrollController.offset + delta).clamp(0.0, max),
+      duration: GridTokens.scrollAnimation,
+      curve: GridTokens.scrollCurve,
     );
   }
 
-  /// Netflix-style: keep the focused card aligned to the **left** of the row (not centered by
-  /// [Scrollable.ensureVisible], which felt random on TV).
-  void _scrollFocusedCardToLeadingEdge(int index) {
+  /// Netflix/Leanback: прижимает focused-плитку к левому краю видимой области.
+  ///
+  /// При фиксированной ширине offset считается арифметически:
+  /// `offset = index * (cardW + gap)`. Анимация — 250 мс с `fastOutSlowIn`
+  /// (Req 2.1, 2.2, 2.3, 7.3, 7.5).
+  ///
+  /// Guard для Req 2.4: если плитка уже левее или на самой leading edge —
+  /// не двигаем скролл назад.
+  void _scrollFocusedTileToLeadingEdge(int index) {
     if (!_scrollController.hasClients || index < 0 || index >= widget.items.length) {
       return;
     }
-
     final screenW = MediaQuery.sizeOf(context).width;
-    final horizontalPadding = 80.w;
-    final sizes = _cardSizes(screenW, horizontalPadding);
-
-    // Only [index] is expanded; all items before it are narrow — matches layout after setState.
-    var offset = 0.0;
-    for (var i = 0; i < index; i++) {
-      offset += sizes.narrowW + _gap;
-    }
-
+    final layout = _gridLayoutFor(screenW);
+    final gap = GridTokens.gapDp.w;
+    final targetOffset = index * (layout.cardW + gap);
     final max = _scrollController.position.maxScrollExtent;
-    _scrollController.animateTo(
-      offset.clamp(0.0, max),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-    );
+    final clamped = targetOffset.clamp(0.0, max);
+    final current = _scrollController.offset;
+
+    // Req 2.4: при движении назад на плитку, которая уже видима ≤ leading edge,
+    // не двигаемся.
+    if (clamped <= current) {
+      return;
+    }
+    _scrollController.animateTo(clamped, duration: GridTokens.scrollAnimation, curve: GridTokens.scrollCurve);
+  }
+
+  /// Запускает debounce 400 мс на dispatch `widget.onItemFocus(item)`.
+  /// Если до истечения таймера фокус сместится — таймер перезапустится
+  /// (через cancel в _onTileFocusChanged).
+  void _scheduleStableFocus(int index) {
+    _focusStableTimer?.cancel();
+    _focusStableTimer = Timer(GridTokens.focusStableDebounce, () {
+      if (!mounted) return;
+      if (_focusedIndex != index) return;
+      if (index < 0 || index >= widget.items.length) return;
+      widget.onItemFocus?.call(widget.items[index]);
+    });
   }
 
   @override
   void dispose() {
+    _focusStableTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -255,18 +285,22 @@ class _CinemaRowState extends State<CinemaRow> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    final screenW = MediaQuery.of(context).size.width;
-    final horizontalPadding = 80.w;
-    final sizes = _cardSizes(screenW, horizontalPadding);
+    final screenW = MediaQuery.sizeOf(context).width;
+    final layout = _gridLayoutFor(screenW);
+    final isRowFocused = _focusedIndex >= 0;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: GridTokens.focusAnimation,
       height: widget.availableHeight ?? 450.h,
-      color: _isFocusedRow ? Colors.white.withValues(alpha: 0.018) : Colors.transparent,
+      color: isRowFocused ? Colors.white.withValues(alpha: 0.018) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
+            // Шапка остаётся на 40.w — оставляем визуально привычный отступ
+            // заголовка (см. CONCERNS в отчёте). Tile-зона использует
+            // GridTokens.horizontalPaddingDp.w (=48.w) — небольшое расхождение
+            // намеренное.
             padding: EdgeInsets.fromLTRB(40.w, 16.h, 40.w, 12.h),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -288,7 +322,7 @@ class _CinemaRowState extends State<CinemaRow> {
                     fontSize: 24.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
-                    color: _isFocusedRow ? Colors.white.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.60),
+                    color: isRowFocused ? Colors.white.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.60),
                   ),
                 ),
                 SizedBox(width: 12.w),
@@ -319,8 +353,8 @@ class _CinemaRowState extends State<CinemaRow> {
               clipBehavior: Clip.none,
               fit: StackFit.expand,
               children: [
-                // Поднимаем вьюпорт списка вверх: свечение/scale активной карточки не режутся
-                // заголовком ряда и границей Expanded.
+                // Поднимаем вьюпорт списка вверх: scale активной карточки
+                // не режется заголовком ряда и границей Expanded.
                 Positioned(
                   left: 0,
                   right: 0,
@@ -332,16 +366,19 @@ class _CinemaRowState extends State<CinemaRow> {
                       controller: _scrollController,
                       scrollDirection: Axis.horizontal,
                       clipBehavior: Clip.none,
-                      padding: EdgeInsets.only(left: 40.w, right: 40.w, top: 56.h, bottom: 24.h),
+                      padding: EdgeInsets.only(
+                        left: GridTokens.horizontalPaddingDp.w,
+                        right: GridTokens.horizontalPaddingDp.w,
+                        top: 56.h,
+                        bottom: 24.h,
+                      ),
                       cacheExtent: 1500.w, // Увеличено для рендера виджетов за экраном
                       addAutomaticKeepAlives: true,
                       addRepaintBoundaries: true,
                       itemCount: widget.items.length,
                       itemBuilder: (context, index) {
-                        final active = _activeCol;
-                        final isExpanded = index == active;
-                        final isFocused = _focusedCol == index || (_hoveredCol == index && isExpanded);
-                        final w = isExpanded ? sizes.fullW : sizes.narrowW;
+                        final isFocused = _focusedIndex == index;
+                        final isLast = index == widget.items.length - 1;
 
                         return Focus(
                           key: ValueKey('${widget.items[index].channelId}_$index'),
@@ -349,21 +386,29 @@ class _CinemaRowState extends State<CinemaRow> {
                             if (hasFocus) {
                               FastScrollDetector().onEvent();
                               setState(() {
-                                _focusedCol = index;
-                                _lastActiveCol = index;
+                                _focusedIndex = index;
                               });
-                              widget.onItemFocus?.call(widget.items[index]);
 
+                              // Пагинация — синхронно, debounce'у не подлежит
+                              // (Req 8.2).
                               if (widget.onLoadMore != null && index >= widget.items.length - 3) {
                                 widget.onLoadMore!();
                               }
 
+                              // Heavy onItemFocus dispatch — через debounce
+                              // 400 мс (Req 4.1, 4.2, 10.5). Scale в карточке
+                              // запускается мгновенно через isFocused (Req 4.3).
+                              _scheduleStableFocus(index);
+
                               WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (!mounted || _focusedCol != index) return;
-                                _scrollFocusedCardToLeadingEdge(index);
+                                if (!mounted || _focusedIndex != index) return;
+                                _scrollFocusedTileToLeadingEdge(index);
                               });
-                            } else if (_focusedCol == index) {
-                              setState(() => _focusedCol = -1);
+                            } else if (_focusedIndex == index) {
+                              // null-clear синхронный (без debounce) — Hero
+                              // должен мгновенно понять, что фокус ушёл.
+                              _focusStableTimer?.cancel();
+                              setState(() => _focusedIndex = -1);
                               widget.onItemFocus?.call(null);
                             }
                           },
@@ -379,42 +424,34 @@ class _CinemaRowState extends State<CinemaRow> {
                               widget.onItemTap(widget.items[index]);
                               return KeyEventResult.handled;
                             }
-                            if (index == widget.items.length - 1 && key == LogicalKeyboardKey.arrowRight) {
+                            // Req 10.2: на последней плитке стрелка вправо
+                            // не уводит фокус.
+                            if (isLast && key == LogicalKeyboardKey.arrowRight) {
                               return KeyEventResult.handled;
                             }
+                            // ESC/BACK и всё остальное — родителю.
                             return KeyEventResult.ignored;
                           },
                           child: MouseRegion(
-                            onEnter: (_) {
-                              if (_hoveredCol != index) {
-                                setState(() => _hoveredCol = index);
-                                widget.onItemFocus?.call(widget.items[index]);
-                              }
-                            },
-                            onExit: (_) {
-                              if (_hoveredCol == index) {
-                                setState(() => _hoveredCol = -1);
-                                widget.onItemFocus?.call(null);
-                              }
-                            },
+                            // Hover-эффекты ушли в общий focus-pipeline.
+                            // На TV-таргете мышь редка; для desktop оставляем
+                            // no-op — focus всё равно дойдёт через pointer-tap
+                            // и WidgetOrderTraversalPolicy. См. CONCERNS.
+                            onEnter: (_) {},
+                            onExit: (_) {},
                             child: Padding(
-                              padding: EdgeInsets.only(right: _gap),
+                              padding: EdgeInsets.only(right: isLast ? 0 : GridTokens.gapDp.w),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
-                                  // Неактивные — на всю высоту вьюпорта ряда (как раньше).
-                                  // Активная (расширенная) — чуть выше, за счёт нижнего padding и clipBehavior: none.
                                   final rowH = constraints.maxHeight;
-                                  final cardH = isExpanded ? rowH + 36.h : rowH;
                                   return Align(
                                     alignment: Alignment.bottomCenter,
                                     child: CinemaCard(
                                       key: ValueKey('card_${widget.items[index].channelId}_$index'),
                                       item: widget.items[index],
                                       isFocused: isFocused,
-                                      cardWidth: w,
-                                      cardHeight: cardH,
-                                      posterWidth: sizes.fullW,
-                                      expanded: isExpanded,
+                                      cardWidth: layout.cardW,
+                                      cardHeight: rowH,
                                       onTap: () => widget.onItemTap(widget.items[index]),
                                     ),
                                   );

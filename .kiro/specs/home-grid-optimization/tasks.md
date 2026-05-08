@@ -66,7 +66,7 @@
 
 ## 3. Core: рефакторинг модели ряда
 
-- [ ] 3.1 (P) Заменить дуальную ширину на фиксированную; вычислять её через `pickColumns` и токены
+- [x] 3.1 (P) Заменить дуальную ширину на фиксированную; вычислять её через `pickColumns` и токены
   - В `_CinemaRowState` (`lib/features/home/widgets/cinema_row.dart`) удалить методы и поля, относящиеся к `narrowW`/`fullW`/`_cardSizes`/`_lastActiveCol`/`_hoveredCol`. Оставить один `_focusedIndex` (int, начальное `-1`).
   - Реализовать локальную функцию вычисления: `double cardW = (screenW - 2 * GridTokens.horizontalPaddingDp.w - (n - 1) * GridTokens.gapDp.w) / n;` где `n = pickColumns(screenW)`.
   - В `ListView.builder.itemBuilder` всегда передавать в `CinemaCard` `cardWidth: cardW`, `cardHeight: rowH` (как сейчас).
@@ -75,7 +75,7 @@
   - _Depends: 1.1_
   - _Boundary: CinemaRow_
 
-- [ ] 3.2 Упростить `_scrollFocusedCardToLeadingEdge` под фиксированную ширину
+- [x] 3.2 Упростить `_scrollFocusedCardToLeadingEdge` под фиксированную ширину
   - В `cinema_row.dart` метод вычисляет `offset = index * (cardW + GridTokens.gapDp.w)`, clamp по `position.maxScrollExtent`, `_scrollController.animateTo(offset, duration: GridTokens.scrollAnimation, curve: GridTokens.scrollCurve)`.
   - Удалить старую логику накопления `narrowW + gap` в цикле `for (var i = 0; i < index; i++)`.
   - Сохранить вызов из `Focus.onFocusChange` через `addPostFrameCallback` (как сейчас).
@@ -84,7 +84,7 @@
   - _Depends: 1.1, 3.1_
   - _Boundary: CinemaRow_
 
-- [ ] 3.3 Реализовать debounce 400 мс перед dispatch'ем `onItemFocus(item)`
+- [x] 3.3 Реализовать debounce 400 мс перед dispatch'ем `onItemFocus(item)`
   - В `_CinemaRowState` объявить `Timer? _focusStableTimer`. Реализовать `_scheduleStableFocus(int index)`: отменить предыдущий timer, запустить новый на `GridTokens.focusStableDebounce`; по истечении вызвать `widget.onItemFocus?.call(widget.items[index])` если `_focusedIndex == index && mounted`.
   - В `Focus.onFocusChange(true)`: сразу `setState(_focusedIndex = index)` (это даёт мгновенный scale в карточке — Req 4.3) **и** `_scheduleStableFocus(index)`. **Не** вызывать `widget.onItemFocus?.call(item)` сразу.
   - В `Focus.onFocusChange(false)`: если `_focusedIndex == index`, отменить `_focusStableTimer`, `setState(_focusedIndex = -1)`, синхронно вызвать `widget.onItemFocus?.call(null)` (поведение clear не debounced).
@@ -95,7 +95,7 @@
   - _Depends: 3.1_
   - _Boundary: CinemaRow_
 
-- [ ] 3.4 Слить mouse-hover и D-pad focus в один источник
+- [x] 3.4 Слить mouse-hover и D-pad focus в один источник
   - В `cinema_row.dart` `MouseRegion.onEnter` для плитки больше не делает свой `setState(_hoveredCol = index)`; вместо этого вызывает `Focus.of(context).requestFocus()` (или хранит `FocusNode` per item и зовёт `requestFocus()` напрямую). Это запускает обычный focus-pipeline, и debounce/scale работает одинаково.
   - `MouseRegion.onExit` — оставить пустым или лёгкий guard; clear фокуса произойдёт когда фокус уйдёт на другую плитку или из ряда.
   - Удалить поле `_hoveredCol` и логику его участия в `_activeCol`.
@@ -104,7 +104,7 @@
   - _Depends: 3.3_
   - _Boundary: CinemaRow_
 
-- [ ] 3.5 Сохранить шапку, шевроны, индикатор «Фильмы в эфире», подсветку активного ряда
+- [x] 3.5 Сохранить шапку, шевроны, индикатор «Фильмы в эфире», подсветку активного ряда
   - В `cinema_row.dart` шапку ряда (заголовок, индикатор-точка для `Фильмы в эфире`, счётчик количества элементов, шевроны влево/вправо) **оставить как есть**; шевроны вызывают `_scrollBy(±600.w)` с `duration: GridTokens.scrollAnimation, curve: GridTokens.scrollCurve` (унифицировать с токенами вместо текущих 300 мс/easeOut).
   - Подсветка заголовка ряда (`_isFocusedRow` → opacity 0.95 vs 0.60) сохраняется и теперь пересчитывается через `_focusedIndex >= 0`.
   - Сохранить `wrapAround` параметр в виджете и его проброс (даже если внутри ряда поведение не меняется в этом спеке — флаг продолжает существовать для совместимости с `live-movies`).
@@ -113,7 +113,7 @@
   - _Depends: 3.1, 1.1_
   - _Boundary: CinemaRow_
 
-- [ ] 3.6 Сохранить keyEvent-обработку: SELECT/ENTER, конец ряда, ESC/BACK
+- [x] 3.6 Сохранить keyEvent-обработку: SELECT/ENTER, конец ряда, ESC/BACK
   - В `cinema_row.dart` `Focus.onKeyEvent` обработка `LogicalKeyboardKey.select`/`enter`/`gameButtonA`/`numpadEnter` → вызов `widget.onItemTap(items[index])` и `KeyEventResult.handled` (как сейчас).
   - Условие `index == widget.items.length - 1 && key == arrowRight` → `KeyEventResult.handled` (сохраняется поведение «не выходить за край»).
   - ESC/BACK → `KeyEventResult.ignored` (родитель обрабатывает; уже работает в `home_screen.dart`).
@@ -122,7 +122,7 @@
   - _Depends: 3.1_
   - _Boundary: CinemaRow_
 
-- [ ] 3.7 Обновить `_CinemaRowLoadingPlaceholder` под новую модель ширины
+- [x] 3.7 Обновить `_CinemaRowLoadingPlaceholder` под новую модель ширины
   - В `cinema_row.dart` placeholder: вместо фиксированных 7 силуэтов с `width: 224.w` использовать `n = pickColumns(MediaQuery.sizeOf(context).width)` и `cardW = _cardWidthFor(screenW)`.
   - Между силуэтами — `GridTokens.gapDp.w` (вместо текущего `right: 24.w`).
   - Высота placeholder остаётся `450.h` (Req 11.1: same vertical height as a loaded row).
