@@ -135,7 +135,7 @@
 
 ## 4. Integration: согласовать с `home_screen.dart`
 
-- [ ] 4.1 Адаптировать `home_screen.dart` к семантическому изменению `onItemFocus`
+- [x] 4.1 Адаптировать `home_screen.dart` к семантическому изменению `onItemFocus`
   - В `lib/features/home/home_screen.dart` метод `_onHoveredItemChanged(NowPlayingItem? item)` сейчас имеет собственный `_hoveredClearDebounce` (200 мс) для clear; этот debounce **сохраняется** (он защищает Hero от моргания при null-промежутке между плитками).
   - **Не дублировать** debounce 400 мс в `home_screen.dart`: это уже сделано на стороне `CinemaRow.3.3`. Хвостовой `_previewTimer` (7 секунд до preview-видео) сохраняется без изменений.
   - Если в `home_screen.dart` есть assumptions о мгновенности `onItemFocus(item)` — снять их (никакой логики, требующей синхронности, не должно остаться).
@@ -144,7 +144,7 @@
   - _Depends: 3.3_
   - _Boundary: HomeScreen_
 
-- [ ] 4.2 Удалить из `home_screen.dart` параметры, перешедшие в `_grid_tokens.dart` (если использовались)
+- [x] 4.2 Удалить из `home_screen.dart` параметры, перешедшие в `_grid_tokens.dart` (если использовались)
   - Просканировать `home_screen.dart` на любые magic numbers, относящиеся к ряду (например, отступы между рядами в `Padding(bottom: 20.h)`); если они логически принадлежат grid-системе — заменить на `GridTokens.rowVerticalGapDp.h`.
   - Импорт `_grid_tokens.dart` не требуется в `home_screen.dart`, если magic numbers остаются специфичными для shell-layout (между рядами и Hero) — оставить локальными.
   - Наблюдаемое: визуально вертикальный gap между рядами совпадает с текущим (или 20.h, или GridTokens.rowVerticalGapDp.h — оба ≈ 20).

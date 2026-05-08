@@ -12,6 +12,7 @@ import '../../core/playlist/models/channel.dart';
 import '../../core/playlist/models/now_playing.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
+import 'widgets/_grid_tokens.dart';
 import 'widgets/cinema_row.dart';
 import 'widgets/hero_section.dart';
 import 'widgets/home_boot_overlay.dart';
@@ -138,6 +139,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  /// Receives focus-change events from `CinemaRow`.
+  ///
+  /// Семантика контракта (см. spec home-grid-optimization, Req 4.1, 4.2, 10.5):
+  /// - `item != null` path: вызывается `CinemaRow` ПОСЛЕ собственного debounce
+  ///   `GridTokens.focusStableDebounce` (400 мс) стабильного фокуса на плитке.
+  ///   Поэтому здесь НЕ нужен дополнительный 400 мс debounce — он бы
+  ///   сложился с row-level и удвоил задержку.
+  /// - `item == null` path: вызывается `CinemaRow` синхронно при уходе фокуса
+  ///   из ряда; `_hoveredClearDebounce` (200 мс) защищает Hero от моргания
+  ///   при null-промежутке между двумя соседними плитками.
+  /// - `_previewTimer` (7000 мс) кикуется на стабильном hover; эффективная
+  ///   задержка до preview-видео ≈ 7.4 с (400 мс CinemaRow + 7000 мс здесь),
+  ///   что соответствует требуемому «долгому стабильному hover».
   void _onHoveredItemChanged(NowPlayingItem? item) {
     _previewTimer?.cancel();
     _hoveredClearDebounce?.cancel();
@@ -299,7 +313,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           itemBuilder: (context, rowIdx) {
                             final cat = categories[rowIdx];
                             return Padding(
-                              padding: EdgeInsets.only(bottom: 20.h),
+                              padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
                               child: CategoryRowWrapper(
                                 category: cat,
                                 onItemTap: _playNowPlaying,
