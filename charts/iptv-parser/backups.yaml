@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backups
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pg-backups-megav
+  namespace: backups
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup-megav-heavy
+  namespace: backups
+spec:
+  schedule: "17 2 * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pgdump
+              image: postgres:16-alpine
+              env:
+                - name: PGHOST
+                  value: megav-heavy.megav.svc.cluster.local
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: pg-megav-creds
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: pg-megav-creds
+                      key: password
+                - name: PGDATABASE
+                  value: postgres
+                - name: RETAIN_DAYS
+                  value: "7"
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  TS=$(date -u +%Y%m%d-%H%M%S)
+                  OUTDIR=/backup
+                  mkdir -p "$OUTDIR"
+
+                  echo "[$(date -u +%FT%TZ)] dumping globals..."
+                  pg_dumpall --globals-only \
+                    | gzip -6 > "$OUTDIR/globals-$TS.sql.gz.tmp"
+                  mv "$OUTDIR/globals-$TS.sql.gz.tmp" "$OUTDIR/globals-$TS.sql.gz"
+
+                  echo "[$(date -u +%FT%TZ)] dumping megav_sources..."
+                  PGDATABASE=megav_sources pg_dump -Fc -Z6 \
+                    -f "$OUTDIR/megav_sources-$TS.dump.tmp"
+                  mv "$OUTDIR/megav_sources-$TS.dump.tmp" "$OUTDIR/megav_sources-$TS.dump"
+
+                  echo "[$(date -u +%FT%TZ)] sizes:"
+                  ls -lh "$OUTDIR/"*"-$TS"*
+
+                  echo "[$(date -u +%FT%TZ)] retention: keeping last $RETAIN_DAYS days..."
+                  find "$OUTDIR" -maxdepth 1 -type f \
+                    \( -name 'megav_sources-*.dump' -o -name 'globals-*.sql.gz' \) \
+                    -mtime +$RETAIN_DAYS -print -delete
+
+                  echo "[$(date -u +%FT%TZ)] current backup set:"
+                  ls -lh "$OUTDIR/" | tail -n +2
+
+                  echo "[$(date -u +%FT%TZ)] OK"
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: pg-backups-megav
