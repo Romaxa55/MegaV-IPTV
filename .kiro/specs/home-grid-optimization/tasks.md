@@ -156,7 +156,7 @@
 
 ## 5. Validation: автотесты и ручная приёмка
 
-- [ ] 5.1 (P) Юнит-тест функции `pickColumns` на граничных значениях
+- [x] 5.1 (P) Юнит-тест функции `pickColumns` на граничных значениях
   - Создать `test/features/home/widgets/grid_tokens_test.dart` с testами: `pickColumns(0)` → 3, `pickColumns(800)` → 3, `pickColumns(1279)` → 3, `pickColumns(1280)` → 4, `pickColumns(1920)` → 4, `pickColumns(2559)` → 4, `pickColumns(2560)` → 5, `pickColumns(3840)` → 5.
   - Дополнительный тест на сумму: при `n = pickColumns(W)` сумма `n*cardW + (n-1)*gap + 2*pad ≈ W` (с допуском на округления при делении).
   - Запуск: `flutter test test/features/home/widgets/grid_tokens_test.dart`.
@@ -165,7 +165,7 @@
   - _Depends: 1.1_
   - _Boundary: GridTokens_
 
-- [ ] 5.2 Widget-тест: компактный/полный overlay в `CinemaCard`
+- [x] 5.2 Widget-тест: компактный/полный overlay в `CinemaCard`
   - Создать `test/features/home/widgets/cinema_card_overlay_test.dart`. Сценарии: (1) `pumpWidget(CinemaCard(isFocused: false, ...))` → `find.byKey(ValueKey('rating-badge'))` не находится; имя канала находится. (2) `pumpWidget(CinemaCard(isFocused: true, ...))` → после `pump(Duration(milliseconds: 200))` (запас на fade) rating-badge найден; имя канала найдено.
   - Для упрощения теста добавить `Key`-ваня в ключевых виджетах overlay: `Key('rating-badge')`, `Key('age-rating')`, `Key('genre-emoji')`, `Key('progress-section')`, `Key('programme-title')`. Эти ключи добавляются в task 2.4 как часть рефакторинга.
   - Наблюдаемое: тест зелёный; покрывает Req 5.3 и 6.1.
@@ -173,7 +173,7 @@
   - _Depends: 2.4_
   - _Boundary: CinemaCard_
 
-- [ ] 5.3 Widget-тест: debounce 400 мс на `onItemFocus`
+- [x] 5.3 Widget-тест: debounce 400 мс на `onItemFocus`
   - Создать `test/features/home/widgets/cinema_row_debounce_test.dart`. Сценарий: смонтировать `CinemaRow` с тремя элементами и `onItemFocus` mock-callback'ом. Программно установить фокус на index 0, через `pump(50ms)` уйти на index 1, через `pump(50ms)` уйти из ряда. Проверить, что `onItemFocus(non-null)` ни разу не вызвался; `onItemFocus(null)` вызвался один раз.
   - Второй сценарий: установить фокус на index 0, `pump(500ms)`. Проверить, что `onItemFocus(items[0])` вызвался ровно один раз.
   - Наблюдаемое: оба теста зелёные.
@@ -181,7 +181,7 @@
   - _Depends: 3.3_
   - _Boundary: CinemaRow_
 
-- [ ] 5.4 Widget-тест: левое выравнивание скролла
+- [x] 5.4 Widget-тест: левое выравнивание скролла
   - Создать `test/features/home/widgets/cinema_row_scroll_test.dart`. Смонтировать `CinemaRow` с 10 элементами на `MediaQuery` 1920×1080. Программно установить фокус на index 5. После `pump(GridTokens.scrollAnimation + 50ms)` прочитать `_scrollController.offset` (через `find.byType(ListView)` и `Scrollable.of(...)`); offset должен быть равен `5 * (cardW + gap.w)` с допуском 2px.
   - Наблюдаемое: тест зелёный; offset совпадает с ожидаемым.
   - _Requirements: 2.1, 2.2_
