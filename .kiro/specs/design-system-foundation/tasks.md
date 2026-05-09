@@ -67,7 +67,7 @@
   - _Depends: 1.1, 1.3_
   - _Boundary: MegaVTextStyles_
 
-- [ ] 2.3 Refactor `app_colors.dart` в backward-compat proxy + call-site const sweep
+- [x] 2.3 Refactor `app_colors.dart` в backward-compat proxy + call-site const sweep
   - **Часть А — proxy refactor (`app_colors.dart`)**:
     - Открыть `megav_iptv/lib/core/theme/app_colors.dart`.
     - Удалить все `static const Color` поля.
