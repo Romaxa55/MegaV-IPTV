@@ -173,7 +173,7 @@
   - _Depends: 1.1, 2.1 (MvKey)_
   - _Boundary: RemoteHint_
 
-- [ ] 2.13 Atom `MvStrip` (filmstrip frames, decorative)
+- [x] 2.13 Atom `MvStrip` (filmstrip frames, decorative)
   - Создать `megav_iptv/lib/core/ui/atoms/mv_strip.dart` с `class MvStrip extends StatelessWidget` (default `frameCount = 7`, `tileWidth = 80`, `tileHeight = 56`).
   - Decorative `Row` of N tiles; каждый — `Container(width: tileWidth, height: tileHeight, decoration: BoxDecoration(border: Border.all(color: AppColors.lineStrong, width: 1), borderRadius: BorderRadius.circular(2)))`.
   - **Notch geometry pinned**: 4 notches per tile — 2 сверху + 2 снизу. Каждая notch: `Container(width: tileWidth * 0.10, height: 4, color: AppColors.background)` positioned at `top: -2` (overhang) + `left: tileWidth * 0.20` and `tileWidth * 0.70` для верхних (mirror для нижних: `bottom: -2`). Стилизация под sprocket-holes киноплёнки.
