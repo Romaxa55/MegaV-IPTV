@@ -14,7 +14,7 @@
 
 ## 1. Foundation: scaffold + flag + entry
 
-- [ ] 1.1 Создать директорию + provider flag
+- [x] 1.1 Создать директорию + provider flag
   - Создать `megav_iptv/lib/features/home/cinematic/` directory.
   - Создать `megav_iptv/lib/features/home/cinematic/use_cinematic_home_provider.dart` с:
     - `const bool kCinematicHomeDefault = false;` (single source of truth, Req 11.4).
