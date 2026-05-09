@@ -155,7 +155,7 @@
 
 > Каждый sub-task создаёт один test file. Все используют `flutter_test` + `ProviderScope` (для Riverpod) + `MaterialApp.router` или `MaterialApp` со стабом router'а.
 
-- [ ] 5.1 Test: `detail_screen_test.dart` — initial focus + smoke
+- [x] 5.1 Test: `detail_screen_test.dart` — initial focus + smoke
   - Создать `megav_iptv/test/features/detail/detail_screen_test.dart`.
   - Test 1: pump `DetailScreen(channelId: 'test')` обернутый в `ProviderScope(overrides: [...stub providers...])` + `MaterialApp(home: ...)`.
   - Assert: `find.text('Смотреть')` returns one widget (Play button). Assert после `pumpAndSettle()`: focus is on Play (через `tester.binding.focusManager.primaryFocus?.context`).
@@ -165,7 +165,7 @@
   - _Depends: 3.1_
   - _Boundary: test/features/detail/detail_screen_test.dart_
 
-- [ ] 5.2 (P) Test: `hero_tag_test.dart` — Hero tag contract
+- [x] 5.2 (P) Test: `hero_tag_test.dart` — Hero tag contract
   - Создать `megav_iptv/test/features/detail/hero_tag_test.dart`.
   - Pump `DetailScreen(channelId: 'test-channel-42')` обернутый в `MaterialApp` (хватит обычного, без router) + `ProviderScope`.
   - Assert: `find.byWidgetPredicate((w) => w is Hero && w.tag == 'channel-poster-test-channel-42')` returns одно Hero widget.
@@ -174,7 +174,7 @@
   - _Depends: 3.1_
   - _Boundary: test/features/detail/hero_tag_test.dart_
 
-- [ ] 5.3 (P) Test: `graceful_degradation_test.dart` — empty cast/related
+- [x] 5.3 (P) Test: `graceful_degradation_test.dart` — empty cast/related
   - Создать `megav_iptv/test/features/detail/graceful_degradation_test.dart`.
   - Pump с `ProviderScope(overrides: [castListProvider.overrideWith(...) → []; relatedChannelsProvider.overrideWith(...) → []])`.
   - Assert: `find.byType(SectionTitle)` returns `findsNothing` (нет cast section, нет related section).
@@ -184,7 +184,7 @@
   - _Depends: 3.1, 2.4, 2.5_
   - _Boundary: test/features/detail/graceful_degradation_test.dart_
 
-- [ ] 5.4 (P) Test: `play_action_test.dart` — Play → /player navigation
+- [x] 5.4 (P) Test: `play_action_test.dart` — Play → /player navigation
   - Создать `megav_iptv/test/features/detail/play_action_test.dart`.
   - Setup: `GoRouter` с двумя routes — `/channel/:id` и mock `/player`. Track `routerDelegate.currentConfiguration.uri` или counter call-back.
   - Pump app со start at `/channel/test`, найти Play button через `find.text('Смотреть')`, `tester.tap(...)`, `pumpAndSettle()`.
@@ -194,7 +194,7 @@
   - _Depends: 3.1, 3.2_
   - _Boundary: test/features/detail/play_action_test.dart_
 
-- [ ] 5.5 Test: `static_audit_test.dart` — perf-rules grep
+- [x] 5.5 Test: `static_audit_test.dart` — perf-rules grep
   - Создать `megav_iptv/test/features/detail/static_audit_test.dart`.
   - Test читает все `.dart` файлы под `megav_iptv/lib/features/detail/` через `Directory(path).listSync(recursive: true)` + `File.readAsStringSync`.
   - Assert per file: regex `BackdropFilter|ShaderMask|ImageFilter\.blur` returns 0 matches (excluding comments).
@@ -209,7 +209,7 @@
 
 ## Phase 6. Regression check + sign-off
 
-- [ ] 6.1 Запустить полный test suite + analyze
+- [x] 6.1 Запустить полный test suite + analyze
   - `cd megav_iptv && flutter analyze` — 0 errors / 0 warnings.
   - `cd megav_iptv && flutter test` — все existing 65+ тестов + 5 новых тестов из phase 5 = ≥70 tests, все green.
   - Если найдёт regression в existing — НЕ латать тестом, искать root cause (вероятно — Hero wrapper в `_card_poster.dart` или route entry в `app.dart` затронули что-то).
