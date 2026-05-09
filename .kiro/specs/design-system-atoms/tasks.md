@@ -104,7 +104,7 @@
   - _Depends: 1.1_
   - _Boundary: MvTrack_
 
-- [ ] 2.7 Atom `Poster` + `PosterOrientation` enum
+- [x] 2.7 Atom `Poster` + `PosterOrientation` enum
   - Создать `megav_iptv/lib/core/ui/atoms/poster.dart` с:
     - `enum PosterOrientation { landscape, portrait }`.
     - `class Poster extends StatelessWidget` (required `image`, optional `orientation`, `title`, `subtitle`, `hideText`, `badgeTL`, `badgeTR`, `progress`, `isFocused`).

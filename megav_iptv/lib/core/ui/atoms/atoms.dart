@@ -21,7 +21,7 @@ export 'mv_key.dart';
 
 export 'mv_strip.dart';
 export 'mv_track.dart';
-// export 'poster.dart';
+export 'poster.dart';
 // export 'remote_hint.dart';
 // export 'section_title.dart';
 export 'status_bar.dart';
