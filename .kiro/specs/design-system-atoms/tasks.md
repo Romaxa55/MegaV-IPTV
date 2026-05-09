@@ -304,7 +304,7 @@
   - _Depends: 2.6_
   - _Boundary: mv_track_test_
 
-- [ ] 4.6 Полный прогон тестов и regression check
+- [x] 4.6 Полный прогон тестов и regression check
   - `cd megav_iptv && flutter test` — ожидаемо ≥ 80 (65 baseline + 13 smoke + 6 chip + 4 mv_button + 3 poster + 3 mv_track).
   - `flutter analyze` — 0 errors.
   - `grep -rn "BackdropFilter\|ShaderMask" megav_iptv/lib/core/ui/atoms/` — пусто (только doc-comments если есть).
