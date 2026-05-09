@@ -220,7 +220,7 @@
   - _Depends: 2.1, 2.3, 3.2, 3.4, 4.1, 4.3_
   - _Boundary: CinematicHomeScreen integration_
 
-- [ ] 5.2 Regression test для `pickColumns`
+- [x] 5.2 Regression test для `pickColumns`
   - Создать `megav_iptv/test/features/home/cinematic/pick_columns_regression_test.dart`.
   - Тест импортирует `pickColumns` из `package:megav_iptv/features/home/widgets/_grid_tokens.dart` (READ-ONLY).
   - Asserts: `pickColumns(1280) == 3`, `pickColumns(2560) == 4`, `pickColumns(3840) == 5` (Req 12.3, 10.3 защита).
