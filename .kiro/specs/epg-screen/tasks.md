@@ -168,7 +168,7 @@
 
 ## 4. Time grid + NOW marker
 
-- [ ] 4.1 `EpgTimeGrid` virtualised 2-axis
+- [x] 4.1 `EpgTimeGrid` virtualised 2-axis
   - Создать `megav_iptv/lib/features/epg/widgets/epg_time_grid.dart` с `class EpgTimeGrid extends StatefulWidget` (Req 2).
   - Параметры: `List<Channel> channels`, `Map<int, List<EpgProgram>> programmes`, `DateTime windowFrom`, `int slotCount`, `ScrollController verticalCtl` (shared с channel rail, Req 2.4), `ScrollController horizontalCtl` (shared с time axis, Req 2.5), `int? focusedChannelIndex`, `int? focusedProgrammeId`, `ValueChanged<({int channelIdx, int programmeId})>? onCellFocusChanged`, `ValueChanged<EpgProgram>? onCellTap`.
   - Build outer (вертикальный): `ListView.builder(controller: verticalCtl, scrollDirection: Axis.vertical, cacheExtent: 1500, addAutomaticKeepAlives: true, addRepaintBoundaries: true, clipBehavior: Clip.none, itemCount: channels.length, itemBuilder: ...)` (Req 2.3, 13.5).
