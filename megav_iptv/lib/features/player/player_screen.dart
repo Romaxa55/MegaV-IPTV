@@ -67,16 +67,91 @@ class PlayerScreen extends ConsumerStatefulWidget {
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final PlayerManager _playerManager;
   late final FocusNode _playerFocusNode;
-  bool _showControls = true;
-  PlayerOverlayMode _overlay = PlayerOverlayMode.none;
-  Timer? _hideTimer;
   bool _openedViaMedia3 = false;
 
-  Channel? _switchPreview;
-  Timer? _switchTimer;
+  /// Единый источник истины для видимости UI поверх видео (Req 1.1, 1.3).
+  PlayerUiState _uiState = const HiddenState();
 
-  bool _showBriefOSD = false;
-  Timer? _osdTimer;
+  /// Один таймер expiry для всех state-вариантов с auto-hide (Req 2.1).
+  /// Заменяет _hideTimer/_osdTimer/_switchTimer.
+  Timer? _stateExpiryTimer;
+
+  /// Гард на повторный вход в _quickSwitch до завершения предыдущего вызова
+  /// (Req 3.5).
+  bool _quickSwitchInFlight = false;
+
+  // ---- Internal state-machine API (Req 3.1, 3.2, 6.1) ----
+
+  /// Test-only entry point для детерминированной проверки переходов
+  /// без манипуляции с реальными `Timer`'ами (Req 6.1).
+  @visibleForTesting
+  void transitionForTest(PlayerUiState newState) => _transition(newState);
+
+  /// Единственная точка мутации `_uiState` (Req 3.1).
+  ///
+  /// Атомарно: cancel старого таймера → setState → schedule нового
+  /// (для тех вариантов, где есть expiry). Никаких await между
+  /// шагами — гарантия Req 3.2.
+  void _transition(PlayerUiState newState) {
+    _stateExpiryTimer?.cancel();
+    _stateExpiryTimer = null;
+    if (mounted) {
+      setState(() {
+        _uiState = newState;
+      });
+    } else {
+      _uiState = newState;
+    }
+
+    final expiryMs = switch (newState) {
+      HiddenState() => null,
+      OverlayState() => null,
+      ControlsState s => s.hideAt.difference(DateTime.now()).inMilliseconds,
+      BriefOsdState s => s.hideAt.difference(DateTime.now()).inMilliseconds,
+      SwitchPreviewState s => s.commitAt.difference(DateTime.now()).inMilliseconds,
+    };
+    if (expiryMs != null && expiryMs > 0) {
+      _stateExpiryTimer = Timer(Duration(milliseconds: expiryMs), _onExpiry);
+    } else if (expiryMs != null && expiryMs <= 0) {
+      // Expiry уже в прошлом — сработать на следующем microtask.
+      Future.microtask(_onExpiry);
+    }
+  }
+
+  void _onExpiry() {
+    if (!mounted) return;
+    switch (_uiState) {
+      case HiddenState():
+      case OverlayState():
+        // No-op (у этих вариантов нет expiry).
+        break;
+      case ControlsState():
+      case BriefOsdState():
+        _transition(const HiddenState());
+      case SwitchPreviewState s:
+        _commitSwitchPreview(s.previewChannel);
+    }
+  }
+
+  Future<void> _commitSwitchPreview(Channel next) async {
+    ref.read(currentChannelProvider.notifier).state = next;
+    ref.read(currentChannelIndexProvider.notifier).state = 0;
+    await _openChannel(next);
+    // _openChannel в конце сам перейдёт в BriefOsdState.
+  }
+
+  void _toggleOverlayKey(PlayerOverlayMode mode) {
+    final s = _uiState;
+    if (s is OverlayState && s.mode == mode) {
+      _transition(const HiddenState());
+    } else {
+      _transition(OverlayState(mode: mode));
+    }
+  }
+
+  void _hideOverlay() => _transition(const HiddenState());
+
+  // ---- Lifecycle ----
 
   @override
   void initState() {
@@ -90,7 +165,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     await _playerManager.initialize();
     final channel = ref.read(currentChannelProvider);
     if (channel != null) await _openChannel(channel);
-    _resetHideTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _playerFocusNode.requestFocus();
@@ -123,80 +197,52 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         await _playerManager.playChannel(streamUrl, channelId: channel.id.toString());
       }
     }
-    _showBriefOSDFor();
-  }
-
-  void _resetHideTimer() {
-    setState(() => _showControls = true);
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && _overlay == PlayerOverlayMode.none) {
-        setState(() => _showControls = false);
-      }
-    });
-  }
-
-  void _showBriefOSDFor() {
-    setState(() => _showBriefOSD = true);
-    _osdTimer?.cancel();
-    _osdTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showBriefOSD = false);
-    });
-  }
-
-  void _toggleOverlay(PlayerOverlayMode mode) {
-    setState(() {
-      _overlay = _overlay == mode ? PlayerOverlayMode.none : mode;
-    });
-    _resetHideTimer();
+    final hideAt = DateTime.now().add(const Duration(seconds: 3));
+    _transition(BriefOsdState(hideAt: hideAt));
   }
 
   void _quickSwitch(int delta) async {
-    // If a switch is already pending, use the previewed channel as the base
-    final channel = _switchPreview ?? ref.read(currentChannelProvider);
-    if (channel == null) return;
-
-    final api = ref.read(apiClientProvider);
-    final group = channel.groupTitle;
-
+    if (_quickSwitchInFlight) return;
+    _quickSwitchInFlight = true;
     try {
-      // Fetch channels of the same group to find next/prev correctly
+      final base = switch (_uiState) {
+        SwitchPreviewState s => s.previewChannel,
+        _ => ref.read(currentChannelProvider),
+      };
+      if (base == null) return;
+
+      final api = ref.read(apiClientProvider);
+      final group = base.groupTitle;
+
       final result = await api.getChannels(category: group, limit: 1000, offset: 0);
       final channels = result.channels;
       if (channels.isEmpty) return;
 
-      final currentIndex = channels.indexWhere((c) => c.id == channel.id);
-
+      final currentIndex = channels.indexWhere((c) => c.id == base.id);
       int nextIdx;
       if (currentIndex == -1) {
         nextIdx = 0;
       } else {
         nextIdx = currentIndex + delta;
         if (nextIdx < 0) {
-          nextIdx = channels.length - 1; // loop around
+          nextIdx = channels.length - 1;
         } else if (nextIdx >= channels.length) {
-          nextIdx = 0; // loop around
+          nextIdx = 0;
         }
       }
-
       final next = channels[nextIdx];
-      setState(() => _switchPreview = next);
-
-      _switchTimer?.cancel();
-      _switchTimer = Timer(const Duration(milliseconds: 1500), () async {
-        ref.read(currentChannelIndexProvider.notifier).state = nextIdx;
-        ref.read(currentChannelProvider.notifier).state = next;
-        await _openChannel(next);
-        if (mounted) setState(() => _switchPreview = null);
-      });
-    } catch (_) {}
+      final commitAt = DateTime.now().add(const Duration(milliseconds: 1500));
+      _transition(SwitchPreviewState(previewChannel: next, commitAt: commitAt));
+    } catch (_) {
+      // existing error swallowing
+    } finally {
+      _quickSwitchInFlight = false;
+    }
   }
 
   @override
   void dispose() {
-    _hideTimer?.cancel();
-    _osdTimer?.cancel();
-    _switchTimer?.cancel();
+    _stateExpiryTimer?.cancel();
     _playerFocusNode.dispose();
     if (!_openedViaMedia3) {
       _playerManager.stop();
@@ -238,10 +284,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         onKeyEvent: _handleKeyEvent,
         child: GestureDetector(
           onTap: () {
-            if (_overlay != PlayerOverlayMode.none) {
-              setState(() => _overlay = PlayerOverlayMode.none);
+            if (_uiState is OverlayState) {
+              _transition(const HiddenState());
             } else {
-              _resetHideTimer();
+              final hideAt = DateTime.now().add(const Duration(seconds: 4));
+              _transition(ControlsState(hideAt: hideAt));
             }
           },
           child: Stack(
@@ -276,60 +323,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 },
               ),
 
-              // Controls overlay
-              if (_showControls && channel != null)
-                AnimatedOpacity(
-                  opacity: 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: PlayerControlsOverlay(
-                    onBack: () => context.pop(),
-                    activeOverlay: _overlay,
-                    onToggleOverlay: _toggleOverlay,
-                  ),
-                ),
-
-              // Bottom Info (Hero OSD) — [Positioned] must sit directly under [Stack].
-              if ((_showControls || _showBriefOSD || _switchPreview != null) &&
-                  _overlay == PlayerOverlayMode.none &&
-                  (_switchPreview ?? channel) != null)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: AnimatedOpacity(
-                    opacity: 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: PlayerBottomInfo(channel: (_switchPreview ?? channel)!, isSwitching: _switchPreview != null),
-                  ),
-                ),
-
-              // EPG overlay
-              if (_overlay == PlayerOverlayMode.epg && channel != null)
-                EpgOverlay(
-                  channelName: channel.name,
-                  channelId: channel.id,
-                  onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
-                ),
-
-              // Channels sidebar
-              if (_overlay == PlayerOverlayMode.channels && channel != null)
-                ChannelsSidebar(
-                  currentChannel: channel,
-                  onSelectChannel: (ch) => _selectChannel(ch, 0),
-                  onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
-                ),
-
-              // Info overlay
-              if (_overlay == PlayerOverlayMode.info && channel != null)
-                InfoOverlay(channel: channel, onClose: () => setState(() => _overlay = PlayerOverlayMode.none)),
-
-              // Similar overlay
-              if (_overlay == PlayerOverlayMode.similar && channel != null)
-                SimilarOverlay(
-                  currentChannel: channel,
-                  onSelectChannel: (ch) => _selectChannel(ch, 0),
-                  onClose: () => setState(() => _overlay = PlayerOverlayMode.none),
-                ),
+              ..._buildOverlayLayer(channel),
             ],
           ),
         ),
@@ -337,76 +331,132 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  List<Widget> _buildOverlayLayer(Channel? channel) {
+    if (channel == null) return const [];
+    return switch (_uiState) {
+      HiddenState() => const [],
+      ControlsState() => [
+        PlayerControlsOverlay(
+          onBack: () => context.pop(),
+          activeOverlay: PlayerOverlayMode.none,
+          onToggleOverlay: _toggleOverlayKey,
+        ),
+        Positioned(left: 0, right: 0, bottom: 0, child: PlayerBottomInfo(channel: channel, isSwitching: false)),
+      ],
+      BriefOsdState() => [
+        Positioned(left: 0, right: 0, bottom: 0, child: PlayerBottomInfo(channel: channel, isSwitching: false)),
+      ],
+      SwitchPreviewState s => [
+        Positioned(left: 0, right: 0, bottom: 0, child: PlayerBottomInfo(channel: s.previewChannel, isSwitching: true)),
+      ],
+      OverlayState s => [_buildModalOverlay(s.mode, channel)],
+    };
+  }
+
+  Widget _buildModalOverlay(PlayerOverlayMode mode, Channel channel) {
+    return switch (mode) {
+      PlayerOverlayMode.epg => EpgOverlay(channelName: channel.name, channelId: channel.id, onClose: _hideOverlay),
+      PlayerOverlayMode.channels => ChannelsSidebar(
+        currentChannel: channel,
+        onSelectChannel: (ch) => _selectChannel(ch, 0),
+        onClose: _hideOverlay,
+      ),
+      PlayerOverlayMode.info => InfoOverlay(channel: channel, onClose: _hideOverlay),
+      PlayerOverlayMode.similar => SimilarOverlay(
+        currentChannel: channel,
+        onSelectChannel: (ch) => _selectChannel(ch, 0),
+        onClose: _hideOverlay,
+      ),
+      PlayerOverlayMode.none => const SizedBox.shrink(),
+    };
+  }
+
   void _selectChannel(Channel ch, int indexInGroup) {
     ref.read(currentChannelProvider.notifier).state = ch;
     ref.read(currentChannelIndexProvider.notifier).state = indexInGroup;
     _openChannel(ch);
-    setState(() => _overlay = PlayerOverlayMode.none);
+    _transition(const HiddenState());
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    _resetHideTimer();
 
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.escape:
-      case LogicalKeyboardKey.goBack:
-        if (_overlay != PlayerOverlayMode.none) {
-          setState(() => _overlay = PlayerOverlayMode.none);
-          return KeyEventResult.handled;
-        } else {
-          return KeyEventResult.ignored; // Let the system back button pop the screen
-        }
-      case LogicalKeyboardKey.arrowUp:
-      case LogicalKeyboardKey.channelUp:
-      case LogicalKeyboardKey.pageUp:
-      case LogicalKeyboardKey.mediaTrackPrevious:
-        if (_overlay == PlayerOverlayMode.none) {
-          _quickSwitch(-1);
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.arrowDown:
-      case LogicalKeyboardKey.channelDown:
-      case LogicalKeyboardKey.pageDown:
-      case LogicalKeyboardKey.mediaTrackNext:
-        if (_overlay == PlayerOverlayMode.none) {
-          _quickSwitch(1);
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.arrowLeft:
-      case LogicalKeyboardKey.arrowRight:
-        if (_overlay == PlayerOverlayMode.none) {
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.select:
-      case LogicalKeyboardKey.enter:
-      case LogicalKeyboardKey.mediaPlayPause:
-      case LogicalKeyboardKey.mediaPlay:
-      case LogicalKeyboardKey.mediaPause:
-        _resetHideTimer();
-        if (_overlay == PlayerOverlayMode.none && !_showControls) {
-          setState(() => _showControls = true);
-          return KeyEventResult.handled;
-        }
-        break;
-      case LogicalKeyboardKey.keyE:
-        _toggleOverlay(PlayerOverlayMode.epg);
+    final key = event.logicalKey;
+
+    // ESC / goBack: close overlay if open, else let system handle.
+    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.goBack) {
+      if (_uiState is OverlayState) {
+        _transition(const HiddenState());
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyI:
-        _toggleOverlay(PlayerOverlayMode.info);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyL:
-        _toggleOverlay(PlayerOverlayMode.channels);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyR:
-        _toggleOverlay(PlayerOverlayMode.similar);
-        return KeyEventResult.handled;
-      default:
-        break;
+      }
+      return KeyEventResult.ignored;
     }
+
+    // Channel up family.
+    if (key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.channelUp ||
+        key == LogicalKeyboardKey.pageUp ||
+        key == LogicalKeyboardKey.mediaTrackPrevious) {
+      if (_uiState is HiddenState || _uiState is ControlsState) {
+        _quickSwitch(-1);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    // Channel down family.
+    if (key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.channelDown ||
+        key == LogicalKeyboardKey.pageDown ||
+        key == LogicalKeyboardKey.mediaTrackNext) {
+      if (_uiState is HiddenState || _uiState is ControlsState) {
+        _quickSwitch(1);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    // Arrow left/right: absorb when no overlay (existing behavior).
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
+      if (_uiState is HiddenState || _uiState is ControlsState) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    // Select / Enter / Play family — show controls (or re-arm).
+    if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.gameButtonA ||
+        key == LogicalKeyboardKey.mediaPlayPause ||
+        key == LogicalKeyboardKey.mediaPlay ||
+        key == LogicalKeyboardKey.mediaPause) {
+      if (_uiState is HiddenState || _uiState is ControlsState) {
+        final hideAt = DateTime.now().add(const Duration(seconds: 4));
+        _transition(ControlsState(hideAt: hideAt));
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    // Overlay toggle keys.
+    if (key == LogicalKeyboardKey.keyE) {
+      _toggleOverlayKey(PlayerOverlayMode.epg);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyI) {
+      _toggleOverlayKey(PlayerOverlayMode.info);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyL) {
+      _toggleOverlayKey(PlayerOverlayMode.channels);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyR) {
+      _toggleOverlayKey(PlayerOverlayMode.similar);
+      return KeyEventResult.handled;
+    }
+
     return KeyEventResult.ignored;
   }
 }

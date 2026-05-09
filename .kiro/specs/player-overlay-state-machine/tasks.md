@@ -24,7 +24,7 @@
 
 ## 2. Core: рефакторинг state-машины `_PlayerScreenState`
 
-- [ ] 2.1 Заменить 5 state-полей на одно `_uiState`
+- [x] 2.1 Заменить 5 state-полей на одно `_uiState`
   - В `_PlayerScreenState`: удалить `bool _showControls`, `bool _showBriefOSD`, `PlayerOverlayMode _overlay`, `Channel? _switchPreview`. Добавить `PlayerUiState _uiState = const HiddenState();`.
   - Удалить три таймера `_hideTimer`, `_osdTimer`, `_switchTimer`. Добавить `Timer? _stateExpiryTimer;`.
   - Добавить `bool _quickSwitchInFlight = false;`.
@@ -35,7 +35,7 @@
   - _Depends: 1.1_
   - _Boundary: _PlayerScreenState (state model)_
 
-- [ ] 2.2 Реализовать `_transition(PlayerUiState newState)` и переписать все mutators через него
+- [x] 2.2 Реализовать `_transition(PlayerUiState newState)` и переписать все mutators через него
   - В `_PlayerScreenState` добавить:
     - метод `void _transition(PlayerUiState newState)` — body согласно design.md (cancel timer first, setState, schedule new timer if expiry).
     - метод `void _onExpiry()` — обработка expiry для текущего `_uiState` (HiddenState/OverlayState — no-op; ControlsState/BriefOsdState → `_transition(HiddenState())`; SwitchPreviewState → `_commitSwitchPreview(channel)`).
