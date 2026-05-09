@@ -154,7 +154,7 @@
 
 ## 4. Live strip + remote hint footer
 
-- [ ] 4.1 `CinematicLiveStrip` + private `_LiveProgress`
+- [x] 4.1 `CinematicLiveStrip` + private `_LiveProgress`
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_live_strip.dart` с:
     - `class CinematicLiveStrip extends ConsumerWidget` (public, Req 6.1).
     - В build: `Row(children: [Chip(variant: ChipVariant.live, label: 'LIVE'), MMLogo(...), Column(crossAxisAlignment: start, children: [Text(currentTitle, style: theme.megavText.headline), Text(nextLabel, style: theme.megavText.metaMono)]), Expanded(child: const _LiveProgress())])`.
@@ -168,7 +168,7 @@
   - _Depends: 1.2_
   - _Boundary: CinematicLiveStrip_
 
-- [ ] 4.2 `CinematicLiveStrip` widget test
+- [x] 4.2 `CinematicLiveStrip` widget test
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_live_strip_test.dart`.
   - Тест 1: pump с моком; ожидает `find.byKey(const Key('cinematic-live-strip'))` finds one; `find.byType(Chip)` finds one (live variant); `find.byType(MvTrack)` finds one; `find.byType(MMLogo)` finds one.
   - Тест 2: progress consumer wrapped в `RepaintBoundary` — обнаруживается ancestor через `find.ancestor(of: find.byType(MvTrack), matching: find.byType(RepaintBoundary))`.
@@ -177,7 +177,7 @@
   - _Depends: 4.1_
   - _Boundary: live strip test_
 
-- [ ] 4.3 `CinematicRemoteHintFooter`
+- [x] 4.3 `CinematicRemoteHintFooter`
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_remote_hint_footer.dart` с `class CinematicRemoteHintFooter extends StatelessWidget` (Req 7).
   - Build: `RepaintBoundary(child: ExcludeFocus(child: IgnorePointer(child: const RemoteHint())))`.
   - Конструктор `const CinematicRemoteHintFooter({super.key})` — позволяет caller поместить `const CinematicRemoteHintFooter()` в дерево.
@@ -188,7 +188,7 @@
   - _Depends: 1.2_
   - _Boundary: CinematicRemoteHintFooter_
 
-- [ ] 4.4 `CinematicRemoteHintFooter` widget test
+- [x] 4.4 `CinematicRemoteHintFooter` widget test
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_remote_hint_footer_test.dart`.
   - Тест 1: pump; `find.byKey(const Key('cinematic-remote-hint'))` finds one; `find.byType(RemoteHint)` finds one.
   - Тест 2: `find.byType(IgnorePointer)` finds one — focus-traversal не блокирует.
