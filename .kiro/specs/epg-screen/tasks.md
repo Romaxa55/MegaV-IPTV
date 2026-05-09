@@ -153,7 +153,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgProgramCell_
 
-- [ ] 3.5 `EpgProgramCell` widget test
+- [x] 3.5 `EpgProgramCell` widget test
   - Создать `megav_iptv/test/features/epg/epg_program_cell_test.dart`.
   - Тест 1: pump с программой `isNow == true` → `find.byType(Chip)` finds one (live variant); `find.byType(MvTrack)` finds one.
   - Тест 2: pump с программой `isNow == false` → `find.byType(Chip)` finds none.
