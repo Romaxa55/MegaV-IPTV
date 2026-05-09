@@ -70,32 +70,17 @@ void main() {
       // Compact overlay: channel-name must be present and visible.
       expect(find.byKey(const Key('channel-name')), findsOneWidget);
 
-      // Full overlay widgets exist in the tree (built unconditionally — they
-      // live inside an AnimatedOpacity wrapper), but the AnimatedOpacity that
-      // wraps the full overlay must have opacity == 0 when isFocused is false.
+      // Task 2.2 (Req 2.1, 2.2): full overlay subtree (including the
+      // AnimatedOpacity wrapper) is removed from the tree via Visibility once
+      // the card is fully unfocused and fade-out has elapsed. Compact overlay
+      // (channel-name) is preserved.
       final animatedOpacityFinder = find.descendant(
         of: find.byType(CinemaCard),
         matching: find.byType(AnimatedOpacity),
       );
-      expect(animatedOpacityFinder, findsOneWidget);
-
-      final animatedOpacity = tester.widget<AnimatedOpacity>(animatedOpacityFinder);
-      expect(animatedOpacity.opacity, 0.0,
-          reason: 'Full overlay must be fully transparent when CinemaCard is unfocused (Req 5.3)');
-
-      // The Opacity child rendered after the AnimatedOpacity settles must
-      // also report opacity 0 — covers the case where AnimatedOpacity already
-      // animated past the boundary.
-      final renderedOpacityFinder = find.descendant(
-        of: animatedOpacityFinder,
-        matching: find.byType(Opacity),
-      );
-      // AnimatedOpacity may render its child via FadeTransition / Opacity.
-      // We check the inner rendered opacity if an Opacity child exists.
-      if (renderedOpacityFinder.evaluate().isNotEmpty) {
-        final rendered = tester.widget<Opacity>(renderedOpacityFinder.first);
-        expect(rendered.opacity, 0.0);
-      }
+      expect(animatedOpacityFinder, findsNothing,
+          reason: 'Full overlay AnimatedOpacity must be removed from the tree when '
+              'CinemaCard is fully unfocused (task 2.2, Req 2.1)');
     },
   );
 

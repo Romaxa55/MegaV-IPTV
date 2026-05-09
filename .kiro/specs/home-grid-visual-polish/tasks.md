@@ -30,7 +30,7 @@
   - _Depends: 1.1_
   - _Boundary: CinemaRow_
 
-- [ ] 2.2 Добавить Visibility-обёртку над AnimatedOpacity full overlay в `cinema_card.dart`
+- [x] 2.2 Добавить Visibility-обёртку над AnimatedOpacity full overlay в `cinema_card.dart`
   - В `_CinemaCardState` добавить поле `bool _focusJustLost = false` и `Timer? _focusLossTimer`.
   - Добавить геттер `bool get _shouldRenderFullOverlay => widget.isFocused || _focusJustLost`.
   - Реализовать `didUpdateWidget(CinemaCard oldWidget)`:

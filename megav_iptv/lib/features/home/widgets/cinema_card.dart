@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -6,6 +8,7 @@ import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/ui_performance.dart';
 import '../../../core/ui/utils/fast_scroll_detector.dart';
+import '_card_poster.dart';
 import '_grid_tokens.dart';
 
 /// Плитка ряда главной сетки.
@@ -42,9 +45,6 @@ class CinemaCard extends StatefulWidget {
 }
 
 class _CinemaCardState extends State<CinemaCard> {
-  bool _thumbFailed = false;
-  int _thumbRetryCount = 0;
-
   // Кэш псевдо-данных. Считаются один раз на инстанс карточки (task 2.1, Req 9.4).
   // Используем initializer-form `late final = ...` — методы гарантированно
   // дёргаются ровно один раз на первый доступ из build.
@@ -52,7 +52,48 @@ class _CinemaCardState extends State<CinemaCard> {
   late final String _ageRatingCached = _computeAgeRating();
   late final String _genreEmojiCached = _computeGenreEmoji();
 
-  static const _cardBg = Color(0xFF12121E);
+  // --- Visibility lifecycle полного overlay (task 2.2, Req 2.1–2.3) -------
+  //
+  // Пока карточка нефокусирована и анимация затухания ушла в ноль, мы
+  // полностью убираем full overlay из дерева через `Visibility(visible: false)`.
+  // Это снимает с ListView в ряду тяжелые поддеревья (ratings/badges/progress),
+  // оставляя в кадре только compact-overlay (logo + channel-name + LIVE).
+  //
+  // Чтобы fade-out успел отыграть на анимации фокуса, после потери фокуса
+  // мы держим subtree живым `_focusJustLost = true` ровно overlayFade + 1 кадр,
+  // и только потом снимаем с дерева.
+  bool _focusJustLost = false;
+  Timer? _focusLossTimer;
+
+  bool get _shouldRenderFullOverlay => widget.isFocused || _focusJustLost;
+
+  @override
+  void didUpdateWidget(CinemaCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isFocused && !widget.isFocused) {
+      // Фокус только что потерян — нужно дать AnimatedOpacity отыграть fade-out
+      // прежде чем выкинуть subtree из дерева через Visibility.
+      _focusLossTimer?.cancel();
+      setState(() => _focusJustLost = true);
+      _focusLossTimer = Timer(GridTokens.overlayFade + const Duration(milliseconds: 16), () {
+        if (!mounted) return;
+        setState(() => _focusJustLost = false);
+      });
+    } else if (widget.isFocused) {
+      // Фокус вернулся (или остался) — отменяем pending timer и сбрасываем флаг
+      // (если он был выставлен) чтобы геттер опирался только на widget.isFocused.
+      _focusLossTimer?.cancel();
+      if (_focusJustLost) {
+        setState(() => _focusJustLost = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusLossTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +140,7 @@ class _CinemaCardState extends State<CinemaCard> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        _buildPoster(),
+        CardPoster(item: widget.item),
         _buildGradient(context),
         _buildCompactOverlay(context),
         _buildFullOverlayWithFade(isFastScroll: isFastScroll),
@@ -187,19 +228,33 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  /// Full overlay в обёртке `AnimatedOpacity` (Req 6.1–6.3).
+  /// Full overlay в обёртке `AnimatedOpacity` (Req 6.1–6.3) + `Visibility`
+  /// (task 2.2, Req 2.1–2.3).
+  ///
+  /// `Visibility(visible: _shouldRenderFullOverlay, …)` полностью убирает
+  /// AnimatedOpacity + IgnorePointer + full overlay из дерева, как только
+  /// карточка нефокусирована и fade-out успел отыграть. На остальных карточках
+  /// ряда (которые в любой момент времени всегда в большинстве) рендерится
+  /// только compact-overlay — что снимает основную долю build-cost полного
+  /// субдерева (ratings/badges/progress).
   ///
   /// При fast-scroll fade-out схлопывается до `Duration.zero`, чтобы
   /// неактивные плитки не «тянули» затухающий overlay за фокусом
   /// (task 2.5, опциональный путь).
   Widget _buildFullOverlayWithFade({required bool isFastScroll}) {
     return Positioned.fill(
-      child: IgnorePointer(
-        child: AnimatedOpacity(
-          opacity: widget.isFocused ? 1.0 : 0.0,
-          duration: isFastScroll ? Duration.zero : GridTokens.overlayFade,
-          curve: GridTokens.overlayCurve,
-          child: _buildFullOverlay(),
+      child: Visibility(
+        visible: _shouldRenderFullOverlay,
+        maintainState: false,
+        maintainSize: false,
+        maintainAnimation: false,
+        child: IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: widget.isFocused ? 1.0 : 0.0,
+            duration: isFastScroll ? Duration.zero : GridTokens.overlayFade,
+            curve: GridTokens.overlayCurve,
+            child: _buildFullOverlay(),
+          ),
         ),
       ),
     );
@@ -480,81 +535,5 @@ class _CinemaCardState extends State<CinemaCard> {
   String _fmtDuration(Duration d) {
     if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes.remainder(60)} мин';
     return '${d.inMinutes} мин';
-  }
-
-  // --- Poster + retry logic (preserved) -----------------------------------
-
-  Widget _buildPoster() {
-    final iconUrl = widget.item.program?.icon;
-    final thumbUrl = widget.item.thumbnailUrl;
-    final logoUrl = widget.item.logoUrl;
-
-    // Priority: KP poster (icon) → stream thumbnail → channel logo
-    final primaryUrl = (iconUrl != null && iconUrl.isNotEmpty) ? iconUrl : null;
-    final secondaryUrl = (thumbUrl != null && thumbUrl.isNotEmpty) ? thumbUrl : null;
-    final tertiaryUrl = (logoUrl != null && logoUrl.isNotEmpty) ? logoUrl : null;
-    final bestUrl = primaryUrl ?? secondaryUrl ?? tertiaryUrl;
-
-    if (bestUrl == null) return _posterPlaceholder();
-
-    final attemptUrl = bestUrl == secondaryUrl && _thumbRetryCount > 0 ? '$bestUrl?retry=$_thumbRetryCount' : bestUrl;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ColoredBox(color: _cardBg),
-        if (!_thumbFailed)
-          Image.network(
-            attemptUrl,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            cacheWidth: 400,
-            gaplessPlayback: true,
-            alignment: Alignment.center,
-            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-              final ready = wasSynchronouslyLoaded || frame != null;
-              return AnimatedOpacity(
-                opacity: ready ? 1 : 0,
-                duration: ready ? const Duration(milliseconds: 400) : Duration.zero,
-                curve: Curves.easeOut,
-                child: child,
-              );
-            },
-            errorBuilder: (ctx, error, stackTrace) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && !_thumbFailed) {
-                  setState(() => _thumbFailed = true);
-                  _retryThumbnail();
-                }
-              });
-              return const SizedBox.shrink();
-            },
-          ),
-      ],
-    );
-  }
-
-  void _retryThumbnail() {
-    if (_thumbRetryCount >= 6) return;
-    final delays = [3, 5, 10, 15, 30, 60];
-    final delaySec = delays[_thumbRetryCount.clamp(0, delays.length - 1)];
-    Future.delayed(Duration(seconds: delaySec), () {
-      if (mounted) {
-        setState(() {
-          _thumbFailed = false;
-          _thumbRetryCount++;
-        });
-      }
-    });
-  }
-
-  Widget _posterPlaceholder() {
-    return Container(
-      color: _cardBg,
-      child: Center(
-        child: Icon(Icons.tv, size: 32.sp, color: AppColors.textHint.withValues(alpha: 0.2)),
-      ),
-    );
   }
 }
