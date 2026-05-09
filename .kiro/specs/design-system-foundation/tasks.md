@@ -193,7 +193,7 @@
 
 ## 5. Manual smoke (опционально, без TV)
 
-- [ ] 5.1* Smoke build APK debug + установить на тестовое устройство (или эмулятор)
+- [-] 5.1* Smoke build APK debug + установить на тестовое устройство (или эмулятор) — **SKIPPED (optional task)**
   - `cd megav_iptv && flutter build apk --debug` (или `flutter run -d <device>`).
   - Запустить приложение; визуально подтвердить:
     - Главный экран показывает все элементы как раньше (закрытые специй home-grid не сломались).
@@ -209,6 +209,8 @@
 ---
 
 ## Implementation Notes
+
+- **Task 5.1\* skipped**: Optional smoke task explicitly marked `*` in plan. flutter analyze (0 errors) + flutter test (53/53) + downstream task 2.3/2.4/3.1 reviewer approvals already confirm the build compiles, runs, and the closed specs continue to pass. APK install on TV-box would add value only for visually confirming warm-cream text drift; that is a UX nicety, not a regression risk. Operator can run `cd megav_iptv && flutter run --profile -d <device>` ad-hoc when convenient.
 
 - **Task 2.3 boundary expansion (mid-impl)**: Original task plan said «не модифицировать call-sites», но AppColors используется в 9 файлах внутри `const Widget(...)` литералов. Конверсия `static const Color → static Color get` ломает const-context (`invalid_constant` errors). Корректный fix — drop `const` keyword в 9 call-site файлах (НЕ переписывать widget tree). Семантика идентична, плюс бонус: widgets теперь rebuild при `setActivePalette()` (Req 1.4 propagation). `app_theme.dart` остаётся за task 2.4.
 
