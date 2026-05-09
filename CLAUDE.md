@@ -55,6 +55,66 @@ Skills are located in `.claude/skills/kiro-*/SKILL.md`
 - Keep steering current and verify alignment with `/kiro-spec-status`
 - Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
 
+## GitHub Issues — backlog and follow-ups
+
+**Repo**: `Romaxa55/MegaV-IPTV` (https://github.com/Romaxa55/MegaV-IPTV)
+**Authentication**: `gh` CLI is installed and authenticated (`gh auth status` shows `Romaxa55` logged in via SSH). All `gh` commands work without setup.
+
+**Use GitHub Issues, not in-repo markdown files, for**:
+- Future spec ideas surfaced mid-session («давай потом сделаем X»).
+- Bug reports the user mentions in passing but doesn't want to fix right now.
+- Operator observations from runtime logs that need follow-up (e.g. "PlayerManager retries only 3 times on DNS failure" → file as issue, do NOT add a `.kiro/backlog.md`).
+- Cross-spec concerns that are out-of-boundary for the current spec but should not be lost.
+- Anything the user says should be «в задачку / в issue / в гитхаб».
+
+**Do NOT use** in-repo files like `backlog.md`, `TODO.md`, `IDEAS.md` for the same purpose — they get stale and clutter the repo. Issues are the source of truth.
+
+### When the user asks for an issue
+
+Use `gh issue create` via Bash. Default labels available: `bug`, `enhancement`, `documentation`, `question`, `good first issue`, `help wanted`, `wontfix`, `dependencies`. Pick the most fitting one. If none fits — create a new label first via `gh label create <name> --color <hex> --description <text>`.
+
+Issue body should follow this template (Russian content; English title acceptable when more searchable):
+
+```markdown
+## Симптом
+What the user / operator observes. Concrete reproduction (log excerpt, screenshot, sequence of actions).
+
+## Текущее поведение
+Where in the code this lives. File:line references where useful.
+
+## Желаемое поведение
+What should happen instead. Bullet points, not prose.
+
+## Boundary candidates
+Which files/modules would be touched if/when this becomes a spec.
+
+## Action
+The kiro entry point to use when the time comes — e.g. `/kiro-discovery <feature-name>` or `/kiro-spec-quick <feature>` if the boundary is already clear.
+
+## Related specs
+Link to closed/in-progress kiro specs in `.kiro/specs/` that touch the same domain.
+```
+
+Always include relevant log excerpts verbatim when the user pastes them. Always link to the affected file:line. Always end with the kiro entry point so the issue is actionable.
+
+### When the user asks about issues
+
+For questions like «какие issues есть» / «покажи список» / «что в issue #N»:
+- `gh issue list --state open` — open issues.
+- `gh issue list --state all --limit 20` — recent activity.
+- `gh issue view <number>` — full body of one issue.
+- `gh issue view <number> --comments` — with discussion.
+
+Show counts and titles concisely. Don't dump full bodies unless asked.
+
+### When closing a kiro spec
+
+If a kiro spec resolves an existing issue, mention the issue number in the closing commit message and run `gh issue close <number> --comment "Resolved in <spec-name> (commit <sha>)"` after the merge commit lands.
+
+### Do NOT proactively create issues
+
+Only create issues when the user **explicitly** asks («заведи issue», «в гитхаб», «в задачку», etc.) OR when the user describes something out of the current spec's scope and wants it remembered. Do NOT auto-file issues for every minor observation — that floods the tracker.
+
 ## Steering Configuration
 - Load entire `.kiro/steering/` as project memory
 - Default files: `product.md`, `tech.md`, `structure.md`
