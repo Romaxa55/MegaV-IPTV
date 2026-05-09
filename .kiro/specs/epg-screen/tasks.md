@@ -108,7 +108,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgChannelRail_
 
-- [ ] 3.2 `EpgChannelRail` widget test
+- [x] 3.2 `EpgChannelRail` widget test
   - Создать `megav_iptv/test/features/epg/epg_channel_rail_test.dart`.
   - Тест 1: pump с 5 моковыми Channel; `find.byKey(const Key('epg-channel-rail'))` finds one; `find.byKey(const Key('epg-channel-cell-1'))` finds one (или ≥ 1 в viewport).
   - Тест 2: ListView имеет `cacheExtent == 1500.0`, `addAutomaticKeepAlives == true`, `addRepaintBoundaries == true`, `clipBehavior == Clip.none` (Req 13.5).
