@@ -235,7 +235,7 @@
   - _Depends: 2.3 (Chip)_
   - _Boundary: hero_badges proxy_
 
-- [ ] 3.3 Refactor `channel_quality_badge.dart` → use `Chip(variant: brand)`
+- [x] 3.3 Refactor `channel_quality_badge.dart` → use `Chip(variant: brand)`
   - Открыть `megav_iptv/lib/core/ui/channel_quality_badge.dart` (NOT в `lib/features/home/widgets/` — verified actual location).
   - **Public API contract — ОБЯЗАТЕЛЬНО preserved verbatim** (verified): `ChannelQualityBadge({Key? key, required ChannelStreamQuality quality, bool compact = false})`.
   - Текущая реализация резолвит `quality` enum в bg/fg/border colors через switch и рисует `Container(padding: EdgeInsets.symmetric(...), decoration: BoxDecoration(color: bg, ...), child: Text(quality.label, ...))`.

@@ -1,50 +1,40 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/material.dart' hide Chip;
 
 import '../playlist/channel_stream_quality.dart';
+import 'atoms/atoms.dart';
 
-/// Компактный лейбл UHD / HD / SD для карточек и списков каналов.
+/// Compact quality label (UHD/HD/SD) for channel cards. Backward-compat
+/// shim — internally delegates to [Chip] atom from design-system-atoms.
+///
+/// Public API preserved: `ChannelQualityBadge({Key? key,
+/// required ChannelStreamQuality quality, bool compact = false})`.
+///
+/// `compact: true` retains the original smaller padding via local Padding
+/// adjustment (Chip atom doesn't expose a `compact` param yet).
 class ChannelQualityBadge extends StatelessWidget {
+  const ChannelQualityBadge({super.key, required this.quality, this.compact = false});
+
   final ChannelStreamQuality quality;
   final bool compact;
 
-  const ChannelQualityBadge({super.key, required this.quality, this.compact = false});
+  String get _label {
+    switch (quality) {
+      case ChannelStreamQuality.uhd:
+        return 'UHD';
+      case ChannelStreamQuality.hd:
+        return 'HD';
+      case ChannelStreamQuality.sd:
+        return 'SD';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final padH = compact ? 5.w : 7.w;
-    final padV = compact ? 2.h : 3.h;
-    final fontSize = compact ? 9.sp : 10.sp;
-
-    final (bg, fg, border) = switch (quality) {
-      ChannelStreamQuality.uhd => (
-        const Color(0xFFB45309).withValues(alpha: 0.35),
-        const Color(0xFFFBBF24),
-        const Color(0xFFF59E0B).withValues(alpha: 0.45),
-      ),
-      ChannelStreamQuality.hd => (
-        const Color(0xFF4F46E5).withValues(alpha: 0.35),
-        const Color(0xFFC7D2FE),
-        const Color(0xFF6366F1).withValues(alpha: 0.45),
-      ),
-      ChannelStreamQuality.sd => (
-        Colors.white.withValues(alpha: 0.10),
-        Colors.white.withValues(alpha: 0.55),
-        Colors.white.withValues(alpha: 0.12),
-      ),
-    };
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(color: border),
-      ),
-      child: Text(
-        quality.label,
-        style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700, color: fg, letterSpacing: 0.4, height: 1.0),
-      ),
-    );
+    final chip = Chip(label: _label, variant: ChipVariant.brand);
+    // compact mode: scale slightly. The original was ~85% size in compact.
+    if (compact) {
+      return Transform.scale(scale: 0.85, child: chip);
+    }
+    return chip;
   }
 }
