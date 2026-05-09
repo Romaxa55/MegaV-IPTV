@@ -301,7 +301,7 @@
 
 ## 6. Integration + regression + perf gate
 
-- [ ] 6.1 Wire all components в `EpgScreen`
+- [x] 6.1 Wire all components в `EpgScreen`
   - Модифицировать `megav_iptv/lib/features/epg/epg_screen.dart` (созданный в 2.2) — заполнить body composition согласно design.md §3 component layout:
     1. Header row: italic display 56 px «Программа передач» (через `MegaVTextStyles.displayLarge.copyWith(fontStyle: FontStyle.italic)`) + `EpgDayPicker`.
     2. `EpgCategoryFilter`.
