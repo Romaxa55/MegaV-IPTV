@@ -118,7 +118,7 @@
   - _Depends: 3.1_
   - _Boundary: channel rail test_
 
-- [ ] 3.3 `EpgTimeAxis`
+- [x] 3.3 `EpgTimeAxis`
   - Создать `megav_iptv/lib/features/epg/widgets/epg_time_axis.dart` с `class EpgTimeAxis extends StatelessWidget` (Req 5).
   - Параметры: `DateTime windowFrom`, `int slotCount` (default 10), `ScrollController horizontalCtl` (shared с time-grid, Req 5.2), `double slotW = 180`.
   - Build: sticky horizontal header — `SizedBox(height: 32.h, child: ListView.builder(controller: horizontalCtl, scrollDirection: Axis.horizontal, physics: NeverScrollableScrollPhysics() // controlled-only, cacheExtent: 1500, addAutomaticKeepAlives: true, addRepaintBoundaries: true, clipBehavior: Clip.none, itemCount: slotCount, itemBuilder: (ctx, i) => SizedBox(width: slotW.w, child: Center(child: Text(formatTime(windowFrom.add(Duration(minutes: 30 * i))), style: theme.megavText.metaMono)))))` (Req 5.1, 5.2, 5.4, 13.5).
