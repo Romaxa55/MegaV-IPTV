@@ -39,19 +39,38 @@ class DecoderConfig {
   final BufferMode bufferMode;
   final String userAgent;
 
+  /// UI-only adaptive bitrate preference. Nullable: `null` means
+  /// "not yet set" so consumers may apply their own default. The Settings
+  /// section reads this via `?? true` (Open Question 1, design.md).
+  final bool? abrEnabled;
+
+  /// UI-only audio passthrough preference. Nullable; defaults to `false`
+  /// at the read site.
+  final bool? audioPassthrough;
+
   const DecoderConfig({
     this.decoderMode = DecoderMode.auto,
     this.bufferMode = BufferMode.standard,
     this.userAgent = 'MegaV-IPTV/1.0',
+    this.abrEnabled,
+    this.audioPassthrough,
   });
 
   bool get usesMedia3 => decoderMode.usesMedia3;
 
-  DecoderConfig copyWith({DecoderMode? decoderMode, BufferMode? bufferMode, String? userAgent}) {
+  DecoderConfig copyWith({
+    DecoderMode? decoderMode,
+    BufferMode? bufferMode,
+    String? userAgent,
+    bool? abrEnabled,
+    bool? audioPassthrough,
+  }) {
     return DecoderConfig(
       decoderMode: decoderMode ?? this.decoderMode,
       bufferMode: bufferMode ?? this.bufferMode,
       userAgent: userAgent ?? this.userAgent,
+      abrEnabled: abrEnabled ?? this.abrEnabled,
+      audioPassthrough: audioPassthrough ?? this.audioPassthrough,
     );
   }
 
