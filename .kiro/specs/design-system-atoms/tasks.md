@@ -141,7 +141,7 @@
 
   > **Note**: Поскольку 2.9 зависит от MvButton (2.10), порядок переставлен: 2.10 должна выполниться РАНЬШЕ 2.9. Tasks 2.9 фактически выполняется после 2.10 (см. ниже Implementation order).
 
-- [ ] 2.10 Atom `MvButton` + `MvButtonSize` enum (3 named ctor variants)
+- [x] 2.10 Atom `MvButton` + `MvButtonSize` enum (3 named ctor variants)
   - Создать `megav_iptv/lib/core/ui/atoms/mv_button.dart` с:
     - `enum MvButtonSize { small, medium }` (small=32px height, medium=44px height).
     - Internal `enum _MvButtonVariant { primary, ghost, accent }`.
