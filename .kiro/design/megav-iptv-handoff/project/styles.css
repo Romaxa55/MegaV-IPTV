@@ -1,0 +1,423 @@
+/* MegaV IPTV — hi-fi design exploration tokens */
+:root {
+  --bg: #06060a;
+  --bg-warm: #0a0809;
+  --surface: #0f0f14;
+  --surface-2: #15151c;
+  --line: rgba(255, 240, 220, 0.08);
+  --line-strong: rgba(255, 240, 220, 0.16);
+  --text: #F4F1E9;
+  --text-dim: rgba(244, 241, 233, 0.62);
+  --text-mute: rgba(244, 241, 233, 0.38);
+  --accent: #6E56F7;
+  --accent-glow: rgba(110, 86, 247, 0.45);
+  --accent-soft: rgba(110, 86, 247, 0.16);
+  --gold: #E8B96A;
+  --gold-soft: rgba(232, 185, 106, 0.16);
+  --live: #FF3B5C;
+  --live-soft: rgba(255, 59, 92, 0.18);
+  --good: #22D3A8;
+
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+
+  --font-display: "Instrument Serif", "Times New Roman", serif;
+  --font-ui: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-ui);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* —— Global atoms used across artboards —— */
+.mv-art {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* film grain overlay */
+.mv-grain::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.92  0 0 0 0 0.85  0 0 0 0.7 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* vignette */
+.mv-vignette::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 80% at 50% 40%, transparent 40%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Headerbar */
+.mv-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 56px;
+  position: relative; z-index: 30;
+}
+.mv-brand { display: flex; align-items: center; gap: 14px; }
+.mv-brand-mark {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, #8a72ff 0%, #5a40e8 100%);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  box-shadow: 0 8px 24px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.18);
+  position: relative;
+}
+.mv-brand-mark::after {
+  content: ""; position: absolute; inset: 6px;
+  border: 1.5px solid rgba(255,255,255,0.85);
+  border-radius: 4px;
+}
+.mv-brand-mark::before {
+  content: ""; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  width: 14px; height: 2px; background: rgba(255,255,255,0.85); border-radius: 1px;
+}
+.mv-brand-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: 8px;
+}
+.mv-brand-name em { font-style: italic; }
+.mv-brand-name span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.mv-statusbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(20, 20, 26, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(20px);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.mv-statusbar .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-mute); }
+.mv-statusbar .flag {
+  width: 18px; height: 12px; border-radius: 2px; overflow: hidden;
+  display: inline-flex; flex-direction: column;
+}
+.mv-statusbar .flag i { flex: 1; }
+.mv-iconbtn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(20,20,26,0.55);
+  display: grid; place-items: center;
+  color: var(--text-dim);
+  backdrop-filter: blur(16px);
+}
+
+/* Chip */
+.mv-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.mv-chip.live { background: var(--live); color: white; border-color: transparent; }
+.mv-chip.live .pulse {
+  width: 6px; height: 6px; border-radius: 50%; background: white;
+  box-shadow: 0 0 0 0 rgba(255,255,255,0.7);
+}
+.mv-chip.brand { background: var(--accent-soft); color: #c8b8ff; border-color: var(--accent-soft); }
+.mv-chip.gold { background: var(--gold-soft); color: var(--gold); border-color: var(--gold-soft); }
+.mv-chip.ghost { background: transparent; color: var(--text-dim); }
+
+/* Buttons — editorial, modern (no flashy gradients, tactile press states) */
+.mv-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(.2,.8,.2,1), background 0.18s ease, border-color 0.18s ease;
+  white-space: nowrap;
+}
+.mv-btn:hover { transform: translateY(-1px); }
+.mv-btn:active { transform: translateY(0); }
+
+.mv-btn.primary {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  border-color: var(--text);
+}
+.mv-btn.primary:hover { background: color-mix(in oklab, var(--text) 92%, var(--accent) 8%); }
+
+.mv-btn.ghost {
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  color: var(--text);
+  border-color: var(--line);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.mv-btn.ghost:hover {
+  background: color-mix(in oklab, var(--text) 10%, transparent);
+  border-color: var(--line-strong);
+}
+
+.mv-btn.accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.mv-btn.accent:hover { filter: brightness(1.08); }
+
+.mv-btn.focus,
+.mv-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Section headings */
+.mv-section-title {
+  display: flex; align-items: baseline; gap: 14px;
+  padding: 0 56px;
+  margin-bottom: 18px;
+}
+.mv-section-title h3 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+  text-shadow: 0 2px 18px rgba(0,0,0,0.55);
+}
+.mv-section-title h3 em {
+  font-style: italic;
+  color: color-mix(in oklab, var(--accent) 70%, var(--text) 30%);
+  font-weight: 400;
+}
+.mv-section-title .count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-mute);
+  letter-spacing: 0.1em;
+}
+.mv-section-title .more {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+/* Genre tab strip — editorial tiny */
+.mv-tabs {
+  display: flex; align-items: center; gap: 28px;
+  padding: 0 56px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  height: 52px;
+  font-family: var(--font-ui);
+}
+.mv-tabs .tab {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  position: relative;
+  padding: 14px 0;
+  cursor: pointer;
+}
+.mv-tabs .tab.active { color: var(--text); }
+.mv-tabs .tab.active::after {
+  content: ""; position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 1px; background: var(--accent);
+}
+.mv-tabs .tab .num {
+  font-family: var(--font-mono); font-size: 9px;
+  vertical-align: super; margin-left: 4px;
+  color: var(--text-mute);
+}
+
+/* Posters */
+.mv-poster {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-2);
+  isolation: isolate;
+}
+.mv-poster .pr-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mv-poster .pr-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.85) 100%);
+}
+.mv-poster .pr-meta {
+  position: absolute; left: 14px; right: 14px; bottom: 12px;
+  font-family: var(--font-ui);
+}
+.mv-poster .pr-title {
+  font-size: 14px; font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+}
+.mv-poster .pr-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+  display: flex; gap: 8px; align-items: center;
+}
+.mv-poster .pr-tl {
+  position: absolute; top: 10px; left: 10px;
+  display: flex; gap: 6px;
+}
+.mv-poster .pr-tr {
+  position: absolute; top: 10px; right: 10px;
+}
+.mv-poster.focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  transform: translateY(-2px);
+}
+.mv-poster .progress {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 2px; background: rgba(255,255,255,0.12);
+}
+.mv-poster .progress i {
+  display: block; height: 100%; background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Card focus ring with accent glow */
+.mv-glow {
+  box-shadow: 0 0 0 1px var(--line), 0 24px 56px rgba(0,0,0,0.6);
+}
+
+/* Skinny film strip nav */
+.mv-strip {
+  display: flex; gap: 6px; align-items: center;
+}
+.mv-strip .frame {
+  width: 26px; height: 36px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+}
+.mv-strip .frame.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 18px var(--accent-glow);
+}
+
+/* progress thin bar */
+.mv-track {
+  position: relative;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.mv-track i {
+  display: block; height: 100%;
+  background: var(--accent);
+  position: relative;
+}
+.mv-track i::after {
+  content: ""; position: absolute; right: -3px; top: -3px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* generic SVG poster background gradient classes */
+.poster-grain {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
+  opacity: 0.18; mix-blend-mode: overlay; pointer-events: none;
+}
+
+/* ambient backdrop */
+.mv-backdrop {
+  position: absolute; inset: 0;
+  z-index: 0;
+}
+.mv-backdrop .layer {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: blur(40px) saturate(1.2);
+  transform: scale(1.15);
+  opacity: 0.55;
+}
+.mv-backdrop .grad {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(6,6,10,0.45) 0%, rgba(6,6,10,0.85) 70%, var(--bg) 100%),
+    radial-gradient(60% 50% at 30% 30%, rgba(110,86,247,0.18), transparent 70%);
+}
+
+/* notes / labels for canvas */
+.mv-anno {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+/* time tick marks */
+.mv-ticks {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-mute); letter-spacing: 0.1em;
+}
+
+/* keyboard remote keycap */
+.mv-key {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}

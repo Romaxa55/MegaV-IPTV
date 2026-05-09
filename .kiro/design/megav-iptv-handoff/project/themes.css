@@ -1,0 +1,113 @@
+/* Theme overrides — palette + typography swappable */
+
+/* Palettes */
+.theme-plum {
+  --bg: #06060a; --bg-warm: #0a0809;
+  --surface: #0f0f14; --surface-2: #15151c;
+  --line: rgba(255, 240, 220, 0.08); --line-strong: rgba(255, 240, 220, 0.16);
+  --text: #F4F1E9; --text-dim: rgba(244, 241, 233, 0.62); --text-mute: rgba(244, 241, 233, 0.38);
+  --accent: #6E56F7; --accent-glow: rgba(110, 86, 247, 0.45); --accent-soft: rgba(110, 86, 247, 0.16);
+  --gold: #E8B96A; --gold-soft: rgba(232, 185, 106, 0.16);
+}
+.theme-ivory {
+  --bg: #f3eee3; --bg-warm: #ebe5d6;
+  --surface: #e8e1cf; --surface-2: #ddd5c0;
+  --line: rgba(38, 24, 14, 0.12); --line-strong: rgba(38, 24, 14, 0.24);
+  --text: #1a0f08; --text-dim: rgba(26, 15, 8, 0.65); --text-mute: rgba(26, 15, 8, 0.38);
+  --accent: #C9612C; --accent-glow: rgba(201, 97, 44, 0.35); --accent-soft: rgba(201, 97, 44, 0.14);
+  --gold: #8a5a1c; --gold-soft: rgba(138, 90, 28, 0.14);
+}
+.theme-cobalt {
+  --bg: #06080f; --bg-warm: #080b18;
+  --surface: #0e1322; --surface-2: #131a2e;
+  --line: rgba(180, 200, 255, 0.10); --line-strong: rgba(180, 200, 255, 0.22);
+  --text: #E8EEFB; --text-dim: rgba(232, 238, 251, 0.62); --text-mute: rgba(232, 238, 251, 0.38);
+  --accent: #3D5DFF; --accent-glow: rgba(61, 93, 255, 0.5); --accent-soft: rgba(61, 93, 255, 0.18);
+  --gold: #9ec5ff; --gold-soft: rgba(158, 197, 255, 0.16);
+}
+.theme-pitch {
+  --bg: #000; --bg-warm: #060606;
+  --surface: #0a0a0a; --surface-2: #111;
+  --line: rgba(255, 255, 255, 0.10); --line-strong: rgba(255, 255, 255, 0.24);
+  --text: #fff; --text-dim: rgba(255, 255, 255, 0.62); --text-mute: rgba(255, 255, 255, 0.4);
+  --accent: #FF3B41; --accent-glow: rgba(255, 59, 65, 0.55); --accent-soft: rgba(255, 59, 65, 0.16);
+  --gold: #fff; --gold-soft: rgba(255, 255, 255, 0.12);
+}
+
+/* Font pairs */
+.font-editorial {
+  --font-display: "Instrument Serif", serif;
+  --font-ui: "DM Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --display-italic: italic;
+  --display-letter: -0.01em;
+}
+.font-russian {
+  --font-display: "Bitter", serif;
+  --font-ui: "Onest", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --display-italic: italic;
+  --display-letter: -0.015em;
+}
+.font-brutalist {
+  --font-display: "Unbounded", sans-serif;
+  --font-ui: "Manrope", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --display-italic: normal;
+  --display-letter: -0.04em;
+}
+.font-geologica {
+  --font-display: "Geologica", sans-serif;
+  --font-ui: "Geologica", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --display-italic: italic;
+  --display-letter: -0.03em;
+}
+/* Modern TV — Golos Text (clean cyrillic-first sans, premium TV feel) */
+.font-modern {
+  --font-display: "Golos Text", "Inter", sans-serif;
+  --font-ui: "Golos Text", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --display-italic: normal;
+  --display-letter: -0.025em;
+}
+/* Cinema serif — Cormorant Garamond italic + Golos Text */
+.font-cinema {
+  --font-display: "Cormorant Garamond", serif;
+  --font-ui: "Golos Text", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --display-italic: italic;
+  --display-letter: -0.01em;
+}
+
+/* Apply display-italic + letter-spacing to all italic display targets */
+.theme-host .mv-brand-name,
+.theme-host h1, .theme-host h2, .theme-host h3, .theme-host h4,
+.theme-host .mv-section-title h3,
+.theme-host .pr-title { letter-spacing: var(--display-letter, -0.01em); }
+
+/* Some palette-specific brand mark tweaks */
+.theme-ivory .mv-brand-mark { background: linear-gradient(135deg, #C9612C 0%, #8a4116 100%); }
+.theme-cobalt .mv-brand-mark { background: linear-gradient(135deg, #6585ff 0%, #2540d8 100%); }
+.theme-pitch .mv-brand-mark { background: #FF3B41; }
+.theme-pitch .mv-brand-mark::after, .theme-pitch .mv-brand-mark::before { border-color: #fff; background: #fff; }
+
+.theme-ivory .mv-grain::after { mix-blend-mode: multiply; opacity: 0.18; }
+.theme-pitch .mv-grain::after { opacity: 0.05; }
+
+/* Crimson Reel — киноплёнка / нуар с красным */
+.theme-crimson {
+  --bg: #0a0608; --bg-warm: #100709;
+  --surface: #14090c; --surface-2: #1c0c10;
+  --line: rgba(255, 200, 200, 0.08); --line-strong: rgba(255, 200, 200, 0.18);
+  --text: #F6EDE9; --text-dim: rgba(246, 237, 233, 0.62); --text-mute: rgba(246, 237, 233, 0.38);
+  --accent: #E5424A; --accent-glow: rgba(229, 66, 74, 0.5); --accent-soft: rgba(229, 66, 74, 0.16);
+  --gold: #F2A65A; --gold-soft: rgba(242, 166, 90, 0.14);
+}
+.theme-crimson .mv-brand-mark { background: linear-gradient(135deg, #E5424A 0%, #8a1820 100%); }
+
+/* button overrides for ivory (light) */
+.theme-ivory .mv-btn.primary { background: #1a0f08; color: #f3eee3; box-shadow: 0 18px 40px rgba(26,15,8,0.25); }
+.theme-ivory .mv-btn.ghost { background: rgba(26,15,8,0.06); color: #1a0f08; }
+.theme-ivory .mv-statusbar, .theme-ivory .mv-iconbtn { background: rgba(255,255,255,0.55); color: #1a0f08; }
+.theme-ivory .mv-iconbtn { color: rgba(26,15,8,0.7); }

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>MegaV IPTV — Полный обзор</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Golos+Text:wght@400;500;600;700&family=Bitter:ital,wght@0,400;0,600;1,400;1,600&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<link rel="stylesheet" href="themes.css"/>
+<style>
+  body { background: #06060a; }
+  #root { width: 100vw; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="catalog.jsx"></script>
+<script type="text/babel" src="atoms.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="screens/detail-helpers.jsx"></script>
+<script type="text/babel" src="screens/home-cinematic.jsx"></script>
+<script type="text/babel" src="screens/home-editorial.jsx"></script>
+<script type="text/babel" src="screens/detail-variants.jsx"></script>
+<script type="text/babel" src="screens/player-v2.jsx"></script>
+<script type="text/babel" src="screens/epg-v2.jsx"></script>
+<script type="text/babel" src="screens/search-v2.jsx"></script>
+<script type="text/babel" src="screens/settings-v2.jsx"></script>
+<script type="text/babel" src="screens/mobile-v2.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect } = React;
+
+const TODAY_PROGRAMS = [
+  { time: "21:00", title: "Дневной эфир. Хроника", state: "past" },
+  { time: "22:30", title: "Новости в 22:30", state: "past" },
+  { time: "23:15", title: "Волны Чёрного моря", state: "now" },
+  { time: "00:30", title: "Дикая орхидея", state: "next" },
+  { time: "02:15", title: "Зеркало", state: "future" },
+  { time: "04:00", title: "Бриллиантовая рука", state: "future" },
+];
+
+function PhoneShell({ children }) {
+  return <IOSDevice width={402} height={874} dark={true}>{children}</IOSDevice>;
+}
+
+// Per-artboard wrappers: keep new screens on Golos (font-modern),
+// older detail/player on Bitter (font-russian) since they're tuned for italic.
+const Modern = ({children}) => <div className="font-modern" style={{minHeight: "100%"}}>{children}</div>;
+const Russian = ({children}) => <div className="font-russian" style={{minHeight: "100%"}}>{children}</div>;
+
+function App() {
+  const [hero, setHero]     = useState(FIXTURE_FEATURED[0]);
+  const [hero2, setHero2]   = useState(FIXTURE_FEATURED[1]);
+  const [hero3, setHero3]   = useState(FIXTURE_FEATURED[4]);
+  const [deck, setDeck]     = useState(FIXTURE_FEATURED);
+  const [channels, setChs]  = useState(FIXTURE_FEATURED);
+
+  useEffect(() => {
+    loadFeatured(12).then(r => {
+      const arr = r.data || [];
+      if (arr[0]) setHero(arr[0]);
+      if (arr[1]) setHero2(arr[1]);
+      if (arr[4]) setHero3(arr[4]);
+      if (arr.length) { setDeck(arr); setChs(arr); }
+    });
+  }, []);
+
+  return (
+    <div className="theme-host theme-cobalt font-modern" style={{minHeight: "100vh"}}>
+      <DesignCanvas
+        title="MegaV IPTV"
+        subtitle="Полный обзор · все экраны · готов к Claude Code"
+      >
+        {/* 1. Главная */}
+        <DCSection id="home" title="Главная">
+          <DCArtboard id="cinematic" label="A · Cinematic — full-bleed hero" width={1440} height={900}>
+            <Russian><HomeCinematic /></Russian>
+          </DCArtboard>
+          <DCArtboard id="editorial" label="B · Editorial — grid + sidebar" width={1440} height={900}>
+            <Russian><HomeEditorial /></Russian>
+          </DCArtboard>
+        </DCSection>
+
+        {/* 2. Карточка */}
+        <DCSection id="detail" title="Карточка канала">
+          <DCArtboard id="full-bleed" label="A · Full-bleed cinema" width={1280} height={720}>
+            <Russian><DetailFullBleed item={hero} /></Russian>
+          </DCArtboard>
+          <DCArtboard id="split" label="B · Split: poster + EPG" width={1280} height={720}>
+            <Russian><DetailSplit item={hero2} todayPrograms={TODAY_PROGRAMS} /></Russian>
+          </DCArtboard>
+          <DCArtboard id="minimal" label="C · Minimal poster" width={1280} height={720}>
+            <Russian><DetailMinimal item={hero3} /></Russian>
+          </DCArtboard>
+        </DCSection>
+
+        {/* 3. Плеер */}
+        <DCSection id="player" title="Плеер">
+          <DCArtboard id="cinema" label="Cinema · live · EPG progress · channel deck" width={1280} height={720}>
+            <Russian><PlayerScreen item={hero} deck={deck} /></Russian>
+          </DCArtboard>
+        </DCSection>
+
+        {/* 4. EPG */}
+        <DCSection id="epg" title="Программа передач (EPG)">
+          <DCArtboard id="grid" label="Editorial grid · NOW · live · preview" width={1440} height={900}>
+            <Modern><ScreenEPGv2 channels={channels} pool={channels} /></Modern>
+          </DCArtboard>
+        </DCSection>
+
+        {/* 5. Поиск */}
+        <DCSection id="search" title="Поиск">
+          <DCArtboard id="results" label="TV-клавиатура · топ-результат · live results" width={1440} height={1100}>
+            <Modern><ScreenSearchV2 /></Modern>
+          </DCArtboard>
+        </DCSection>
+
+        {/* 6. Настройки */}
+        <DCSection id="settings" title="Настройки">
+          <DCArtboard id="playback" label="Воспроизведение · Impeller · кодеки · аккаунт" width={1440} height={1280}>
+            <Modern><ScreenSettingsV2 /></Modern>
+          </DCArtboard>
+        </DCSection>
+
+        {/* 7. Мобильный */}
+        <DCSection id="mobile" title="Мобильное приложение (Flutter)">
+          <DCArtboard id="phones" label="Главная · Карточка · Плеер" width={1380} height={960}>
+            <div style={{
+              display: "flex", gap: 32, alignItems: "center",
+              padding: 32, minHeight: "100%",
+              background: "linear-gradient(135deg, #0c0d12 0%, #06060a 100%)",
+            }}>
+              <Modern><PhoneShell><MobileHome /></PhoneShell></Modern>
+              <Modern><PhoneShell><MobileDetail /></PhoneShell></Modern>
+              <Modern><PhoneShell><MobilePlayer /></PhoneShell></Modern>
+            </div>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
