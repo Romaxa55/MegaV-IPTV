@@ -229,7 +229,7 @@
   - _Depends: 1.1_
   - _Boundary: pickColumns regression_
 
-- [ ] 5.3 Final regression — full `flutter test` + perf greps
+- [x] 5.3 Final regression — full `flutter test` + perf greps
   - Run `flutter test` в `megav_iptv/`. Ожидаемый итог: **94 baseline + новые cinematic tests все зелёные** (Req 12.4).
   - Подсчитать общее число тестов после landing — задокументировать в commit message (e.g., «94 + 18 новых = 112/112 зелёных»).
   - Run `flutter analyze megav_iptv/lib/features/home/cinematic/` — 0 issues (Req 13.2).
