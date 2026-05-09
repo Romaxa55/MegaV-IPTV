@@ -57,7 +57,7 @@
 
 ## 3. Validation: новые auto-тесты
 
-- [ ] 3.1 (P) Widget-тест на присутствие ShaderMask в CinemaRow
+- [x] 3.1 (P) Widget-тест на присутствие ShaderMask в CinemaRow
   - Создать `test/features/home/widgets/cinema_row_fade_edge_test.dart`.
   - Pump `CinemaRow` с 5 fake items в `MaterialApp + Scaffold + ScreenUtilInit`.
   - Assert `find.byType(ShaderMask)` returns `findsOneWidget`.
