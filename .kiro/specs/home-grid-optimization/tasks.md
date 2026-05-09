@@ -188,7 +188,7 @@
   - _Depends: 3.2_
   - _Boundary: CinemaRow_
 
-- [ ] 5.5 Manual acceptance: ручная приёмка на референсном TV
+- [x] 5.5 Manual acceptance: ручная приёмка на референсном TV
   - Запустить `flutter run` на устройстве `192.168.100.8:5555` (через ADB). Пройти по чек-листу из `design.md` (раздел Testing Strategy → Manual / E2E Tests):
     1. Удерживая стрелку вправо, ряд скроллится без визуального stutter (Req 9.1).
     2. Левый край первой плитки фиксирован (Req 1.6).
@@ -207,7 +207,7 @@
   - _Depends: 4.2, 5.4_
   - _Boundary: ReferenceDevice_
 
-- [ ] 5.6 Подтверждение performance / idle (Req 9.4)
+- [x] 5.6 Подтверждение performance / idle (Req 9.4)
   - На референсном TV в idle-состоянии (главный экран открыт, нет нажатий пульта 30 секунд) убедиться, что `flutter` performance overlay (`flutter run --profile`, P для overlay) не показывает постоянных тяжёлых перерисовок: GPU thread в зелёной зоне, нет постоянной работы UI thread.
   - Если перерисовки наблюдаются — диагностировать (включить `debugRepaintRainbowEnabled`/`debugProfileBuildsEnabled`) и устранить. Чаще всего это `AnimatedOpacity` с `opacity: 0` всё равно ребилдит child — в этом случае обернуть `_buildFullOverlay()` в `Visibility(visible: widget.isFocused, child: ...)` поверх `AnimatedOpacity` (или использовать `IgnorePointer` + `Visibility`).
   - Наблюдаемое: в performance overlay в idle оба графика плоские; comment с замером (например, скриншот overlay) приложен к выполнению задачи.
@@ -215,7 +215,7 @@
   - _Depends: 5.5_
   - _Boundary: CinemaCard, CinemaRow_
 
-- [ ] 5.7 Финальный smoke на различных размерах окна (опционально, но рекомендуется)
+- [x] 5.7 Финальный smoke на различных размерах окна (опционально, но рекомендуется)
   - В эмуляторе или через `flutter run -d chrome --web-renderer canvaskit` (если включён Web как target) либо изменением resolution на TV-боксе пройти три ширины: 1280, 1920, 2560. Подтвердить визуально: 3, 4 и 5 плиток в ряду соответственно; левый край фиксирован; gap 16.w виден; все плитки одной ширины.
   - Наблюдаемое: скриншоты или замечание оператора, что число колонок переключается на ожидаемых порогах.
   - _Requirements: 1.1, 1.2, 1.3, 1.6_
