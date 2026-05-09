@@ -136,7 +136,7 @@
   - _Depends: 1.1_
   - _Boundary: AppPalette_
 
-- [ ] 4.2 (P) Unit-тест `AppRadius` exact values
+- [x] 4.2 (P) Unit-тест `AppRadius` exact values
   - Создать `megav_iptv/test/core/theme/app_radius_test.dart`.
   - Tests: `expect(AppRadius.xs, 6)`, ..., `expect(AppRadius.xl, 28)`. `expect(AppRadius.brSm.topLeft.x, 10)`.
   - Запуск: `flutter test test/core/theme/app_radius_test.dart`.
