@@ -158,7 +158,7 @@
   - _Depends: 1.3_
   - _Boundary: AppPalettes_
 
-- [ ] 4.4 Widget-тест `themeProvider` live switching
+- [x] 4.4 Widget-тест `themeProvider` live switching
   - Создать `megav_iptv/test/core/theme/theme_provider_test.dart`.
   - Setup: `ProviderScope(child: Consumer(builder: (ctx, ref, _) { final palette = ref.watch(themeProvider).palette; return Container(color: palette.accent); }))`.
   - Test 1: pump → assert default `palette.accent == AppPaletteName.noirCobalt.resolve().accent`.
