@@ -129,7 +129,7 @@
   - _Depends: 2.1, 2.2, 2.3, 2.4, 2.5, 1.1_
   - _Boundary: perf_safe_widgets_test_
 
-- [ ] 4.2 (P) Создать unit tests для `ComputedColors`
+- [x] 4.2 (P) Создать unit tests для `ComputedColors`
   - Создать `megav_iptv/test/core/theme/computed_colors_test.dart`.
   - Тесты:
     - T-10: `ComputedColors.from(noirCobalt.resolve())` returns instance с тремя non-null `Color` fields, three of them distinct.
