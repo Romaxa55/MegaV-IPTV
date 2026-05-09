@@ -50,7 +50,7 @@
   - _Requirements: 14.1, 14.2, 14.3_
   - _Boundary: MvKey_
 
-- [ ] 2.2 (P) Atom `MMLogo`
+- [x] 2.2 (P) Atom `MMLogo`
   - Создать `megav_iptv/lib/core/ui/atoms/mm_logo.dart` с `class MMLogo extends StatelessWidget` (default `size = 38`, optional `background`).
   - Square `Container` с centered text «M» (display font), default background `AppPalette.accent`.
   - Раскомментировать `export 'mm_logo.dart';` в `atoms.dart`.
