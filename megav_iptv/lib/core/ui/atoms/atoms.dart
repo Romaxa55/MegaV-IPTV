@@ -11,7 +11,7 @@
 /// ```
 library;
 
-// export 'brand.dart';
+export 'brand.dart';
 export 'chip.dart';
 // export 'genre_tabs.dart';
 export 'mm_logo.dart';

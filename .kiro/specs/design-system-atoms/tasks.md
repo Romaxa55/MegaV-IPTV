@@ -72,7 +72,7 @@
   - _Depends: 1.1_
   - _Boundary: Chip_
 
-- [ ] 2.4 (P) Atom `Brand`
+- [x] 2.4 (P) Atom `Brand`
   - Создать `megav_iptv/lib/core/ui/atoms/brand.dart` с `class Brand extends StatelessWidget` (default `size = 32`, default `showWordmark = true`).
   - Gradient square mark via `Container(width: size, height: size, decoration: BoxDecoration(gradient: LinearGradient(colors: [palette.accent, palette.accentGlow]), borderRadius: BorderRadius.circular(size * 0.18)))`.
   - **Cutout geometry pinned**: внутри square — горизонтальная bar (имитация «M» logo cut), shape: `Positioned(left: size * 0.20, right: size * 0.20, top: size * 0.55, height: size * 0.12, child: ColoredBox(color: palette.background))`. Если handoff `atoms.jsx` показывает иную geometry — implementer следует JSX как source of truth.
