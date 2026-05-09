@@ -106,7 +106,7 @@
   - _Depends: 1.2_
   - _Boundary: CinematicRail_
 
-- [ ] 3.2 `CinematicDualRail` façade
+- [x] 3.2 `CinematicDualRail` façade
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_dual_rail.dart` с `class CinematicDualRail extends StatelessWidget`, named ctors `.landscape(...)` и `.portrait(...)`.
   - Каждый ctor возвращает `CinematicRail(orientation: ...)` со стабильным Key:
     - landscape → `Key('cinematic-dual-rail-landscape')`
@@ -118,7 +118,7 @@
   - _Depends: 3.1_
   - _Boundary: CinematicDualRail facade_
 
-- [ ] 3.3 `CinematicDualRail` widget test
+- [x] 3.3 `CinematicDualRail` widget test
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_dual_rail_test.dart`.
   - Тест 1: `CinematicDualRail.landscape(items: [3 items])` — `find.byKey(const Key('cinematic-dual-rail-landscape'))` finds one; `find.byType(Poster)` finds 3 (или fewer in test viewport — ≥ 1 acceptable).
   - Тест 2: `CinematicDualRail.portrait(items: [3 items])` — `find.byKey(const Key('cinematic-dual-rail-portrait'))` finds one.
@@ -129,7 +129,7 @@
   - _Depends: 3.2_
   - _Boundary: dual rail test_
 
-- [ ] 3.4 `CinematicSectionTitle`
+- [x] 3.4 `CinematicSectionTitle`
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_section_title.dart` с `class CinematicSectionTitle extends StatelessWidget` (params: `label: String`, `emphasis: String`, `count: int?`, `onMoreTap: VoidCallback?`).
   - Build: тонкая обёртка над `SectionTitle` атом — пробрасывает label / italic em / count / onMoreTap.
   - Italic em применяется через атом (атом уже умеет italic em через `MegaVTextStyles.displayMedium`).
@@ -140,7 +140,7 @@
   - _Depends: 1.2_
   - _Boundary: CinematicSectionTitle_
 
-- [ ] 3.5 `CinematicSectionTitle` widget test
+- [x] 3.5 `CinematicSectionTitle` widget test
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_section_title_test.dart`.
   - Тест 1: `CinematicSectionTitle(label: 'Сейчас в', emphasis: 'эфире')` — `find.byType(SectionTitle)` finds one; `find.text('эфире')` finds one.
   - Тест 2: с `count: 12` — обнаружить число в дереве (через `find.textContaining('12')`).
