@@ -56,7 +56,7 @@
   - _Depends: 1.1, 1.3_
   - _Boundary: ThemeNotifier_
 
-- [ ] 2.2 Создать `MegaVTextStyles` ThemeExtension + font-cinema factory
+- [x] 2.2 Создать `MegaVTextStyles` ThemeExtension + font-cinema factory
   - Создать `megav_iptv/lib/core/theme/megav_text_styles.dart`.
   - `class MegaVTextStyles extends ThemeExtension<MegaVTextStyles>` с полями `displayItalic`, `displayLarge`, `bodyDefault`, `bodyDim`, `metaMono`. `const` constructor с required fields.
   - Реализовать `copyWith` и `lerp` (требуется ThemeExtension API; lerp может возвращать `this` без интерполяции — valid для discrete styles).
