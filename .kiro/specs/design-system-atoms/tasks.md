@@ -212,7 +212,7 @@
   - _Depends: 2.11 (MvIconButton готов)_
   - _Boundary: glass_button proxy_
 
-- [ ] 3.2 Refactor `hero_badges.dart` → use `Chip` atom (NOT MMLogo)
+- [x] 3.2 Refactor `hero_badges.dart` → use `Chip` atom (NOT MMLogo)
   - Открыть `megav_iptv/lib/features/home/widgets/hero_badges.dart`.
   - **Public API contract — ОБЯЗАТЕЛЬНО preserved verbatim** (verified actual signature): `HeroBadge({Key? key, required String text, required Color color, Color? textColor, Color? borderColor, bool showPulse = false, IconData? icon})` — это **single configurable badge** widget с optional pulse и optional leading icon, НЕ row, НЕ MMLogo.
   - Заменить internal build на:
