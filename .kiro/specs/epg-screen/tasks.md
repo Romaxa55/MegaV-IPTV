@@ -262,7 +262,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgPreviewStrip_
 
-- [ ] 5.4 `EpgFocusController` (D-pad logic)
+- [x] 5.4 `EpgFocusController` (D-pad logic)
   - Создать `megav_iptv/lib/features/epg/state/epg_focus_controller.dart` с `class EpgFocusController` (Req 9 logic; pure class, без widgets).
   - Поля:
     - `Map<int, FocusNode> channelFocusNodes`, `Map<int, FocusNode> programmeFocusNodes`.
