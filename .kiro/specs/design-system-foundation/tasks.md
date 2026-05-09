@@ -170,7 +170,7 @@
   - _Depends: 2.1_
   - _Boundary: ThemeNotifier_
 
-- [ ] 4.5 (P) Compat-тест: legacy `AppColors` aliases работают
+- [x] 4.5 (P) Compat-тест: legacy `AppColors` aliases работают
   - Создать `megav_iptv/test/core/theme/app_colors_compat_test.dart`.
   - Tests: для каждого legacy-field (примерно ~25): `expect(AppColors.<field>, isA<Color>())`. Список fields брать из текущей head-версии `app_colors.dart` чтобы не пропустить ничего.
   - Запуск: `flutter test test/core/theme/app_colors_compat_test.dart`.
