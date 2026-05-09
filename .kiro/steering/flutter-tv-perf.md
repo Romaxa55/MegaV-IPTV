@@ -367,3 +367,26 @@ VM Service trace artifacts:
 - `.kiro/specs/player-overlay-state-machine/snapshots/baseline_player_open_trace.json` (плеер idle — avg 12.2 мс).
 
 Если что-то из правил окажется неверным на новой версии Flutter / новом железе — дополни / поправь этот файл с указанием SHA коммита, который опровергает.
+
+---
+
+## Design handoff conflicts → safe replacements
+
+Эта секция трекает 7 конфликтов из design-handoff intake (issue #13). У каждого конфликта есть safe Flutter replacement, реализованный в `lib/core/perf/perf_safe_widgets.dart`. Downstream screen-specs ОБЯЗАНЫ импортировать widgets отсюда вместо CSS-translation.
+
+| # | CSS source                              | Safe Flutter API                         | Cost (TV-Mali) |
+|---|-----------------------------------------|------------------------------------------|----------------|
+| 1 | `mix-blend-mode: overlay` + SVG noise   | `SafeFilmGrain` (baked PNG + Opacity)    | ~0.5 ms once   |
+| 2 | `filter: blur(40px)` per frame          | `SafeBackdrop` (pre-rendered cached)     | ~0 ms steady   |
+| 3 | `backdrop-filter: blur` over video      | `SafePill` (opaque tint)                 | 0 ms (no blur) |
+| 4 | 3 stacked gradients over hero           | `combinedHeroGradient(palette)`          | ~1 ms          |
+| 5 | `outline-offset: 3px`                   | `SafeFocusRing` (BoxShadow spread)       | ~0.3 ms        |
+| 6 | `color-mix(in oklab, ...)`              | `ComputedColors.from(palette)`           | 0 ms (compile) |
+| 7 | `text-shadow blur 18px`                 | `Shadow(blurRadius: 8)` + `kSafeShadowBlurMax` constant | <1 ms |
+
+Все 7 replacements **обязательны** для TV target. Mobile screens (issue #12) могут использовать raw CSS-equivalents где Mali не bottleneck.
+
+Reference:
+- Spec: `.kiro/specs/perf-safe-widgets/`
+- Issue: https://github.com/Romaxa55/MegaV-IPTV/issues/13
+- Source code: `megav_iptv/lib/core/perf/perf_safe_widgets.dart` and `megav_iptv/lib/core/theme/computed_colors.dart`

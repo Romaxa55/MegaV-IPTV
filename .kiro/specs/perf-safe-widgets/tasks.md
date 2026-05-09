@@ -155,7 +155,7 @@
 
 ## 5. Steering doc augmentation
 
-- [ ] 5.1 Дополнить `flutter-tv-perf.md` секцией «Design handoff conflicts → safe replacements»
+- [x] 5.1 Дополнить `flutter-tv-perf.md` секцией «Design handoff conflicts → safe replacements»
   - Открыть `.kiro/steering/flutter-tv-perf.md`.
   - В конец (или перед Pre-PR checklist если есть) добавить section согласно design.md § Components > Steering doc augmentation: 7-row table (CSS source → Safe Flutter API → Cost) с ссылкой на issue #13.
   - Section должен ссылаться на конкретные имена API: `SafeFilmGrain`, `SafeBackdrop`, `SafePill`, `combinedHeroGradient`, `SafeFocusRing`, `ComputedColors`, `kSafeShadowBlurMax`.
