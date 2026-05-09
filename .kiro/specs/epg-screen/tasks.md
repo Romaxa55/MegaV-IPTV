@@ -84,7 +84,7 @@
   - _Depends: 2.1, 1.2_
   - _Boundary: EpgScreen scaffold + entry route_
 
-- [ ] 2.3 Smoke test для пустого скелета
+- [x] 2.3 Smoke test для пустого скелета
   - Создать `megav_iptv/test/features/epg/epg_screen_smoke_test.dart`.
   - Тест pump'ит `EpgScreen` внутри `ProviderScope` + `MaterialApp` с замоканным `epgWindowProvider` (override через `ProviderScope(overrides: [...])`); `await tester.pump(); await tester.pump();` → ожидает no exception + `find.byKey(const Key('epg-screen-root'))` finds one + `find.byType(BackdropFilter)` finds none + `find.byType(ShaderMask)` finds none.
   - Наблюдаемое: `flutter test test/features/epg/epg_screen_smoke_test.dart` зелёный; baseline + 1 новый.
