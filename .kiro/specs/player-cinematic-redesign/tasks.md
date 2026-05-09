@@ -142,7 +142,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 3.1 — Add focus nodes to `_PlayerScreenState`
 
-- [ ] 3.1 В `_PlayerScreenState` добавить три новых поля: `_topBarFocus: FocusNode`, `_actionFocusScope: FocusScopeNode`, `_channelDeckFocus: FocusScopeNode`.
+- [x] 3.1 В `_PlayerScreenState` добавить три новых поля: `_topBarFocus: FocusNode`, `_actionFocusScope: FocusScopeNode`, `_channelDeckFocus: FocusScopeNode`.
   - Initialize в `initState()`.
   - Dispose в существующем `dispose()` (НЕ ломая существующий dispose таймера).
   - Эти поля **не являются** state-machine полями; никаких новых вариантов `PlayerUiState`.
@@ -151,7 +151,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 3.2 — Replace `_buildControls()` body
 
-- [ ] 3.2 Переписать тело `_buildControls()` в `player_screen.dart` по design pseudocode.
+- [x] 3.2 Переписать тело `_buildControls()` в `player_screen.dart` по design pseudocode.
   - Stack layers: `_VideoLayer` → `KenBurnsBackdrop` → `_LoadingErrorIndicator` (existing const) → `Align(top, CinematicTopBar)` → `Align(bottom, CinematicBottomPanel)` → `Align(right, ChannelDeck)`.
   - Все callback'ы пробрасываются в существующие helper-методы: `_togglePlayPause`, `_toggleOverlayKey(OverlayKey.x)`, `_initiateChannelSwitch`.
   - **НЕ** добавлять прямых вызовов `_transition()` — только через существующие wrappers.
@@ -161,7 +161,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 3.3 — Brief OSD typography upgrade
 
-- [ ] 3.3 В `_buildBriefOsd()` (или эквиваленте для `BriefOsdState`) заменить текстовые стили на `MegaVTextStyles.displayItalicM` (channel number) + `MegaVTextStyles.titleS` (program title).
+- [x] 3.3 В `_buildBriefOsd()` (или эквиваленте для `BriefOsdState`) заменить текстовые стили на `MegaVTextStyles.displayItalicM` (channel number) + `MegaVTextStyles.titleS` (program title).
   - Никаких новых таймеров: `_stateExpiryTimer` уже управляет 3000ms timeout.
   - Использовать `AnimatedSwitcher` (key-based) для fade-in 250ms / fade-out 325ms.
   - _Boundary:_ render-only edit inside existing helper.
@@ -169,7 +169,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 3.4 — D-pad navigation graph
 
-- [ ] 3.4 Настроить `FocusTraversalGroup` для top-bar / EPG / action row / channel deck.
+- [x] 3.4 Настроить `FocusTraversalGroup` для top-bar / EPG / action row / channel deck.
   - Action row ↑ → EPG bar (или top-bar, если EPG скрыт).
   - Action row ↓ → выйти из panel (`_clearControlsFocus()` или request focus на video Texture wrapper).
   - Channel deck ← → возврат в action row (через сохранённый `_lastActionFocusNode`).

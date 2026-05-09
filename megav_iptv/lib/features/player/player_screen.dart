@@ -10,6 +10,7 @@ import '../../core/player/player_manager.dart';
 import '../../core/playlist/models/channel.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
+import 'cinematic/cinematic_controls_layer.dart';
 import 'widgets/channels_sidebar.dart';
 import 'widgets/epg_overlay.dart';
 import 'widgets/info_overlay.dart';
@@ -67,6 +68,15 @@ class PlayerScreen extends ConsumerStatefulWidget {
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final PlayerManager _playerManager;
   late final FocusNode _playerFocusNode;
+
+  /// Focus seams for cinematic render tree (Task 3.1, Task 3.4).
+  /// These do NOT alter `PlayerUiState` — they live alongside the closed
+  /// state machine and only describe where D-pad focus lands within
+  /// `ControlsState()`'s render tree.
+  late final FocusNode _topBarFocus;
+  late final FocusScopeNode _actionFocusScope;
+  late final FocusScopeNode _channelDeckFocus;
+
   bool _openedViaMedia3 = false;
 
   /// Единый источник истины для видимости UI поверх видео (Req 1.1, 1.3).
@@ -157,8 +167,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     _playerFocusNode = FocusNode(debugLabel: 'PlayerScreen');
+    _topBarFocus = FocusNode(debugLabel: 'PlayerScreen.topBar');
+    _actionFocusScope = FocusScopeNode(debugLabel: 'PlayerScreen.actionRow');
+    _channelDeckFocus = FocusScopeNode(debugLabel: 'PlayerScreen.channelDeck');
     _playerManager = ref.read(playerManagerProvider);
     _init();
+  }
+
+  /// Proxy to player engine play/pause. Bound to cinematic action row's
+  /// play-pause button. NEVER touches `_uiState` — render tree only.
+  void _togglePlayPause() {
+    final engine = _playerManager.activeEngine;
+    if (engine == null) return;
+    if (engine.currentState == PlayerState.playing) {
+      engine.pause();
+    } else {
+      engine.play();
+    }
   }
 
   Future<void> _init() async {
@@ -244,6 +269,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void dispose() {
     _stateExpiryTimer?.cancel();
     _playerFocusNode.dispose();
+    _topBarFocus.dispose();
+    _actionFocusScope.dispose();
+    _channelDeckFocus.dispose();
     if (!_openedViaMedia3) {
       _playerManager.stop();
     }
@@ -311,14 +339,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (channel == null) return const [];
     return switch (_uiState) {
       HiddenState() => const [],
-      ControlsState() => [
-        PlayerControlsOverlay(
-          onBack: () => context.pop(),
-          activeOverlay: PlayerOverlayMode.none,
-          onToggleOverlay: _toggleOverlayKey,
-        ),
-        Positioned(left: 0, right: 0, bottom: 0, child: PlayerBottomInfo(channel: channel, isSwitching: false)),
-      ],
+      ControlsState() => buildCinematicControlsLayer(
+        channel: channel,
+        topBarFocus: _topBarFocus,
+        actionFocusScope: _actionFocusScope,
+        channelDeckFocus: _channelDeckFocus,
+        onBack: () => context.pop(),
+        onPlayPause: _togglePlayPause,
+        onAudio: () => _toggleOverlayKey(PlayerOverlayMode.info),
+        onSubs: () => _toggleOverlayKey(PlayerOverlayMode.info),
+        onInfo: () => _toggleOverlayKey(PlayerOverlayMode.info),
+        onChannelSelected: (ch) => _selectChannel(ch, 0),
+      ),
       BriefOsdState() => [
         Positioned(left: 0, right: 0, bottom: 0, child: PlayerBottomInfo(channel: channel, isSwitching: false)),
       ],
