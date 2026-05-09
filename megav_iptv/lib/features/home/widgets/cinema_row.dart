@@ -360,123 +360,130 @@ class _CinemaRowState extends State<CinemaRow> {
                   right: 0,
                   top: -72.h,
                   bottom: 0,
-                  child: ShaderMask(
-                    // Fade-out gradient на правом крае ряда (Req 1.1, 1.2, 1.3,
-                    // 1.4, 1.5). Левый край НЕ затухает: первые два stop'а имеют
-                    // Colors.transparent, что под BlendMode.dstOut означает
-                    // «ничего не вырезаем» — содержимое преывает как есть.
-                    // Только последняя `fadeEdgeFraction` ширины маскируется
-                    // в Colors.black (opaque) — там dstOut вырезает контент.
-                    shaderCallback: (Rect bounds) {
-                      return const LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        stops: [0.0, 1.0 - GridTokens.fadeEdgeFraction, 1.0],
-                        colors: [Colors.transparent, Colors.transparent, Colors.black],
-                      ).createShader(bounds);
-                    },
-                    blendMode: BlendMode.dstOut,
-                    child: FocusTraversalGroup(
-                      policy: WidgetOrderTraversalPolicy(),
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        scrollDirection: Axis.horizontal,
-                        clipBehavior: Clip.none,
-                        padding: EdgeInsets.only(
-                          left: GridTokens.horizontalPaddingDp.w,
-                          right: GridTokens.horizontalPaddingDp.w,
-                          top: 56.h,
-                          bottom: 24.h,
-                        ),
-                        cacheExtent: 1500.w, // Увеличено для рендера виджетов за экраном
-                        addAutomaticKeepAlives: true,
-                        addRepaintBoundaries: true,
-                        itemCount: widget.items.length,
-                        itemBuilder: (context, index) {
-                          final isFocused = _focusedIndex == index;
-                          final isLast = index == widget.items.length - 1;
+                  child: FocusTraversalGroup(
+                    policy: WidgetOrderTraversalPolicy(),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      padding: EdgeInsets.only(
+                        left: GridTokens.horizontalPaddingDp.w,
+                        right: GridTokens.horizontalPaddingDp.w,
+                        top: 56.h,
+                        bottom: 24.h,
+                      ),
+                      cacheExtent: 1500.w, // Увеличено для рендера виджетов за экраном
+                      addAutomaticKeepAlives: true,
+                      addRepaintBoundaries: true,
+                      itemCount: widget.items.length,
+                      itemBuilder: (context, index) {
+                        final isFocused = _focusedIndex == index;
+                        final isLast = index == widget.items.length - 1;
 
-                          return Focus(
-                            key: ValueKey('${widget.items[index].channelId}_$index'),
-                            onFocusChange: (hasFocus) {
-                              if (hasFocus) {
-                                FastScrollDetector().onEvent();
-                                setState(() {
-                                  _focusedIndex = index;
-                                });
+                        return Focus(
+                          key: ValueKey('${widget.items[index].channelId}_$index'),
+                          onFocusChange: (hasFocus) {
+                            if (hasFocus) {
+                              FastScrollDetector().onEvent();
+                              setState(() {
+                                _focusedIndex = index;
+                              });
 
-                                // Пагинация — синхронно, debounce'у не подлежит
-                                // (Req 8.2).
-                                if (widget.onLoadMore != null && index >= widget.items.length - 3) {
-                                  widget.onLoadMore!();
-                                }
+                              // Пагинация — синхронно, debounce'у не подлежит
+                              // (Req 8.2).
+                              if (widget.onLoadMore != null && index >= widget.items.length - 3) {
+                                widget.onLoadMore!();
+                              }
 
-                                // Heavy onItemFocus dispatch — через debounce
-                                // 400 мс (Req 4.1, 4.2, 10.5). Scale в карточке
-                                // запускается мгновенно через isFocused (Req 4.3).
-                                _scheduleStableFocus(index);
+                              // Heavy onItemFocus dispatch — через debounce
+                              // 400 мс (Req 4.1, 4.2, 10.5). Scale в карточке
+                              // запускается мгновенно через isFocused (Req 4.3).
+                              _scheduleStableFocus(index);
 
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  if (!mounted || _focusedIndex != index) return;
-                                  _scrollFocusedTileToLeadingEdge(index);
-                                });
-                              } else if (_focusedIndex == index) {
-                                // null-clear синхронный (без debounce) — Hero
-                                // должен мгновенно понять, что фокус ушёл.
-                                _focusStableTimer?.cancel();
-                                setState(() => _focusedIndex = -1);
-                                widget.onItemFocus?.call(null);
-                              }
-                            },
-                            onKeyEvent: (node, event) {
-                              if (event is! KeyDownEvent) {
-                                return KeyEventResult.ignored;
-                              }
-                              final key = event.logicalKey;
-                              if (key == LogicalKeyboardKey.select ||
-                                  key == LogicalKeyboardKey.enter ||
-                                  key == LogicalKeyboardKey.gameButtonA ||
-                                  key == LogicalKeyboardKey.numpadEnter) {
-                                widget.onItemTap(widget.items[index]);
-                                return KeyEventResult.handled;
-                              }
-                              // Req 10.2: на последней плитке стрелка вправо
-                              // не уводит фокус.
-                              if (isLast && key == LogicalKeyboardKey.arrowRight) {
-                                return KeyEventResult.handled;
-                              }
-                              // ESC/BACK и всё остальное — родителю.
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!mounted || _focusedIndex != index) return;
+                                _scrollFocusedTileToLeadingEdge(index);
+                              });
+                            } else if (_focusedIndex == index) {
+                              // null-clear синхронный (без debounce) — Hero
+                              // должен мгновенно понять, что фокус ушёл.
+                              _focusStableTimer?.cancel();
+                              setState(() => _focusedIndex = -1);
+                              widget.onItemFocus?.call(null);
+                            }
+                          },
+                          onKeyEvent: (node, event) {
+                            if (event is! KeyDownEvent) {
                               return KeyEventResult.ignored;
-                            },
-                            child: MouseRegion(
-                              // Hover-эффекты ушли в общий focus-pipeline.
-                              // На TV-таргете мышь редка; для desktop оставляем
-                              // no-op — focus всё равно дойдёт через pointer-tap
-                              // и WidgetOrderTraversalPolicy. См. CONCERNS.
-                              onEnter: (_) {},
-                              onExit: (_) {},
-                              child: Padding(
-                                padding: EdgeInsets.only(right: isLast ? 0 : GridTokens.gapDp.w),
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    final rowH = constraints.maxHeight;
-                                    return Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: CinemaCard(
-                                        key: ValueKey('card_${widget.items[index].channelId}_$index'),
-                                        item: widget.items[index],
-                                        isFocused: isFocused,
-                                        cardWidth: layout.cardW,
-                                        cardHeight: rowH,
-                                        onTap: () => widget.onItemTap(widget.items[index]),
-                                      ),
-                                    );
-                                  },
-                                ),
+                            }
+                            final key = event.logicalKey;
+                            if (key == LogicalKeyboardKey.select ||
+                                key == LogicalKeyboardKey.enter ||
+                                key == LogicalKeyboardKey.gameButtonA ||
+                                key == LogicalKeyboardKey.numpadEnter) {
+                              widget.onItemTap(widget.items[index]);
+                              return KeyEventResult.handled;
+                            }
+                            // Req 10.2: на последней плитке стрелка вправо
+                            // не уводит фокус.
+                            if (isLast && key == LogicalKeyboardKey.arrowRight) {
+                              return KeyEventResult.handled;
+                            }
+                            // ESC/BACK и всё остальное — родителю.
+                            return KeyEventResult.ignored;
+                          },
+                          child: MouseRegion(
+                            // Hover-эффекты ушли в общий focus-pipeline.
+                            // На TV-таргете мышь редка; для desktop оставляем
+                            // no-op — focus всё равно дойдёт через pointer-tap
+                            // и WidgetOrderTraversalPolicy. См. CONCERNS.
+                            onEnter: (_) {},
+                            onExit: (_) {},
+                            child: Padding(
+                              padding: EdgeInsets.only(right: isLast ? 0 : GridTokens.gapDp.w),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final rowH = constraints.maxHeight;
+                                  return Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: CinemaCard(
+                                      key: ValueKey('card_${widget.items[index].channelId}_$index'),
+                                      item: widget.items[index],
+                                      isFocused: isFocused,
+                                      cardWidth: layout.cardW,
+                                      cardHeight: rowH,
+                                      onTap: () => widget.onItemTap(widget.items[index]),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                          );
-                        },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                // Cheap right-edge fade overlay (Req 1.1, 1.2, 1.3, 1.4, 1.5).
+                // Заменяет ShaderMask + BlendMode.dstOut, который компилировал
+                // GL shader (260 ms jank) и платил saveLayer на полную ширину
+                // ряда каждый кадр. Здесь — обычный alpha-blended Positioned с
+                // LinearGradient (transparent → AppColors.background) на правые
+                // ~5% ширины: GPU-стоимость < 0.5 ms vs 26 ms у ShaderMask.
+                // Левый край не затухает естественно (overlay только справа).
+                Positioned(
+                  right: 0,
+                  top: -72.h,
+                  bottom: 0,
+                  width: MediaQuery.sizeOf(context).width * GridTokens.fadeEdgeFraction,
+                  child: const IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [Color(0x0008080F), AppColors.background],
+                        ),
                       ),
                     ),
                   ),
