@@ -96,7 +96,7 @@
 
 ## 3. Channel rail + time axis + programme cell
 
-- [ ] 3.1 `EpgChannelRail`
+- [x] 3.1 `EpgChannelRail`
   - Создать `megav_iptv/lib/features/epg/widgets/epg_channel_rail.dart` с `class EpgChannelRail extends ConsumerStatefulWidget` (Req 3).
   - Параметры: `List<Channel> channels`, `ScrollController verticalCtl` (shared с time-grid, Req 2.4, 3.2), `int? focusedChannelIndex`, `ValueChanged<int> onFocusChanged`.
   - Build: `ListView.builder(controller: verticalCtl, scrollDirection: Axis.vertical, cacheExtent: 1500, addAutomaticKeepAlives: true, addRepaintBoundaries: true, clipBehavior: Clip.none, itemCount: channels.length, itemBuilder: (ctx, i) => SizedBox(width: 240.w, height: 88.h, key: Key('epg-channel-cell-${channels[i].id}'), child: Focus(child: AnimatedScale(scale: focused ? 1.05 : 1.0, duration: 150ms, curve: Curves.easeOutCubic, child: SafeFocusRing(focused: focused, child: Row([Brand(...), Column([Text(name, style: titleMedium), Text(groupTitle, style: metaMono)])]))))))` (Req 3.1, 3.3, 3.5, 13.5).
