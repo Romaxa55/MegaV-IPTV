@@ -45,7 +45,7 @@
 
 ## 2. Hero + GenreTabs
 
-- [ ] 2.1 `CinematicHeroSection`
+- [x] 2.1 `CinematicHeroSection`
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_hero_section.dart` с `class CinematicHeroSection extends ConsumerWidget` (Req 2).
   - Build tree: `Stack(children: [SafeBackdrop(image: ...), DecoratedBox(decoration: BoxDecoration(gradient: combinedHeroGradient(palette))), SafeFilmGrain(), Positioned(content)])`.
   - Content column: italic title через `Theme.of(context).megavText.displayLarge.copyWith(fontStyle: FontStyle.italic)`; meta row `Chip(variant: ChipVariant.live, label: 'LIVE')` + `MMLogo` + label через `MegaVTextStyles.metaMono`; primary action `MvButton.primary(label: 'Смотреть')` с `FocusNode` (initially focused on mount).
