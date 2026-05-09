@@ -193,7 +193,7 @@
   - _Depends: 4.1_
   - _Boundary: time grid test_
 
-- [ ] 4.3 `EpgNowMarker` + `_NowMarkerLine` (private const ConsumerWidget)
+- [x] 4.3 `EpgNowMarker` + `_NowMarkerLine` (private const ConsumerWidget)
   - Создать `megav_iptv/lib/features/epg/widgets/epg_now_marker.dart` с:
     - `class EpgNowMarker extends StatelessWidget` (public, Req 6.1).
     - Параметры: `DateTime windowFrom`, `double slotW`, `double gridHeight`, `Color accent`.
