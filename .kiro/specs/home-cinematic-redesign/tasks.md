@@ -80,7 +80,7 @@
   - _Depends: 1.2_
   - _Boundary: CinematicGenreTabsBar_
 
-- [ ] 2.4 `CinematicGenreTabsBar` widget test
+- [x] 2.4 `CinematicGenreTabsBar` widget test
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_genre_tabs_bar_test.dart`.
   - Тест 1: pump с 5 жанрами, активный=2; ожидает `find.byKey(const Key('cinematic-genre-tabs'))` + `find.byType(GenreTabs)` finds one.
   - Тест 2: `find.byType(ShaderMask)` finds none (Req 3.4 enforcement).
