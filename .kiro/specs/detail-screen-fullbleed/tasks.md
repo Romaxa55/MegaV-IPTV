@@ -10,14 +10,14 @@
 
 ## Phase 1. Scaffold + Providers
 
-- [ ] 1.1 Создать directory scaffold + DetailArgs
+- [x] 1.1 Создать directory scaffold + DetailArgs
   - Создать пустые директории: `megav_iptv/lib/features/detail/`, `megav_iptv/lib/features/detail/widgets/`, `megav_iptv/lib/features/detail/providers/`, `megav_iptv/test/features/detail/`.
   - Создать `megav_iptv/lib/features/detail/providers/detail_arguments.dart` с `class DetailArgs` (3 поля: `channelId`, `preloadedNowPlaying`, `posterImageProvider`) per design.md §1. Const constructor, immutable.
   - Наблюдаемое: `flutter analyze megav_iptv/lib/features/detail/` — 0 ошибок; `DetailArgs` импортируется без runtime instantiation.
   - _Requirements: 1.2_
   - _Boundary: detail/providers/detail_arguments.dart_
 
-- [ ] 1.2 Derived providers (`relatedChannelsProvider`, `castListProvider`)
+- [x] 1.2 Derived providers (`relatedChannelsProvider`, `castListProvider`)
   - Создать `megav_iptv/lib/features/detail/providers/detail_data_provider.dart` с двумя `Provider.family`:
     - `relatedChannelsProvider` per design.md §8 — siblings same `groupTitle`, exclude self, take 8.
     - `castListProvider` per design.md §8 — returns `const []` (stub; no metadata source yet).
