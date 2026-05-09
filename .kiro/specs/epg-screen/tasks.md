@@ -222,7 +222,7 @@
 
 ## 5. Day picker + category filter + preview strip + focus controller
 
-- [ ] 5.1 `EpgDayPicker`
+- [x] 5.1 `EpgDayPicker`
   - Создать `megav_iptv/lib/features/epg/widgets/epg_day_picker.dart` с `class EpgDayPicker extends StatelessWidget` (Req 7).
   - Параметры: `DateTime today`, `int selectedOffset`, `ValueChanged<int> onDaySelected`.
   - Build: `Row(children: [for (var offset = -2; offset <= 4; offset++) MvButton(...)])` — 7 day cells from `today − 2` до `today + 4` (Req 7.1).
