@@ -94,7 +94,7 @@
   - _Depends: 1.1_
   - _Boundary: StatusBar_
 
-- [ ] 2.6 Atom `MvTrack` (progress bar)
+- [x] 2.6 Atom `MvTrack` (progress bar)
   - Создать `megav_iptv/lib/core/ui/atoms/mv_track.dart` с `class MvTrack extends StatelessWidget` (required `progress`, optional `showKnob = false`, `height = 4`).
   - В `build`: clamp progress to [0,1]; `Stack(children: [bg ColoredBox(AppColors.surface), AnimatedFractionallySizedBox(duration: 250ms, curve: fastOutSlowIn, alignment: centerLeft, widthFactor: clamped, child: ColoredBox(AppColors.primary)), if(showKnob) knob])`.
   - Anim animates **только** widthFactor (paint property) — никакого relayout siblings (Req 12.4, 16.6).
