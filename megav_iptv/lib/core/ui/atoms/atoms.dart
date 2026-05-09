@@ -16,7 +16,7 @@ export 'chip.dart';
 // export 'genre_tabs.dart';
 export 'mm_logo.dart';
 export 'mv_button.dart';
-// export 'mv_icon_button.dart';
+export 'mv_icon_button.dart';
 export 'mv_key.dart';
 
 // export 'mv_strip.dart';

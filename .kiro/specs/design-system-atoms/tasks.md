@@ -153,7 +153,7 @@
   - _Depends: 1.1_
   - _Boundary: MvButton_
 
-- [ ] 2.11 Atom `MvIconButton`
+- [x] 2.11 Atom `MvIconButton`
   - Создать `megav_iptv/lib/core/ui/atoms/mv_icon_button.dart` с `class MvIconButton extends StatelessWidget` (required `icon`, `onPressed`, optional `size = 38`, `isFocused = false`).
   - Build: `SafeFocusRing(isFocused, child: SizedBox.square(dimension: size, child: Material(borderRadius: AppRadius.brSm, ...)))` или эквивалент с InkWell для tap.
   - Раскомментировать `export 'mv_icon_button.dart';` в `atoms.dart`.
