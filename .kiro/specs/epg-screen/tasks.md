@@ -63,7 +63,7 @@
 
 ## 2. UI scaffold + state machine
 
-- [ ] 2.1 Sealed `EpgUiState` + `_transition` skeleton
+- [x] 2.1 Sealed `EpgUiState` + `_transition` skeleton
   - Создать `megav_iptv/lib/features/epg/state/epg_screen_state.dart`:
     - `sealed class EpgUiState { const EpgUiState(); }`
     - `final class EpgLoadingState extends EpgUiState { const EpgLoadingState(); }`
