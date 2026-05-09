@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -172,5 +175,146 @@ class SafeFilmGrain extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Hero-backdrop showing a pre-rendered blurred copy of artwork without
+/// per-frame BackdropFilter cost.
+///
+/// CSS analog: `filter: blur(40px) saturate(1.2)` applied per frame.
+/// On TV-Mali GPU, runtime ImageFilter.blur in build() is catastrophic;
+/// instead we pre-render once via offscreen PictureRecorder, cache the
+/// resulting ui.Image, and display it as a static raster via RawImage.
+///
+/// First-render latency: ~200-400ms while the blurred copy renders
+/// asynchronously. During that window we display [fallbackBackground]
+/// solid fill. Subsequent frames are 0ms steady-state.
+///
+/// Usage:
+/// ```dart
+/// SafeBackdrop(
+///   imageProvider: NetworkImage(channel.heroUrl),
+///   fallbackBackground: AppColors.background,
+///   blurSigma: 40,
+/// )
+/// ```
+class SafeBackdrop extends StatefulWidget {
+  const SafeBackdrop({
+    super.key,
+    required this.imageProvider,
+    required this.fallbackBackground,
+    this.blurSigma = 40,
+    this.semanticLabel,
+  });
+
+  final ImageProvider? imageProvider;
+  final Color fallbackBackground;
+  final double blurSigma;
+  final String? semanticLabel;
+
+  @override
+  State<SafeBackdrop> createState() => _SafeBackdropState();
+}
+
+class _SafeBackdropState extends State<SafeBackdrop> {
+  ui.Image? _blurredImage;
+  Object? _activeKey;
+  bool _renderInFlight = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybeRebuildBlur();
+  }
+
+  @override
+  void didUpdateWidget(SafeBackdrop oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageProvider != widget.imageProvider || oldWidget.blurSigma != widget.blurSigma) {
+      _maybeRebuildBlur();
+    }
+  }
+
+  @override
+  void dispose() {
+    _blurredImage?.dispose();
+    _blurredImage = null;
+    super.dispose();
+  }
+
+  Future<void> _maybeRebuildBlur() async {
+    final provider = widget.imageProvider;
+    if (provider == null || _renderInFlight) return;
+    _renderInFlight = true;
+    try {
+      const cfg = ImageConfiguration.empty;
+      final key = await provider.obtainKey(cfg);
+      if (!mounted) return;
+      if (key == _activeKey) return;
+      _activeKey = key;
+
+      // Resolve image bytes via standard ImageStream.
+      final completer = Completer<ui.Image>();
+      final stream = provider.resolve(cfg);
+      late ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (info, _) {
+          if (!completer.isCompleted) completer.complete(info.image);
+          stream.removeListener(listener);
+        },
+        onError: (err, st) {
+          if (!completer.isCompleted) completer.completeError(err, st);
+          stream.removeListener(listener);
+        },
+      );
+      stream.addListener(listener);
+      final src = await completer.future;
+      if (!mounted) return;
+
+      // Render image into offscreen PictureRecorder with ImageFilter.blur.
+      // The blur happens here, ONCE per source change — never in build().
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final paint = Paint()
+        ..imageFilter = ui.ImageFilter.blur(
+          sigmaX: widget.blurSigma,
+          sigmaY: widget.blurSigma,
+          tileMode: TileMode.clamp,
+        );
+      canvas.saveLayer(null, paint);
+      canvas.drawImage(src, Offset.zero, Paint());
+      canvas.restore();
+      final picture = recorder.endRecording();
+      final blurred = await picture.toImage(src.width, src.height);
+      picture.dispose();
+
+      if (!mounted) {
+        blurred.dispose();
+        return;
+      }
+      // Swap and free old.
+      final old = _blurredImage;
+      _blurredImage = blurred;
+      old?.dispose();
+      setState(() {});
+    } catch (_) {
+      // Swallow — widget falls back to solid color via build.
+    } finally {
+      _renderInFlight = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final blurred = _blurredImage;
+    Widget content = ColoredBox(
+      color: widget.fallbackBackground,
+      child: blurred == null ? const SizedBox.expand() : RawImage(image: blurred, fit: BoxFit.cover),
+    );
+    final label = widget.semanticLabel;
+    if (label != null) {
+      content = Semantics(label: label, image: true, child: content);
+    }
+    return RepaintBoundary(child: content);
   }
 }

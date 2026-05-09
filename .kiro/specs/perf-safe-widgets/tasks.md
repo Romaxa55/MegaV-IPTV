@@ -72,7 +72,7 @@
   - _Depends: 1.1 (asset должен быть зарегистрирован), 2.1 (file scaffold)_
   - _Boundary: SafeFilmGrain_
 
-- [ ] 2.4 Создать `SafeBackdrop` widget
+- [x] 2.4 Создать `SafeBackdrop` widget
   - В `lib/core/perf/perf_safe_widgets.dart` добавить `class SafeBackdrop extends StatefulWidget` + private `_SafeBackdropState`.
   - Required: `imageProvider` (`ImageProvider?`), `fallbackBackground` (`Color`). Optional: `blurSigma = 40`, `semanticLabel`.
   - Состояние: `ui.Image? _blurredImage`, `Object? _activeKey`, `bool _renderInFlight = false`.
