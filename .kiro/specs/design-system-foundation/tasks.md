@@ -44,7 +44,7 @@
 
 ## 2. Integration: provider + theme + extension
 
-- [ ] 2.1 Реализовать `themeProvider` + `ThemeNotifier` + `PaletteStore` interface
+- [x] 2.1 Реализовать `themeProvider` + `ThemeNotifier` + `PaletteStore` interface
   - Создать `megav_iptv/lib/core/theme/theme_provider.dart`.
   - `abstract class PaletteStore { Future<AppPaletteName?> read(); Future<void> write(AppPaletteName name); }` — interface only.
   - `class ThemeNotifier extends Notifier<AppPaletteName>` с `PaletteStore? _store`. `build()` возвращает `noirCobalt`, async-читает из `_store` если есть, обновляет state при success.
