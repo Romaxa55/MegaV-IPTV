@@ -23,7 +23,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 0.2 — Verify view-data providers exist (added during cross-spec review)
 
-- [ ] 0.2 Проверить наличие view-data providers, которые будет использовать render tree (из design.md §Data Models).
+- [x] 0.2 Проверить наличие view-data providers, которые будет использовать render tree (из design.md §Data Models).
   - Список providers (REQUIRED): `currentChannelProvider`, `currentProgramProvider`, `adjacentChannelsProvider`, `playerBitrateLabelProvider`, `isPlayingProvider`, `hasActiveTextureProvider`.
   - Прогнать `grep -rn "Provider<\|StateProvider<\|StreamProvider<" megav_iptv/lib/core/providers/providers.dart megav_iptv/lib/core/playlist/ megav_iptv/lib/core/player/ megav_iptv/lib/core/epg/` и составить inventory: какие из 6 providers уже существуют, под каким именем.
   - Для каждого MISSING provider — добавить как **derived/computed** Provider в `lib/core/providers/providers.dart` (или ближайший подходящий файл foundation/data layer). Пример: `final isPlayingProvider = Provider<bool>((ref) => ref.watch(playerStateProvider).isPlaying);`. **Нельзя** добавлять новый state — только derive из existing.
