@@ -33,7 +33,7 @@
   - _Depends: 1.1_
   - _Boundary: cinematic_home_screen scaffold + entry_
 
-- [ ] 1.3 Smoke test для пустого скелета
+- [x] 1.3 Smoke test для пустого скелета
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_home_screen_smoke_test.dart`.
   - Тест pump'ит `CinematicHomeScreen` внутри `ProviderScope` + `MaterialApp` с замоканной темой; `await tester.pump(); await tester.pump();` → ожидает no exception + `find.byKey(const Key('cinematic-home-root'))` finds one.
   - Наблюдаемое: `flutter test test/features/home/cinematic/cinematic_home_screen_smoke_test.dart` зелёный; полный `flutter test` 94/94 + 1 новый = 95/95.
