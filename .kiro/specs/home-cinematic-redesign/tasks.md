@@ -23,7 +23,7 @@
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
   - _Boundary: cinematic flag provider_
 
-- [ ] 1.2 Skeleton `CinematicHomeScreen` + entry switch
+- [x] 1.2 Skeleton `CinematicHomeScreen` + entry switch
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_home_screen.dart` с `class CinematicHomeScreen extends ConsumerStatefulWidget` (Req 1.1).
   - В `build` — `Scaffold(body: SafeArea(child: const SizedBox.shrink()))` + root `Key('cinematic-home-root')` (placeholder; subtree будет заполнена в phase 2-4).
   - **Entry switch** — реализовать **Option B** из design.md: зарегистрировать новый `go_router` route `/home-cinematic` параллельно с существующим `/home` (или эквивалент). Existing route entries не модифицируются. Один файл (router / main) получает строго ONE-LINE добавление новой route entry. Если выбран не go_router — implementer документирует решение в commit message.

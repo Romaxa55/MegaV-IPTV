@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/home/cinematic/cinematic_home_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -52,6 +53,7 @@ final _router = GoRouter(
       routes: [
         GoRoute(path: '/', redirect: (context, state) => '/home'),
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+        GoRoute(path: '/home-cinematic', builder: (context, state) => const CinematicHomeScreen()),
         GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
       ],
