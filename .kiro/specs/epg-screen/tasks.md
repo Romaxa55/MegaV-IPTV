@@ -181,7 +181,7 @@
   - _Depends: 3.4, 3.3, 3.1_
   - _Boundary: EpgTimeGrid_
 
-- [ ] 4.2 `EpgTimeGrid` widget test
+- [x] 4.2 `EpgTimeGrid` widget test
   - Создать `megav_iptv/test/features/epg/epg_time_grid_test.dart`.
   - Тест 1: pump с 3 каналами × 5 программами; `find.byKey(const Key('epg-time-grid'))` finds one; `find.byType(EpgProgramCell)` finds ≥ 1 (в viewport).
   - Тест 2: outer ListView (vertical) имеет правильные перф-флаги (`cacheExtent == 1500.0`, ...).
