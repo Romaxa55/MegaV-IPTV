@@ -124,7 +124,7 @@
 
 ## 4. Section: Player
 
-- [x] 4.1 Расширить `DecoderConfig` nullable полями `abrEnabled`/`audioPassthrough`
+- [ ] 4.1 Расширить `DecoderConfig` nullable полями `abrEnabled`/`audioPassthrough`
   - Модифицировать `megav_iptv/lib/core/player/decoder_config.dart`:
     - Добавить `final bool? abrEnabled; final bool? audioPassthrough;` в `class DecoderConfig`.
     - Обновить `const` constructor: `this.abrEnabled, this.audioPassthrough` (без default — nullable).
@@ -135,7 +135,7 @@
   - _Requirements: 5.5, 5.6_
   - _Boundary: lib/core/player/decoder_config.dart (MODIFY — in-class data fields only)_
 
-- [x] 4.2 `SectionPlayer` — pickers + toggles
+- [ ] 4.2 `SectionPlayer` — pickers + toggles
   - Создать `megav_iptv/lib/features/settings/widgets/section_player.dart`.
   - `class SectionPlayer extends ConsumerWidget` (const ctor).
   - Read once: `final config = ref.watch(decoderConfigProvider);`.
@@ -157,7 +157,7 @@
 
 ## 5. Section: Network
 
-- [x] 5.1 `SectionNetwork` — base URL row + cache reset
+- [ ] 5.1 `SectionNetwork` — base URL row + cache reset
   - Создать `megav_iptv/lib/features/settings/widgets/section_network.dart`.
   - `class SectionNetwork extends ConsumerWidget` (const ctor).
   - Read: `final url = ref.watch(baseUrlProvider);`.
@@ -179,7 +179,7 @@
 
 ## 6. Section: Performance
 
-- [x] 6.1 Local providers `impellerEnabledProvider` + `parallaxEnabledProvider`
+- [ ] 6.1 Local providers `impellerEnabledProvider` + `parallaxEnabledProvider`
   - Внутри `megav_iptv/lib/features/settings/widgets/section_performance.dart` (создаётся в 6.2) или в shared file `lib/features/settings/widgets/_perf_local_providers.dart` объявить:
     - `final impellerEnabledProvider = StateProvider<bool>((ref) => true);`
     - `final parallaxEnabledProvider = StateProvider<bool>((ref) => false);`
@@ -188,7 +188,7 @@
   - _Requirements: 7.9_
   - _Boundary: lib/features/settings/widgets/section_performance.dart or _perf_local_providers.dart (NEW)_
 
-- [x] 6.2 `SectionPerformance` — PerfHero + 3 toggles
+- [ ] 6.2 `SectionPerformance` — PerfHero + 3 toggles
   - Создать `megav_iptv/lib/features/settings/widgets/section_performance.dart`.
   - `class SectionPerformance extends ConsumerWidget` (const ctor).
   - Body: `SingleChildScrollView(child: Column([
@@ -210,7 +210,7 @@
 
 ## 7. Sections: About + Reset
 
-- [x] 7.1 `SectionAbout` — version/device info + legal stubs
+- [ ] 7.1 `SectionAbout` — version/device info + legal stubs
   - Создать `megav_iptv/lib/features/settings/widgets/section_about.dart`.
   - `class SectionAbout extends StatelessWidget` (const ctor — нет provider reads).
   - Read app version: попытка через статический const (если нет — placeholder `'1.0.0'`); device — `Platform.localHostname` + `Platform.operatingSystemVersion` под `try/catch`.
@@ -232,7 +232,7 @@
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   - _Boundary: lib/features/settings/widgets/section_about.dart (NEW)_
 
-- [x] 7.2 `SectionReset` — confirm dialog + reset action
+- [ ] 7.2 `SectionReset` — confirm dialog + reset action
   - Создать `megav_iptv/lib/features/settings/widgets/section_reset.dart`.
   - `class SectionReset extends ConsumerWidget` (const ctor).
   - Body: `SingleChildScrollView(child: Column([
@@ -251,7 +251,7 @@
 
 ## 8. Sidebar nav + screen rewrite
 
-- [x] 8.1 `SidebarNav` — 6 items, FocusTraversalGroup, D-pad right traverse
+- [ ] 8.1 `SidebarNav` — 6 items, FocusTraversalGroup, D-pad right traverse
   - Создать `megav_iptv/lib/features/settings/widgets/sidebar_nav.dart`.
   - `class SidebarNav extends StatefulWidget` (state = 6 `FocusNode`s).
   - Constructor: `int selectedIndex, ValueChanged<int> onSelected, VoidCallback onTraverseRight`.
@@ -269,7 +269,7 @@
   - _Boundary: lib/features/settings/widgets/sidebar_nav.dart (NEW)_
   - _Depends: 15.x atoms (Brand)_
 
-- [x] 8.2 `SettingsScreen` REWRITE — sidebar shell + body switcher
+- [ ] 8.2 `SettingsScreen` REWRITE — sidebar shell + body switcher
   - Заменить содержимое `megav_iptv/lib/features/settings/settings_screen.dart`.
   - Сохранить public widget: `class SettingsScreen extends ConsumerStatefulWidget { const SettingsScreen({super.key}); @override ConsumerState<SettingsScreen> createState() => _SettingsScreenState(); }` (Req 13.2).
   - State: `int _selectedIndex = 0; final FocusNode _bodyFocus = FocusNode(); @override void dispose() { _bodyFocus.dispose(); super.dispose(); }`.
@@ -286,7 +286,7 @@
 
 ## 9. Tests + regression
 
-- [x] 9.1 Widget + golden тесты для секций и shared widgets
+- [ ] 9.1 Widget + golden тесты для секций и shared widgets
   - Создать тестовые файлы:
     - `megav_iptv/test/features/settings/settings_screen_test.dart` — sidebar renders 6 items; activating item switches body; D-pad right transfers focus; никаких `BackdropFilter`/`ShaderMask` в widget tree (`find.byType(BackdropFilter).evaluate().isEmpty`).
     - `megav_iptv/test/features/settings/section_appearance_test.dart` — overriding `themeProvider` с fake `ThemeNotifier` (track `setPalette` calls); tap на swatch[1] → `setPalette(AppPaletteName.values[1])` вызван **ровно 1 раз** (Req 14.2). Active marker обновляется после `ref.watch` tick.
@@ -299,7 +299,7 @@
   - _Boundary: test/features/settings/* (NEW)_
   - _Depends: 1.2, 2.1, 2.2, 3.1, 3.3, 4.2, 8.2_
 
-- [x] 9.2 Perf sweep — grep enforcement и `flutter analyze`
+- [ ] 9.2 Perf sweep — grep enforcement и `flutter analyze`
   - Запустить `cd megav_iptv && flutter analyze`. Ожидание: `No issues found!` (Req 13.5).
   - Запустить `grep -RnE "BackdropFilter|ShaderMask" megav_iptv/lib/features/settings/ megav_iptv/lib/core/perf/perf_metrics_provider.dart`. Ожидание: 0 hits (Req 12.1, 12.2).
   - Запустить `grep -RnE "blurRadius:\s*([2-9][0-9]+|1[3-9])" megav_iptv/lib/features/settings/ megav_iptv/lib/core/perf/perf_metrics_provider.dart`. Ожидание: 0 hits (Req 12.3).
@@ -310,7 +310,7 @@
   - _Boundary: tooling-only (no source changes)_
   - _Depends: 9.1_
 
-- [x] 9.3 (Optional, manual) Profile-build measurement on rtd2851a
+- [ ] 9.3 (Optional, manual) Profile-build measurement on rtd2851a
   - Собрать `flutter build apk --profile`, установить на rtd2851a.
   - Открыть Settings, переключиться на Performance section.
   - Снять `getVMTimeline` (см. `flutter-tv-perf.md` § «Как замерять»):
