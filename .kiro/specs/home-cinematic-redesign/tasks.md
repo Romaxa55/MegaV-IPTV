@@ -68,7 +68,7 @@
   - _Depends: 2.1_
   - _Boundary: hero widget test_
 
-- [ ] 2.3 `CinematicGenreTabsBar`
+- [x] 2.3 `CinematicGenreTabsBar`
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_genre_tabs_bar.dart` с `class CinematicGenreTabsBar extends ConsumerWidget` (Req 3).
   - Build tree: `Stack(children: [SizedBox(height:..., child: GenreTabs(tabs: ..., activeIndex: ..., onSelected: ...)), Positioned(left:0, top:0, bottom:0, width: 32, child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: centerLeft, end: centerRight, colors: [palette.background, palette.background.withAlpha(0)]))))), Positioned(right:0, top:0, bottom:0, width: 32, child: ... mirrored ...)])` — ТОЛЬКО `DecoratedBox` + `LinearGradient`, никакого `ShaderMask` (Req 3.4, 9.1).
   - Boundary semantics: при достижении последнего tab focus НЕ wrap'ится; surface event через callback (Req 3.5) — допустимо проксировать через `FocusTraversalGroup` или явный callback из `GenreTabs` атома.
