@@ -264,7 +264,7 @@
 
 ## 4. Tests
 
-- [ ] 4.1 Smoke tests для всех 13 atoms (1 test per atom — render + no exception)
+- [x] 4.1 Smoke tests для всех 13 atoms (1 test per atom — render + no exception)
   - Создать `megav_iptv/test/core/ui/atoms/atoms_smoke_test.dart`.
   - Для каждого из 13 atoms: pump с минимально-required параметрами, expect `find.byType(<Atom>)` finds 1, `tester.takeException()` is null.
   - Запуск: `flutter test test/core/ui/atoms/atoms_smoke_test.dart` — 13/13 зелёных.
@@ -273,7 +273,7 @@
   - _Depends: 2.1-2.13 (все atoms готовы)_
   - _Boundary: atoms_smoke_test_
 
-- [ ] 4.2 (P) Widget tests для `Chip` 5 variants
+- [x] 4.2 (P) Widget tests для `Chip` 5 variants
   - Создать `megav_iptv/test/core/ui/atoms/chip_test.dart`.
   - 5 тестов: для каждого `ChipVariant` pump + assert `decoration.color` отличается между variants.
   - Дополнительный тест: `live` variant имеет `RepaintBoundary` ancestor над animated dot.
@@ -282,7 +282,7 @@
   - _Depends: 2.3_
   - _Boundary: chip_test_
 
-- [ ] 4.3 (P) Widget tests для `MvButton` 3 variants
+- [x] 4.3 (P) Widget tests для `MvButton` 3 variants
   - Создать `megav_iptv/test/core/ui/atoms/mv_button_test.dart`.
   - 3 теста: для каждого MvButton variant pump + assert fg/bg colors различаются.
   - Дополнительный: `isFocused: true` → SafeFocusRing ancestor найдён.
@@ -290,14 +290,14 @@
   - _Depends: 2.10_
   - _Boundary: mv_button_test_
 
-- [ ] 4.4 Widget tests для `Poster` (hideText, progress)
+- [x] 4.4 Widget tests для `Poster` (hideText, progress)
   - Создать `megav_iptv/test/core/ui/atoms/poster_test.dart`.
   - 3 теста: hideText:true → no Text in tree; progress:0.6 → MvTrack present in tree; orientation flip → AspectRatio.aspectRatio differs.
   - _Requirements: 17.4_
   - _Depends: 2.7_
   - _Boundary: poster_test_
 
-- [ ] 4.5 (P) Widget tests для `MvTrack` (progress = 0.5)
+- [x] 4.5 (P) Widget tests для `MvTrack` (progress = 0.5)
   - Создать `megav_iptv/test/core/ui/atoms/mv_track_test.dart`.
   - Тесты: progress:0.5 + tester.pump(300ms) → AnimatedFractionallySizedBox.widthFactor == 0.5; progress:1.5 → clamped to 1.0; progress:-0.3 → clamped to 0.0.
   - _Requirements: 17.5, 12.4_
