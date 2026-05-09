@@ -279,7 +279,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgFocusController_
 
-- [ ] 5.5 Day picker + category filter + preview strip widget tests
+- [x] 5.5 Day picker + category filter + preview strip widget tests
   - Создать `megav_iptv/test/features/epg/epg_day_picker_test.dart`:
     - Тест 1: pump → `find.byKey(const Key('epg-day-picker'))` finds one; `find.byType(MvButton)` finds 7.
     - Тест 2: `find.byType(ShaderMask)` / `find.byType(BackdropFilter)` — empty.
