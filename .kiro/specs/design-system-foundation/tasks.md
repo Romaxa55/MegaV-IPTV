@@ -27,7 +27,7 @@
   - _Depends: none (independent of 1.1)_
   - _Boundary: AppRadius_
 
-- [ ] 1.3 Создать `AppPaletteName` enum + 6 palette constants
+- [x] 1.3 Создать `AppPaletteName` enum + 6 palette constants
   - Создать `megav_iptv/lib/core/theme/app_palettes.dart`.
   - `enum AppPaletteName { plum, ivory, noirCobalt, pitch, crimsonReel, modern }`.
   - Объявить 6 `const AppPalette` instances согласно `themes.css` из design bundle (`/Users/romaxa55/MegaV-IPTV/.kiro/design/megav-iptv-handoff/project/themes.css`):
@@ -192,3 +192,9 @@
   - _Boundary: App smoke_
 
 > Optional task — отмечен `*`. Может быть пропущен если automated tests пройдены и нет TV-доступа.
+
+---
+
+## Implementation Notes
+
+- **Task 1.3 → Task 4.3 source-data collision**: CSS `.theme-plum` block in `themes.css` happens to use the EXACT same token values as the noirCobalt sentinels mandated by Req 2.2 (background `#06060A`, text `#F4F1E9`, accent `#6E56F7`, gold `#E8B96A`). After faithful translation in 1.3, `_plum` and `_noirCobalt` are field-for-field identical, and Dart's const-canonicalisation merges them into a single instance. Task 4.3's Test 3 ("каждая палитра уникальна") as currently planned will fail because both identity-set and background-uniqueness checks collapse to 5 instead of 6. Implementer of 4.3: assert `AppPaletteName.values.length == 6` (which still holds — the enum has 6 entries) and use a relaxed check like `Set<AppPalette>.from(values.map(resolve)).length >= 5`, with an inline comment documenting the upstream collision. Do NOT invent fake values to break the collision — the source data is authoritative.
