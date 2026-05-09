@@ -85,7 +85,7 @@
   - _Depends: 2.1 (file scaffold)_
   - _Boundary: SafeBackdrop_
 
-- [ ] 2.5 Добавить `combinedHeroGradient(palette)` factory
+- [x] 2.5 Добавить `combinedHeroGradient(palette)` factory
   - В `lib/core/perf/perf_safe_widgets.dart` добавить top-level `RadialGradient combinedHeroGradient(AppPalette palette)`.
   - Геометрия согласно design.md § Components > combinedHeroGradient: `center: Alignment.bottomCenter`, `radius: 1.4`, 4 `stops: [0.0, 0.45, 0.85, 1.0]`, 4 `colors: [palette.background, palette.background.withValues(alpha: 0.85), palette.background.withValues(alpha: 0.40), palette.background.withValues(alpha: 0.0)]`.
   - Pure function — никакого state, никакого Riverpod.

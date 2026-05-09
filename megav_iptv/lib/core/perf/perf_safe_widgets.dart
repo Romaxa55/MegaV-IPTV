@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_palette.dart';
 import '../theme/app_radius.dart';
 
 /// Maximum BoxShadow / Shadow blurRadius safe on TV-Mali (rtd2851a).
@@ -317,4 +318,36 @@ class _SafeBackdropState extends State<SafeBackdrop> {
     }
     return RepaintBoundary(child: content);
   }
+}
+
+/// Single radial gradient combining vignette + bottom-shade in one
+/// render pass.
+///
+/// Replaces the 3 stacked gradients from the design handoff (vignette
+/// radial + bottom-shade linear + side-fade linear). On TV-Mali GPU,
+/// each full-screen gradient layer over hero video costs ~1-2 ms;
+/// 3 stacked = 3-5 ms. This combined gradient is one pass.
+///
+/// Side-fade is intentionally NOT included — caller relies on natural
+/// padding + matching parent background color (Req 5.5).
+///
+/// Usage:
+/// ```dart
+/// DecoratedBox(
+///   decoration: BoxDecoration(gradient: combinedHeroGradient(palette)),
+///   child: ...,
+/// )
+/// ```
+RadialGradient combinedHeroGradient(AppPalette palette) {
+  return RadialGradient(
+    center: Alignment.bottomCenter,
+    radius: 1.4,
+    stops: const [0.0, 0.45, 0.85, 1.0],
+    colors: [
+      palette.background,
+      palette.background.withValues(alpha: 0.85),
+      palette.background.withValues(alpha: 0.40),
+      palette.background.withValues(alpha: 0.0),
+    ],
+  );
 }
