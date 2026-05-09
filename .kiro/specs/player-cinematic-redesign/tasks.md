@@ -40,7 +40,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 1.1 — `KenBurnsBackdrop`
 
-- [ ] 1.1 Создать `lib/features/player/cinematic/ken_burns_backdrop.dart`.
+- [x] 1.1 Создать `lib/features/player/cinematic/ken_burns_backdrop.dart`.
   - `StatefulWidget` с `AnimationController(duration: 30s, vsync: this)..repeat(reverse: true)`.
   - `AnimatedBuilder` + `Transform.scale(scale: 1.0 + 0.05 * controller.value)` + `Image(image: imageProvider, fit: BoxFit.cover)`.
   - `Visibility(visible: active, maintainState: false)` обёртка; `didUpdateWidget` вызывает `repeat()` / `stop()`.
@@ -51,7 +51,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 1.2 — `InlineEpgBar`
 
-- [ ] 1.2 Создать `lib/features/player/cinematic/inline_epg_bar.dart`.
+- [x] 1.2 Создать `lib/features/player/cinematic/inline_epg_bar.dart`.
   - Внешний `ConsumerWidget` принимает `startAt`, `endAt`, `programTitle`.
   - Внутренний `_TickStrip extends StatefulWidget` с `Ticker` (1Hz) обёрнутый в `RepaintBoundary`.
   - Layout: `Center(Text(programTitle ?? 'Программа не загружена'))` сверху + `Row(Text(start) | Expanded(MvTrack(progress)) | Text(end))`.
@@ -62,7 +62,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 1.3 — `CinematicTopBar`
 
-- [ ] 1.3 Создать `lib/features/player/cinematic/cinematic_top_bar.dart`.
+- [x] 1.3 Создать `lib/features/player/cinematic/cinematic_top_bar.dart`.
   - Row: `MvIconButton(arrow_back) → Brand → Chip(LIVE) → Expanded(Text title) → Chip(bitrateLabel)`.
   - `bitrateLabel == null` → bitrate Chip скрыт.
   - `programTitle` имеет `maxLines: 1`, `overflow: TextOverflow.ellipsis`.
@@ -73,7 +73,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 1.4 — `ChannelDeck` skeleton + slide-in
 
-- [ ] 1.4 Создать `lib/features/player/cinematic/channel_deck.dart` с `_ChannelCard`.
+- [x] 1.4 Создать `lib/features/player/cinematic/channel_deck.dart` с `_ChannelCard`.
   - `AnimatedSlide(offset: isOpen ? Offset.zero : Offset(1, 0), duration: 250ms, curve: Curves.fastOutSlowIn)`.
   - `Visibility(visible: isOpen || _justClosed, maintainState: false)` с hold-flag для fade-out.
   - `ListView.builder(scrollDirection: Axis.vertical, cacheExtent: 1500, addAutomaticKeepAlives: true, addRepaintBoundaries: true, clipBehavior: Clip.none)`.
@@ -85,7 +85,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 1.5 — `CinematicBottomPanel` glass wrapper
 
-- [ ] 1.5 Создать `lib/features/player/cinematic/cinematic_bottom_panel.dart`.
+- [x] 1.5 Создать `lib/features/player/cinematic/cinematic_bottom_panel.dart`.
   - Outer `SafePill(borderRadius: AppRadius.l, padding: ...)`. Никаких `BackdropFilter`.
   - Tint цвет — `ComputedColors.from(palette).panelTint` (или эквивалент, согласовать с foundation API).
   - Column: `InlineEpgBar` → `_ActionRow` → `RemoteHint`.
