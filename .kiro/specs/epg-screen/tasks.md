@@ -249,7 +249,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgCategoryFilter_
 
-- [ ] 5.3 `EpgPreviewStrip` + `_PreviewThumb` (private RepaintBoundary)
+- [x] 5.3 `EpgPreviewStrip` + `_PreviewThumb` (private RepaintBoundary)
   - Создать `megav_iptv/lib/features/epg/widgets/epg_preview_strip.dart` с `class EpgPreviewStrip extends StatelessWidget` (Req 10).
   - Параметры: `EpgProgram? program`, `Channel? channel`, `VoidCallback? onWatch`, `VoidCallback? onDetails`.
   - Build: `Container(height: 96.h, decoration: BoxDecoration(border: Border(top: BorderSide(color: palette.divider))), child: Row([_PreviewThumb(channel: channel, programme: program), Expanded(child: Column([Text(program.title, style: titleMedium), Text('${channel.name} · ${formatRange(program)}', style: metaMono)])), if (program.isNow) MvButton.primary(label: 'Смотреть', onPressed: onWatch) else MvButton.secondary(label: 'Подробнее', onPressed: onDetails)]))` (Req 10.1).
