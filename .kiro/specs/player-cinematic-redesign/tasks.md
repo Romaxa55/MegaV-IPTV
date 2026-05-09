@@ -183,7 +183,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 4.1 — Existing tests regression
 
-- [ ] 4.1 Запустить полный `cd megav_iptv && flutter test` и подтвердить, что все 30+ существующих тестов проходят без модификаций.
+- [x] 4.1 Запустить полный `cd megav_iptv && flutter test` и подтвердить, что все 30+ существующих тестов проходят без модификаций.
   - Если падает хоть один — НЕ модифицировать тест. Откатить изменение в `_buildControls()` и продебажить через `kiro-debug`.
   - Зафиксировать вывод `flutter test` в commit message.
   - _Boundary:_ tests are read-only artefacts of closed specs.
@@ -191,7 +191,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 4.2 — Static check: foundation reuse, no hardcoded perf-killers
 
-- [ ] 4.2 Grep `lib/features/player/cinematic/` на запрещённые паттерны.
+- [x] 4.2 Grep `lib/features/player/cinematic/` на запрещённые паттерны.
   - `BackdropFilter` — должно быть 0 occurrences.
   - `ShaderMask` — должно быть 0 occurrences.
   - `ImageFilter.blur` — должно быть 0 occurrences.
@@ -204,7 +204,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 4.3 — VM Service performance trace
 
-- [ ] 4.3 На rtd2851a в `--profile` сборке снять `getVMTimeline` snapshot для двух сценариев.
+- [-] 4.3 На rtd2851a в `--profile` сборке снять `getVMTimeline` snapshot для двух сценариев.
   - Сценарий A: `ControlsState` idle, 30s.
   - Сценарий B: open channel deck, scroll between 5 cards, 15s.
   - Парсить и сохранить avg / p95 / max `GPURasterizer::Draw` под `.kiro/specs/player-cinematic-redesign/snapshots/`.
@@ -214,7 +214,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 4.4 — PlayerUiState invariant audit
 
-- [ ] 4.4 Запустить `git diff master -- megav_iptv/lib/features/player/player_screen.dart` и убедиться, что в diff нет:
+- [x] 4.4 Запустить `git diff master -- megav_iptv/lib/features/player/player_screen.dart` и убедиться, что в diff нет:
   - Изменений в `sealed class PlayerUiState`.
   - Изменений в `HiddenState`, `ControlsState`, `BriefOsdState`, `SwitchPreviewState`, `OverlayState`.
   - Изменений в теле `_transition(...)`.
@@ -226,7 +226,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 4.5 — Final regression: full test + smoke run
 
-- [ ] 4.5 Финальная регрессия.
+- [-] 4.5 Финальная регрессия.
   - `cd megav_iptv && flutter test` — зелёно.
   - `flutter analyze` — без новых warnings.
   - `flutter run -d <rtd2851a>` smoke: открыть плеер, потоптать deck D-pad'ом, переключить канал, открыть info overlay, дождаться brief OSD, подождать ken-burns на loading.
