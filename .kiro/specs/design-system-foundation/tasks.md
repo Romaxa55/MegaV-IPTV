@@ -17,7 +17,7 @@
   - _Requirements: 1.1, 1.2_
   - _Boundary: AppPalette_
 
-- [ ] 1.2 (P) Создать `AppRadius` token class
+- [x] 1.2 (P) Создать `AppRadius` token class
   - Создать `megav_iptv/lib/core/theme/app_radius.dart`.
   - `abstract class AppRadius` с приватным constructor (utility class).
   - `static const double xs = 6, sm = 10, md = 14, lg = 20, xl = 28`.
