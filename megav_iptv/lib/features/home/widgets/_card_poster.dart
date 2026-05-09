@@ -36,7 +36,7 @@ class _CardPosterState extends State<CardPoster> {
   static const _cardBg = Color(0xFF12121E);
 
   @override
-  Widget build(BuildContext context) => _buildPoster();
+  Widget build(BuildContext context) => Hero(tag: 'channel-poster-${widget.item.channelId}', child: _buildPoster());
 
   Widget _buildPoster() {
     final iconUrl = widget.item.program?.icon;

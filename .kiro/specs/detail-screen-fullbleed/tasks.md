@@ -128,7 +128,7 @@
 
 ## Phase 4. Home patch + Hero wrap
 
-- [ ] 4.1 Patch `home_screen.dart` call-sites
+- [x] 4.1 Patch `home_screen.dart` call-sites
   - Открыть `megav_iptv/lib/features/home/home_screen.dart`. Найти 2 occurrences `context.push('/player')` (lines 237, 249 в текущей версии).
   - Перед каждым `context.push('/player')` сохранить current channel в provider (это уже делается выше) — оставить как есть.
   - **Заменить** `context.push('/player')` → `context.push('/channel/${item.channelId}', extra: DetailArgs(channelId: item.channelId, preloadedNowPlaying: item))` для случая `_playNowPlaying`. Для второго call-site (если контекст другой — обычная channel-tile tap) — заменить на `context.push('/channel/${channel.id}', extra: DetailArgs(channelId: channel.id))`.
@@ -139,7 +139,7 @@
   - _Depends: 3.2_
   - _Boundary: home/home_screen.dart call-sites_
 
-- [ ] 4.2 Hero wrap в `_card_poster.dart`
+- [x] 4.2 Hero wrap в `_card_poster.dart`
   - Открыть `megav_iptv/lib/features/home/widgets/_card_poster.dart` (или эквивалент — implementer проверяет точное имя через `grep -l "_CardPoster\|class.*Poster.*ext.*Stateless" megav_iptv/lib/features/home/widgets/`).
   - Найти inner `Image` / `Poster` widget (тот, который рендерит постер канала).
   - Обернуть его в `Hero(tag: 'channel-poster-${channel.id}', child: <existing widget>)`.

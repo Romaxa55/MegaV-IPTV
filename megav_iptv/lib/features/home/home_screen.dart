@@ -12,6 +12,7 @@ import '../../core/playlist/models/channel.dart';
 import '../../core/playlist/models/now_playing.dart';
 import '../../core/providers/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../detail/providers/detail_arguments.dart';
 import 'widgets/_grid_tokens.dart';
 import 'widgets/cinema_row.dart';
 import 'widgets/hero_section.dart';
@@ -234,7 +235,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
       ref.read(currentChannelIndexProvider.notifier).state = 0;
       setState(() => _isPreviewPlaying = false);
-      context.push('/player');
+      context.push(
+        '/channel/${item.channelId}',
+        extra: DetailArgs(channelId: item.channelId, preloadedNowPlaying: item),
+      );
       return;
     }
     _stopPreview();
@@ -246,7 +250,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       hasEpg: true,
     );
     ref.read(currentChannelIndexProvider.notifier).state = 0;
-    context.push('/player');
+    context.push(
+      '/channel/${item.channelId}',
+      extra: DetailArgs(channelId: item.channelId, preloadedNowPlaying: item),
+    );
   }
 
   @override
