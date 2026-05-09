@@ -43,7 +43,7 @@
   - _Depends: 1.1_
   - _Boundary: CinemaCard_
 
-- [ ] 2.3 Увеличить bottom-padding compact-строки канала
+- [x] 2.3 Увеличить bottom-padding compact-строки канала
   - В `cinema_card.dart` найти место рендеринга имени канала в compact-overlay (вероятно `_buildBottomChannelLine` или аналог).
   - Если строка сейчас в `Padding(EdgeInsets.only(bottom: <X>.h))` где X < 6 — увеличить до 6.
   - Если padding отсутствует — обернуть в `Padding(EdgeInsets.only(bottom: 6.h), child: <existing>)`.
