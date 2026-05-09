@@ -20,7 +20,7 @@
 
 ## 2. Core: визуальные правки
 
-- [ ] 2.1 Обернуть ListView.builder в `cinema_row.dart` в ShaderMask с fade-out на правом крае
+- [x] 2.1 Обернуть ListView.builder в `cinema_row.dart` в ShaderMask с fade-out на правом крае
   - Найти горизонтальный `ListView.builder` в `_CinemaRowState.build` (он в `Positioned(top: -72.h, ...)`).
   - Обернуть его в `ShaderMask` с `blendMode: BlendMode.dstOut` и `shaderCallback`, возвращающим `LinearGradient(begin: centerLeft, end: centerRight, stops: [0.0, 1.0 - GridTokens.fadeEdgeFraction, 1.0], colors: [Colors.transparent, Colors.transparent, Colors.black])`.
   - Все остальные виджеты (`FocusTraversalGroup`, `ListView.builder` параметры, `clipBehavior: Clip.none`, `cacheExtent`, `addAutomaticKeepAlives`, `addRepaintBoundaries`) сохраняются.
