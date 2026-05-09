@@ -111,7 +111,7 @@
 
 ## 4. Validation: widget tests + regression
 
-- [ ] 4.1 Создать widget tests для 4 safe widgets + helper
+- [x] 4.1 Создать widget tests для 4 safe widgets + helper
   - Создать `megav_iptv/test/core/perf/perf_safe_widgets_test.dart`.
   - Тесты согласно design.md § Testing Strategy:
     - T-1: source-introspection — файл `lib/core/perf/perf_safe_widgets.dart` не содержит `BackdropFilter`. Реализация: `final src = File('lib/core/perf/perf_safe_widgets.dart').readAsStringSync(); expect(src, isNot(contains('BackdropFilter')));`. `flutter test` запускается из `megav_iptv/`, путь относителен к этому корню.
