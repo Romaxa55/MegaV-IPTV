@@ -98,7 +98,7 @@
 
 ## 3. Theme integration: shadow audit
 
-- [ ] 3.1 Audit `MegaVTextStyles` для `Shadow.blurRadius > 12`
+- [x] 3.1 Audit `MegaVTextStyles` для `Shadow.blurRadius > 12`
   - Открыть `megav_iptv/lib/core/theme/megav_text_styles.dart`.
   - Прогнать `grep -nE "blurRadius:\s*([2-9][0-9]+|1[3-9])" megav_iptv/lib/core/theme/megav_text_styles.dart` — должно быть **пусто** после правок.
   - Если в существующих display-styles есть Shadow с `blurRadius > 12` — заменить на `Shadow(blurRadius: 8, ...)` (Req 7.2 default).
