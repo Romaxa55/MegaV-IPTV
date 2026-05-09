@@ -51,7 +51,7 @@
   - _Depends: 1.1 (нужны foundation-палитры через AppColors)_
   - _Boundary: SafePill + perf_safe_widgets file scaffold + kSafeShadowBlurMax constant (cross-cutting, intentional one-shot scaffolding)_
 
-- [ ] 2.2 Создать `SafeFocusRing` widget
+- [x] 2.2 Создать `SafeFocusRing` widget
   - В уже существующем `lib/core/perf/perf_safe_widgets.dart` добавить `class SafeFocusRing extends StatelessWidget`.
   - Required: `child`, `isFocused`. Optional: `ringColor` (default `AppColors.primary`), `gap = 3.0`, `thickness = 3.0`, `duration = Duration(milliseconds: 150)`.
   - Build возвращает `AnimatedContainer` с `BoxDecoration.boxShadow` из двух stacked solid `BoxShadow` (inner для gap = `AppColors.background`, outer для ring = `ringColor`); оба с `blurRadius: 0`. При `!isFocused` — пустой `boxShadow: const []`.

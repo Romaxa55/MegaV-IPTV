@@ -57,3 +57,61 @@ class SafePill extends StatelessWidget {
     );
   }
 }
+
+/// Solid-color focus ring drawn outside child bounds via stacked
+/// BoxShadow with `blurRadius: 0`.
+///
+/// Replaces CSS `outline: 3px solid var(--accent); outline-offset: 3px;`
+/// — Flutter `Border` paints inside the box, not outside, so we use
+/// two solid BoxShadow layers: inner one matches background (creates
+/// the 3px gap), outer one is the ring color.
+///
+/// Transition between focused/unfocused completes within 150 ms
+/// (Leanback `lb_card_activated_animation_duration`) via AnimatedContainer.
+/// GPU-only animation — no relayout of siblings.
+///
+/// Usage:
+/// ```dart
+/// SafeFocusRing(
+///   isFocused: focusNode.hasFocus,
+///   child: PosterCard(...),
+/// )
+/// ```
+class SafeFocusRing extends StatelessWidget {
+  const SafeFocusRing({
+    super.key,
+    required this.child,
+    this.isFocused = false,
+    this.ringColor,
+    this.gap = 3.0,
+    this.thickness = 3.0,
+    this.duration = const Duration(milliseconds: 150),
+  });
+
+  final Widget child;
+  final bool isFocused;
+  final Color? ringColor;
+  final double gap;
+  final double thickness;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = ringColor ?? AppColors.primary;
+    return AnimatedContainer(
+      duration: duration,
+      curve: Curves.fastOutSlowIn,
+      decoration: BoxDecoration(
+        boxShadow: isFocused
+            ? <BoxShadow>[
+                // Outer: ring color (visible).
+                BoxShadow(color: color, spreadRadius: gap + thickness, blurRadius: 0),
+                // Inner: background color (creates the gap, simulates outline-offset).
+                BoxShadow(color: AppColors.background, spreadRadius: gap, blurRadius: 0),
+              ]
+            : const <BoxShadow>[],
+      ),
+      child: child,
+    );
+  }
+}
