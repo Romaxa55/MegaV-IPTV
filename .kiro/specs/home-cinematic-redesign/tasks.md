@@ -243,7 +243,7 @@
   - _Depends: 5.1, 5.2, 4.4, 4.2, 3.5, 3.3, 2.4, 2.2, 1.3_
   - _Boundary: final regression gate_
 
-- [ ] 5.4 Rollout flag flip (Stage 5) — opt-in
+- [-] 5.4 Rollout flag flip (Stage 5) — opt-in — **DEFERRED (manual TV gate)**
   - **Этот task делается ТОЛЬКО после ручной проверки на rtd2851a (см. 5.3 manual VM Service smoke).**
   - Изменить `kCinematicHomeDefault` в `use_cinematic_home_provider.dart` с `false` на `true` (один-line patch, Req 11.4 single source of truth).
   - Re-run `flutter test` — 94 + новые всё ещё зелёные.
