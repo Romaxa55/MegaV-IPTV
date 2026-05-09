@@ -10,6 +10,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/detail/detail_screen.dart';
 import 'features/detail/providers/detail_arguments.dart';
+import 'features/epg/epg_screen.dart';
 import 'features/home/cinematic/cinematic_home_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
@@ -67,6 +68,7 @@ final _router = GoRouter(
         ),
         GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
+        GoRoute(path: '/epg', builder: (context, state) => const EpgScreen()),
       ],
     ),
   ],

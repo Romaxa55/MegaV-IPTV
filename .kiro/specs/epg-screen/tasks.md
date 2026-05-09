@@ -74,7 +74,7 @@
   - _Requirements: 12.1, 12.4_
   - _Boundary: EpgUiState sealed type_
 
-- [ ] 2.2 `EpgScreen` skeleton + entry route
+- [x] 2.2 `EpgScreen` skeleton + entry route
   - Создать `megav_iptv/lib/features/epg/epg_screen.dart` с `class EpgScreen extends ConsumerStatefulWidget` (Req 1.1).
   - В `build` — `Scaffold(body: SafeArea(child: const SizedBox.shrink()))` + root `Key('epg-screen-root')` (placeholder; subtree заполнят phase 3-5).
   - Скелет state-машины: `EpgUiState _state = const EpgLoadingState(); Timer? _focusDebounceTimer; bool _inFlight = false; void _transition(EpgUiState newState) { _focusDebounceTimer?.cancel(); _focusDebounceTimer = null; setState(() => _state = newState); }` (Req 12.2, 12.3, 9.6).
