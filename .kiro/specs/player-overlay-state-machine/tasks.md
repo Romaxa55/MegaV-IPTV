@@ -111,7 +111,7 @@
   - _Depends: 1.1_
   - _Boundary: PlayerUiState_
 
-- [ ] 4.2 Widget-тест: open → controls auto-hide
+- [x] 4.2 Widget-тест: open → controls auto-hide
   - Создать `megav_iptv/test/features/player/player_screen_overlay_test.dart`.
   - Setup: `ProviderScope` с overrides:
     - `currentChannelProvider` → fake Channel.
@@ -130,7 +130,7 @@
   - _Depends: 2.2, 3.1_
   - _Boundary: _PlayerScreenState_
 
-- [ ] 4.3 Widget-тест: quick-switch ⬆ → preview → channel changed
+- [x] 4.3 Widget-тест: quick-switch ⬆ → preview → channel changed
   - В том же `player_screen_overlay_test.dart` добавить второй testWidgets.
   - Setup: тот же + mock `apiClient.getChannels` returning список из 3 channels.
   - Test 2: «quick-switch ⬆ → preview → committed»:
@@ -146,7 +146,7 @@
   - _Depends: 2.2_
   - _Boundary: _PlayerScreenState_
 
-- [ ] 4.4 Widget-тест: press E → EPG visible → press E → EPG gone
+- [x] 4.4 Widget-тест: press E → EPG visible → press E → EPG gone
   - В том же `player_screen_overlay_test.dart` добавить третий testWidgets.
   - Setup: тот же.
   - Test 3: «overlay toggle»:
