@@ -8,7 +8,7 @@
 
 ## 1. Foundation: data classes
 
-- [ ] 1.1 Создать `AppPalette` instance class
+- [x] 1.1 Создать `AppPalette` instance class
   - Создать `megav_iptv/lib/core/theme/app_palette.dart`.
   - Объявить `class AppPalette` с required `final Color` полями: `background`, `backgroundWarm`, `surface1`, `surface2`, `line`, `lineStrong`, `text`, `textDim`, `textMute`, `accent`, `accentGlow`, `accentSoft`, `gold`, `goldSoft`, `live`, `liveSoft`, `good`.
   - Добавить computed-properties для backward-compat: `primary => accent`, `error => live`, `textPrimary => text`, `textSecondary => textDim`, `textHint => textMute`, `cardBg => surface1`, `surface => surface2`, `chipBg => surface2`, `chipBorder => line`. Все остальные legacy-fields из текущего `app_colors.dart` мапятся аналогично.
