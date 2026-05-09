@@ -14,7 +14,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 0.1 — Document and assert PlayerUiState invariants
 
-- [ ] 0.1 Зафиксировать read-only-список идентификаторов из `player-overlay-state-machine` и проверить, что текущий `player_screen.dart` всё ещё их экспонирует.
+- [x] 0.1 Зафиксировать read-only-список идентификаторов из `player-overlay-state-machine` и проверить, что текущий `player_screen.dart` всё ещё их экспонирует.
   - Скан-grep на `sealed class PlayerUiState`, `_transition`, `_stateExpiryTimer`, `_quickSwitchInFlight`, `transitionForTest`. Зафиксировать SHA / line numbers в commit message первого PR.
   - Запустить `cd megav_iptv && flutter test` — baseline должен быть зелёный до начала работ.
   - Создать локальный artefact `.kiro/specs/player-cinematic-redesign/baseline-identifiers.txt` со списком (для последующей проверки в kiro-review).

@@ -1,0 +1,30 @@
+# Closed `player-overlay-state-machine` invariant — read-only identifiers
+# Captured for baseline verification by `home-cinematic-redesign` Task 0.1
+# Date: 2026-05-09
+# File: megav_iptv/lib/features/player/player_screen.dart
+
+# Sealed type
+sealed class PlayerUiState                                   line 24
+
+# State variants (extend PlayerUiState)
+final class HiddenState extends PlayerUiState                (in same file)
+final class BriefOsdState extends PlayerUiState              (in same file)
+final class ControlsState extends PlayerUiState              (in same file)
+final class OverlayState extends PlayerUiState               (in same file)
+final class SwitchPreviewState extends PlayerUiState         (in same file)
+
+# Internal state machine
+Timer? _stateExpiryTimer                                     line 77
+bool _quickSwitchInFlight                                    line 81
+void transitionForTest(PlayerUiState newState)               line 88   (test seam)
+void _transition(PlayerUiState newState)                     line 95
+
+# These identifiers MUST NOT be modified by player-cinematic-redesign.
+# This spec extends RENDER TREES inside ControlsState only — it does NOT
+# add new state variants, does NOT modify _transition logic, does NOT
+# touch _stateExpiryTimer or _quickSwitchInFlight.
+#
+# Verification grep:
+#   grep -E 'sealed class PlayerUiState|_transition\(|_stateExpiryTimer|_quickSwitchInFlight|transitionForTest' \
+#     megav_iptv/lib/features/player/player_screen.dart
+# Expected: same line ranges as above (within tolerance for body line shifts).
