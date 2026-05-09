@@ -200,7 +200,14 @@ class _CinemaCardState extends State<CinemaCard> {
         padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [if (showLive) _liveBadge(context), const Spacer(), _buildBottomChannelLine()],
+          children: [
+            if (showLive) _liveBadge(context),
+            const Spacer(),
+            Padding(
+              padding: EdgeInsets.only(bottom: 6.h),
+              child: _buildBottomChannelLine(),
+            ),
+          ],
         ),
       ),
     );

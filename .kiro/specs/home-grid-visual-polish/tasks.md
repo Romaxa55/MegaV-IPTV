@@ -118,3 +118,7 @@
   - _Requirements: 4.4_
   - _Depends: 4.1_
   - _Boundary: ReferenceDevice_
+
+## Implementation Notes
+
+- **Task 2.2 forced extraction**: Pre-commit hook `check-file-size` (max 600 lines) blocked the original commit because cinema_card.dart grew to 619 lines. Resolved by extracting poster sub-tree into `_card_poster.dart` as `CardPoster` StatefulWidget. Class name is public (`CardPoster`) because Dart privacy is library-scoped — `_`-prefixed class can't be imported across files; file itself is `_`-prefixed by project convention. Pattern matches existing `_grid_tokens.dart` → `class GridTokens`. Future tasks touching cinema_card.dart should keep its size headroom in mind (currently 539/600).
