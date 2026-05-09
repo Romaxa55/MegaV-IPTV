@@ -40,7 +40,7 @@
 
 ## 2. Core: 4 safe widgets + 1 helper
 
-- [ ] 2.1 Создать `SafePill` widget + scaffold `perf_safe_widgets.dart`
+- [x] 2.1 Создать `SafePill` widget + scaffold `perf_safe_widgets.dart`
   - Создать `megav_iptv/lib/core/perf/perf_safe_widgets.dart` (новый file — этот task его создаёт).
   - В файле: `class SafePill extends StatelessWidget` с required `child`, optional `tint` / `alpha` / `borderRadius` / `padding`. Default `tint = AppColors.surface`, `alpha = 0.85`, `borderRadius = AppRadius.brSm`.
   - Build возвращает `Container(decoration: BoxDecoration(color: Color.fromRGBO(...alpha), borderRadius: ...), padding: ..., child: child)`.
