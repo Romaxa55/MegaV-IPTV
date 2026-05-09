@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -57,11 +59,12 @@ final _router = GoRouter(
   ],
 );
 
-class MegaVApp extends StatelessWidget {
+class MegaVApp extends ConsumerWidget {
   const MegaVApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final paletteName = ref.watch(themeProvider);
     return ScreenUtilInit(
       designSize: const Size(1920, 1080),
       minTextAdapt: true,
@@ -70,7 +73,7 @@ class MegaVApp extends StatelessWidget {
         return MaterialApp.router(
           title: 'MegaV IPTV',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.dark,
+          theme: appTheme(paletteName.palette),
           routerConfig: _router,
         );
       },

@@ -113,7 +113,7 @@
 
 ## 3. App entry: подключить themeProvider к MaterialApp
 
-- [ ] 3.1 Подключить `themeProvider` к `app.dart` / `main.dart`
+- [x] 3.1 Подключить `themeProvider` к `app.dart` / `main.dart`
   - Найти `MaterialApp` (в `app.dart` или `main.dart`).
   - Обернуть в `Consumer` или превратить parent в `ConsumerWidget`.
   - Прочитать `final paletteName = ref.watch(themeProvider);` → `final palette = paletteName.palette;` → передать в `theme: appTheme(palette)`.
