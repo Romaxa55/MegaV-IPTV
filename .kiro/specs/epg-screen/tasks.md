@@ -13,7 +13,7 @@
 
 ## 1. Foundation: data-layer extension (`lib/core/epg/*`)
 
-- [ ] 1.1 `EpgRepository` — batch programme query
+- [x] 1.1 `EpgRepository` — batch programme query
   - Создать `megav_iptv/lib/core/epg/epg_repository.dart` с публичным классом `EpgRepository`:
     - Конструктор `EpgRepository(this._api)` принимает существующий `ApiClient` через DI.
     - Метод `Future<Map<int, List<EpgProgram>>> programmesInWindow(DateTime from, DateTime to, List<int> channelIds)` (Req 11.2).
@@ -25,7 +25,7 @@
   - _Requirements: 11.1, 11.2, 11.4, 11.5, 11.7_
   - _Boundary: EpgRepository data-layer extension_
 
-- [ ] 1.2 `epgWindowProvider` Riverpod family
+- [x] 1.2 `epgWindowProvider` Riverpod family
   - Создать `megav_iptv/lib/core/epg/epg_window_provider.dart` с:
     - `class EpgWindowKey` — value-object с `from: DateTime`, `to: DateTime`, `channelIds: List<int>`. Реализует `==`/`hashCode` через `(from, to, sortedJoin(channelIds))` для корректного family-cache.
     - `final epgRepositoryProvider = Provider<EpgRepository>((ref) { final api = ref.watch(apiClientProvider); return EpgRepository(api); });`
@@ -36,7 +36,7 @@
   - _Depends: 1.1_
   - _Boundary: epgWindowProvider_
 
-- [ ] 1.3 (OPTIONAL) Append `ApiClient.getEpgWindow` if backend supports batch
+- [-] 1.3 (OPTIONAL) Append `ApiClient.getEpgWindow` if backend supports batch
   - Если backend имеет batch-endpoint (e.g., `/api/epg/window?from=...&to=...&channels=...`): добавить **ровно один новый метод** `Future<Map<int, List<EpgProgram>>> getEpgWindow(DateTime from, DateTime to, List<int> channelIds)` в конец `megav_iptv/lib/core/api/api_client.dart` (Req 11.6).
   - Если backend НЕ поддерживает batch — пропустить этот task; в `EpgRepository._fetch` использовать только N-fan-out путь (Req 11.5).
   - **Hard rule**: 0 модификаций существующих методов `ApiClient`. `git diff lib/core/api/api_client.dart` показывает только append (или ничего).
@@ -45,7 +45,7 @@
   - _Depends: 1.1_
   - _Boundary: ApiClient.getEpgWindow append-only_
 
-- [ ] 1.4 Repository + provider tests
+- [x] 1.4 Repository + provider tests
   - Создать `megav_iptv/test/core/epg/epg_repository_test.dart`:
     - Тест 1: `programmesInWindow` возвращает map keyed by channelId.
     - Тест 2: TTL cache — два последовательных вызова с одинаковыми args дают один сетевой запрос (через мок-`ApiClient` со счётчиком).
