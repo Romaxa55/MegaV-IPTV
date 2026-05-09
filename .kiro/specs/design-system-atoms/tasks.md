@@ -83,7 +83,7 @@
   - _Depends: 1.1_
   - _Boundary: Brand_
 
-- [ ] 2.5 Atom `StatusBar`
+- [x] 2.5 Atom `StatusBar`
   - Создать `megav_iptv/lib/core/ui/atoms/status_bar.dart` с `class StatusBar extends StatelessWidget` (optional `flag`, `city`, `tempC`, `time`).
   - **SafePill API verification**: `SafePill` принимает `tint`/`alpha`/`borderRadius` (см. `lib/core/perf/perf_safe_widgets.dart`). Use `SafePill(tint: AppColors.surface, alpha: 0.85, borderRadius: AppRadius.brSm, child: Row([...]))` — это удовлетворяет Req 3.3 (background `surface2` + radius `brSm`). Если SafePill не принимает override параметров — fallback to `DecoratedBox(decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.brSm), child: Padding(padding: ..., child: Row([...]))`).
   - Row компонует только non-null поля; spacing через `SizedBox(width: 8)` между элементами.

@@ -24,4 +24,4 @@ export 'mv_key.dart';
 // export 'poster.dart';
 // export 'remote_hint.dart';
 // export 'section_title.dart';
-// export 'status_bar.dart';
+export 'status_bar.dart';
