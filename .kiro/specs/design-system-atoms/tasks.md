@@ -42,7 +42,7 @@
 
 > **⚠ Perf rules per atom**: каждый atom-файл ОБЯЗАН пройти `grep "BackdropFilter\|ShaderMask"` — 0 hits, и `grep -E "blurRadius:\s*([2-9][0-9]+|1[3-9])"` — 0 hits. Это enforced в task 4.6 grep, но implementer должен проверять локально перед report.
 
-- [ ] 2.1 Atom `MvKey` (single keycap — нужен раньше т.к. `RemoteHint` композирует его)
+- [x] 2.1 Atom `MvKey` (single keycap — нужен раньше т.к. `RemoteHint` композирует его)
   - Создать `megav_iptv/lib/core/ui/atoms/mv_key.dart` с `class MvKey extends StatelessWidget` (required `glyph`, optional `size`).
   - Background `AppPalette.surface2`, rounding `AppRadius.brXs`, height ≈ 26px, text via `Theme.of(context).megavText.metaMono`.
   - Раскомментировать `export 'mv_key.dart';` в `atoms.dart`.
