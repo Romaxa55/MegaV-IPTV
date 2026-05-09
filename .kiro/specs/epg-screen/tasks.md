@@ -236,7 +236,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgDayPicker_
 
-- [ ] 5.2 `EpgCategoryFilter`
+- [x] 5.2 `EpgCategoryFilter`
   - Создать `megav_iptv/lib/features/epg/widgets/epg_category_filter.dart` с `class EpgCategoryFilter extends StatelessWidget` (Req 8).
   - Параметры: `List<String> categories`, `String? selectedCategory`, `ValueChanged<String?> onCategorySelected`.
   - Build: `Stack(children: [SizedBox(height: 56.h, child: GenreTabs(tabs: ['Все', ...categories], activeIndex: ..., onSelected: ...)), Positioned(left: 0, top: 0, bottom: 0, width: 32.w, child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [palette.background, palette.background.withAlpha(0)]))))), Positioned(right: 0, top: 0, bottom: 0, width: 32.w, child: ... mirrored ...)])` — ТОЛЬКО `DecoratedBox` + `LinearGradient`, никакого `ShaderMask` (Req 8.3).
