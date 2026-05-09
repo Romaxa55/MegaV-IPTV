@@ -10,7 +10,7 @@
 
 ## 1. Foundation: directory + barrel
 
-- [ ] 1.1 Создать `lib/core/ui/atoms/` directory с pre-populated barrel
+- [x] 1.1 Создать `lib/core/ui/atoms/` directory с pre-populated barrel
   - Создать `megav_iptv/lib/core/ui/atoms/atoms.dart` с заголовочным doc-комментом + 13 pre-written **alphabetically sorted** export lines, каждая закомментирована:
     ```dart
     // export 'brand.dart';
