@@ -101,7 +101,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 2.1 — `cinematic_top_bar_test`
 
-- [ ] 2.1 Создать `megav_iptv/test/features/player/cinematic/cinematic_top_bar_test.dart`.
+- [x] 2.1 Создать `megav_iptv/test/features/player/cinematic/cinematic_top_bar_test.dart`.
   - Test: bitrate chip скрыт при `bitrateLabel == null`.
   - Test: длинный title обрезается через ellipsis.
   - Test: tap на back-кнопке вызывает callback.
@@ -110,7 +110,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 2.2 — `inline_epg_bar_test`
 
-- [ ] 2.2 Создать `megav_iptv/test/features/player/cinematic/inline_epg_bar_test.dart`.
+- [x] 2.2 Создать `megav_iptv/test/features/player/cinematic/inline_epg_bar_test.dart`.
   - Test: `progress = (now - start) / (end - start)` для известного диапазона.
   - Test: placeholder text при `startAt == null`.
   - Test: ticker корректно diposes при unmount.
@@ -119,7 +119,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 2.3 — `channel_deck_test`
 
-- [ ] 2.3 Создать `megav_iptv/test/features/player/cinematic/channel_deck_test.dart`.
+- [x] 2.3 Создать `megav_iptv/test/features/player/cinematic/channel_deck_test.dart`.
   - Test: 5 карточек видны при `isOpen=true`.
   - Test: OK на focused card → `onChannelSelected(channel)` вызван с правильным Channel.
   - Test: `cacheExtent: 1500`, `clipBehavior: Clip.none`, `addAutomaticKeepAlives: true` set.
@@ -129,7 +129,7 @@ Foundation dependencies (all closed, status GO):
 
 ### Task 2.4 — `ken_burns_backdrop_test`
 
-- [ ] 2.4 Создать `megav_iptv/test/features/player/cinematic/ken_burns_backdrop_test.dart`.
+- [x] 2.4 Создать `megav_iptv/test/features/player/cinematic/ken_burns_backdrop_test.dart`.
   - Test: при `active=false` controller остановлен.
   - Test: при unmount controller `disposed`.
   - Test: при `active=true → false → true` controller корректно перезапускается.
