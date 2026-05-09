@@ -476,13 +476,13 @@ class _CinemaRowState extends State<CinemaRow> {
                   top: -72.h,
                   bottom: 0,
                   width: MediaQuery.sizeOf(context).width * GridTokens.fadeEdgeFraction,
-                  child: const IgnorePointer(
+                  child: IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
-                          colors: [Color(0x0008080F), AppColors.background],
+                          colors: [const Color(0x0008080F), AppColors.background],
                         ),
                       ),
                     ),

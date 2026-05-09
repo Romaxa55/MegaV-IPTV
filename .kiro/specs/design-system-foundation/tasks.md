@@ -67,22 +67,35 @@
   - _Depends: 1.1, 1.3_
   - _Boundary: MegaVTextStyles_
 
-- [ ] 2.3 Refactor `app_colors.dart` в backward-compat proxy
-  - Открыть `megav_iptv/lib/core/theme/app_colors.dart`.
-  - Удалить все `static const Color` поля.
-  - Заменить на static getters, читающие `_resolveActive()`:
-    ```dart
-    static Color get primary => _resolveActive().accent;
-    static Color get background => _resolveActive().background;
-    // ... etc.
-    ```
-  - `static AppPalette? _activePalette;` + `static void setActivePalette(AppPalette p) => _activePalette = p;`.
-  - `static AppPalette _resolveActive() => _activePalette ?? AppPaletteName.noirCobalt.resolve();`.
-  - **Сохранить ВСЮ публичную поверхность** — все ~30 fields из старого `AppColors`. Если какое-то имя не имеет точного соответствия в новых tokens — добавить computed alias через `AppPalette.computed properties` (task 1.1).
-  - Наблюдаемое: `flutter analyze` чисто; `flutter test` 30/30 проходит — closed specs продолжают компилироваться без модификаций.
+- [ ] 2.3 Refactor `app_colors.dart` в backward-compat proxy + call-site const sweep
+  - **Часть А — proxy refactor (`app_colors.dart`)**:
+    - Открыть `megav_iptv/lib/core/theme/app_colors.dart`.
+    - Удалить все `static const Color` поля.
+    - Заменить на static getters, читающие `_activePalette`:
+      ```dart
+      static Color get primary => _activePalette.primary;
+      static Color get background => _activePalette.background;
+      // ... etc.
+      ```
+    - `static AppPalette _activePalette = AppPaletteName.noirCobalt.resolve();` (default fallback per Req 1.5/5.4).
+    - `static void setActivePalette(AppPalette p) => _activePalette = p;`.
+    - **Сохранить ВСЮ публичную поверхность** — все 26 fields из старого `AppColors`. AppPalette (task 1.1) уже имеет соответствующие getters для каждого legacy имени.
+  - **Часть Б — call-site const sweep**: после конверсии `static const → static get`, выражения `const SomeWidget(color: AppColors.X, ...)` становятся compile errors (`invalid_constant`). Удалить ключевое слово `const` (НЕ переписывать widget tree) во всех файлах:
+    - `lib/features/home/widgets/channel_card.dart` (1 место)
+    - `lib/features/home/widgets/cinema_row.dart` (1 место)
+    - `lib/features/home/widgets/content_row.dart` (1 место)
+    - `lib/features/home/widgets/hero_backdrop.dart` (2 места)
+    - `lib/features/home/widgets/hero_top_bar.dart` (1 место)
+    - `lib/features/home/widgets/home_boot_overlay.dart` (1 место)
+    - `lib/features/player/player_screen.dart` (2 места)
+    - `lib/features/player/widgets/channels_sidebar.dart` (1 место)
+    - `lib/features/player/widgets/epg_overlay.dart` (2 места)
+    - **НЕ трогать** `lib/core/theme/app_theme.dart` — это владение task 2.4 (там тоже есть const errors, и task 2.4 их фиксит вместе с переходом на `appTheme(palette)`).
+  - Семантика drop-const: `const ColoredBox(color: ...)` → `ColoredBox(color: ...)`. Runtime поведение идентично; теряется const-canonicalization (negligible perf impact). Бонус: widgets теперь reactив на смену палитры через rebuild (Req 1.4).
+  - Наблюдаемое: `flutter analyze` чисто (или только errors внутри `app_theme.dart`, которые уйдут в task 2.4); `flutter test` 30/30 проходит — closed specs продолжают компилироваться без логических изменений.
   - _Requirements: 2.1, 2.2, 2.3_
   - _Depends: 1.1, 1.3_
-  - _Boundary: AppColors_
+  - _Boundary: AppColors + 9 call-site files (const-keyword drop only, no logic changes)_
 
 - [ ] 2.4 Refactor `app_theme.dart` использовать активную палитру + extension
   - Открыть `megav_iptv/lib/core/theme/app_theme.dart`.
@@ -196,5 +209,7 @@
 ---
 
 ## Implementation Notes
+
+- **Task 2.3 boundary expansion (mid-impl)**: Original task plan said «не модифицировать call-sites», но AppColors используется в 9 файлах внутри `const Widget(...)` литералов. Конверсия `static const Color → static Color get` ломает const-context (`invalid_constant` errors). Корректный fix — drop `const` keyword в 9 call-site файлах (НЕ переписывать widget tree). Семантика идентична, плюс бонус: widgets теперь rebuild при `setActivePalette()` (Req 1.4 propagation). `app_theme.dart` остаётся за task 2.4.
 
 - **Task 1.3 → Task 4.3 source-data collision**: CSS `.theme-plum` block in `themes.css` happens to use the EXACT same token values as the noirCobalt sentinels mandated by Req 2.2 (background `#06060A`, text `#F4F1E9`, accent `#6E56F7`, gold `#E8B96A`). After faithful translation in 1.3, `_plum` and `_noirCobalt` are field-for-field identical, and Dart's const-canonicalisation merges them into a single instance. Task 4.3's Test 3 ("каждая палитра уникальна") as currently planned will fail because both identity-set and background-uniqueness checks collapse to 5 instead of 6. Implementer of 4.3: assert `AppPaletteName.values.length == 6` (which still holds — the enum has 6 entries) and use a relaxed check like `Set<AppPalette>.from(values.map(resolve)).length >= 5`, with an inline comment documenting the upstream collision. Do NOT invent fake values to break the collision — the source data is authoritative.

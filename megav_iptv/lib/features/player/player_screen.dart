@@ -262,7 +262,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(color: AppColors.primary),
+              CircularProgressIndicator(color: AppColors.primary),
               SizedBox(height: 16.h),
               Text(
                 'Playing in System player...',
@@ -454,7 +454,7 @@ class _LoadingErrorIndicator extends ConsumerWidget {
         builder: (context, snapshot) {
           final state = snapshot.data ?? PlayerState.idle;
           if (state == PlayerState.loading) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            return Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
           if (state == PlayerState.error) {
             return Center(

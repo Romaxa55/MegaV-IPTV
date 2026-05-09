@@ -174,7 +174,7 @@ class _ContentRowState extends ConsumerState<ContentRow> {
                     padding: EdgeInsets.only(right: 12.w),
                     child: SizedBox(
                       width: 220.w,
-                      child: const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+                      child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
                     ),
                   );
                 }

@@ -112,7 +112,7 @@ class _HeroBackdropState extends State<HeroBackdrop> with SingleTickerProviderSt
       fit: StackFit.expand,
       children: [
         // Stable base so we never flash to black
-        const ColoredBox(color: AppColors.surface),
+        ColoredBox(color: AppColors.surface),
         if (_isLowPower || _controller == null || _scaleAnimation == null)
           Transform.scale(scale: 1.05, child: image)
         else
@@ -129,6 +129,6 @@ class _HeroBackdropState extends State<HeroBackdrop> with SingleTickerProviderSt
   }
 
   Widget _placeholder() {
-    return const ColoredBox(color: AppColors.surface);
+    return ColoredBox(color: AppColors.surface);
   }
 }

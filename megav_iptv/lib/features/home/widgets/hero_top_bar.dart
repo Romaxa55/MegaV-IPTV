@@ -83,7 +83,7 @@ class _HeroTopBarState extends ConsumerState<HeroTopBar> {
                 height: 48.w,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12.r),
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [AppColors.primary, AppColors.primaryLight],

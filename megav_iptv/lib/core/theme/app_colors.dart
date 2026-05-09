@@ -1,47 +1,90 @@
 import 'package:flutter/material.dart';
 
+import 'app_palette.dart';
+import 'app_palettes.dart';
+
+/// Backward-compatibility proxy that exposes all legacy `AppColors.X` static
+/// fields as runtime getters reading from an active [AppPalette].
+///
+/// Originally `AppColors` held a fixed set of `static const Color` fields with
+/// hard-coded indigo/teal hexes. Task 2.3 rewires every legacy name into a
+/// static getter that reads from a swappable [AppPalette] instance, so the
+/// app can switch palettes at runtime (Req 1.4 / Req 2.1) without changing
+/// any call-site (Req 2.2).
+///
+/// All 26 legacy field names from the head version of this file are preserved
+/// — nothing was renamed or removed. The mapping from legacy name to the
+/// canonical token surface is defined in `AppPalette`'s backward-compat
+/// getters (see `app_palette.dart`).
+///
+/// Default active palette is Noir Cobalt (Req 1.5 / Req 5.4). `app_theme.dart`
+/// (task 2.4) and the `MaterialApp.builder` (task 3.1) call
+/// [setActivePalette] on every rebuild so the active palette tracks the
+/// `themeProvider` state.
 class AppColors {
   AppColors._();
 
-  static const Color primary = Color(0xFF6366F1);
-  static const Color primaryLight = Color(0xFFA78BFA);
-  static const Color primaryDark = Color(0xFF4F46E5);
+  /// Currently active palette. Defaults to Noir Cobalt per Req 1.5 / 5.4.
+  static AppPalette _activePalette = AppPaletteName.noirCobalt.resolve();
 
-  static const Color accent = Color(0xFF00CEC9);
-  static const Color accentLight = Color(0xFF81ECEC);
+  /// Swap the palette read by all legacy `AppColors.X` getters.
+  ///
+  /// Called from `MaterialApp.builder` on every rebuild driven by the
+  /// `themeProvider` (task 3.1), so static reads stay coherent with the
+  /// `ThemeData` Riverpod just produced.
+  static void setActivePalette(AppPalette p) => _activePalette = p;
 
-  static const Color background = Color(0xFF08080F);
-  static const Color surface = Color(0xFF1A1A2E);
-  static const Color surfaceLight = Color(0xFF252542);
+  /// Read-only accessor used by tests (e.g. `app_colors_compat_test.dart`)
+  /// to assert the proxy is wired to the expected palette.
+  static AppPalette get activePalette => _activePalette;
 
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB0B0C8);
-  static const Color textHint = Color(0xFF6C6C8A);
+  // ---------------------------------------------------------------------------
+  // Legacy field surface — one getter per legacy name. Order mirrors the head
+  // version of this file for reviewability.
+  // ---------------------------------------------------------------------------
 
-  static const Color error = Color(0xFFFF6B6B);
-  static const Color success = Color(0xFF00B894);
-  static const Color warning = Color(0xFFFDCB6E);
+  static Color get primary => _activePalette.primary;
+  static Color get primaryLight => _activePalette.primaryLight;
+  static Color get primaryDark => _activePalette.primaryDark;
 
-  static const Color liveBadge = Color(0xFFEF4444);
-  static const Color soonBadge = Color(0xFFF59E0B);
+  static Color get accent => _activePalette.accent;
+  static Color get accentLight => _activePalette.accentLight;
 
-  static const Color focusBorder = Color(0xFF6366F1);
-  static const Color cardBorder = Color(0xFF2D2D4A);
+  static Color get background => _activePalette.background;
+  static Color get surface => _activePalette.surface;
+  static Color get surfaceLight => _activePalette.surfaceLight;
 
-  static Color get glassBg => Colors.white.withValues(alpha: 0.03);
-  static Color get glassBorder => Colors.white.withValues(alpha: 0.06);
-  static Color get glassButtonBg => Colors.white.withValues(alpha: 0.10);
+  static Color get textPrimary => _activePalette.textPrimary;
+  static Color get textSecondary => _activePalette.textSecondary;
+  static Color get textHint => _activePalette.textHint;
 
-  static const Color ratingGold = Color(0xFFF59E0B);
-  static const Color indigo300 = Color(0xFFA5B4FC);
+  static Color get error => _activePalette.error;
+  static Color get success => _activePalette.success;
+  static Color get warning => _activePalette.warning;
+
+  static Color get liveBadge => _activePalette.liveBadge;
+  static Color get soonBadge => _activePalette.soonBadge;
+
+  static Color get focusBorder => _activePalette.focusBorder;
+  static Color get cardBorder => _activePalette.cardBorder;
+
+  static Color get glassBg => _activePalette.glassBg;
+  static Color get glassBorder => _activePalette.glassBorder;
+  static Color get glassButtonBg => _activePalette.glassButtonBg;
+
+  static Color get ratingGold => _activePalette.ratingGold;
+  static Color get indigo300 => _activePalette.indigo300;
 
   // Figma tokens — card / chip / glass
-  static const Color cardBg = Color(0xFF12121E);
-  static const Color chipBg = Color(0x14FFFFFF); // white/8%
-  static const Color chipBorder = Color(0x0FFFFFFF); // white/6%
+  static Color get cardBg => _activePalette.cardBg;
+  static Color get chipBg => _activePalette.chipBg;
+  static Color get chipBorder => _activePalette.chipBorder;
 }
 
-/// Tailwind-aligned typography scale (px values, use with .sp)
+/// Tailwind-aligned typography scale (px values, use with .sp).
+///
+/// Untouched by task 2.3 — TS holds plain `double` constants and is not
+/// affected by the palette swap.
 class TS {
   TS._();
   static const double t7 = 7;

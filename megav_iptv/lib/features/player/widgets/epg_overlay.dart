@@ -81,7 +81,7 @@ class _EpgOverlayState extends ConsumerState<EpgOverlay> with SingleTickerProvid
                 if (_loading)
                   Padding(
                     padding: EdgeInsets.all(32.w),
-                    child: const CircularProgressIndicator(color: AppColors.primary),
+                    child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 else if (_programs.isEmpty)
                   Padding(
@@ -196,7 +196,7 @@ class _EpgOverlayState extends ConsumerState<EpgOverlay> with SingleTickerProvid
                           value: prog.progress,
                           minHeight: 3.h,
                           backgroundColor: Colors.white.withValues(alpha: 0.1),
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                         ),
                       ),
                     ],

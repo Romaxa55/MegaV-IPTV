@@ -47,7 +47,7 @@ class _IntroBranding extends StatelessWidget {
         SizedBox(
           width: 40.w,
           height: 40.w,
-          child: const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
+          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
         ),
         SizedBox(height: 24.h),
         Text(

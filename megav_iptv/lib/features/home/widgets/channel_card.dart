@@ -216,7 +216,7 @@ class _CinemaCardState extends ConsumerState<CinemaCard> {
                               value: prog.progress,
                               minHeight: 3.h,
                               backgroundColor: Colors.white.withValues(alpha: 0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                             ),
                           ),
                         ],

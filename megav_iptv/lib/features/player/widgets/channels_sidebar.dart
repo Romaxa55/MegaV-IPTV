@@ -182,7 +182,7 @@ class _ChannelsSidebarState extends ConsumerState<ChannelsSidebar> with SingleTi
         if (index >= _channels.length) {
           return Padding(
             padding: EdgeInsets.all(16.w),
-            child: const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
           );
         }
 
