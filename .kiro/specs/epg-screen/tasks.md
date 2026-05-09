@@ -207,7 +207,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgNowMarker_
 
-- [ ] 4.4 `EpgNowMarker` widget test
+- [x] 4.4 `EpgNowMarker` widget test
   - Создать `megav_iptv/test/features/epg/epg_now_marker_test.dart`.
   - Тест 1: pump с `windowFrom = now() - 30min` → marker positioned at offset corresponding to ~ slotW/2 (verify через `tester.getTopLeft(find.byKey(const Key('epg-now-marker')))`).
   - Тест 2: `_NowMarkerLine` is private — verify `find.ancestor(of: ..., matching: find.byType(RepaintBoundary))` finds one (Req 13.4).
