@@ -120,7 +120,7 @@
   - _Depends: 1.1, 2.6 (нужен MvTrack)_
   - _Boundary: Poster_
 
-- [ ] 2.8 Atom `GenreTabs`
+- [x] 2.8 Atom `GenreTabs`
   - Создать `megav_iptv/lib/core/ui/atoms/genre_tabs.dart` с `class GenreTabs extends StatefulWidget` (required `labels`, `activeIndex`, optional `onTabChanged`).
   - Render `Row` of tab labels; underline — `AnimatedPositioned(duration: 150ms, curve: fastOutSlowIn, ...)` с `Container(height: 2, color: AppColors.primary)` под активным табом.
   - Tap/focus меняет index → `onTabChanged(newIndex)` callback (state управление снаружи).
