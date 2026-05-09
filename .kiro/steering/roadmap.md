@@ -73,26 +73,26 @@ Existing issue #3 (PlayerManager retry) — out of scope этого roadmap (net
 
 ### Wave 0 — Foundation (parallel-capable, можно делать batch)
 
-- [ ] **design-system-foundation** — theming infrastructure (6 palettes via Riverpod + AppRadius + font-cinema). Issue #4. Dependencies: none.
-- [ ] **perf-safe-widgets** — `SafeBackdrop`, `SafePill`, `SafeFocusRing`, `SafeFilmGrain` + computed_colors + steering doc update. Issue #13. Dependencies: design-system-foundation.
-- [ ] **design-system-atoms** — 13 atoms (Brand, Chip, Poster, GenreTabs, etc.) + golden tests. Issue #14. Dependencies: design-system-foundation, perf-safe-widgets.
+- [x] **design-system-foundation** — theming infrastructure (6 palettes via Riverpod + AppRadius + font-cinema). Issue #4. Dependencies: none. ✅ implemented + GO.
+- [x] **perf-safe-widgets** — `SafeBackdrop`, `SafePill`, `SafeFocusRing`, `SafeFilmGrain` + computed_colors + steering doc update. Issue #13. Dependencies: design-system-foundation. ✅ implemented + GO.
+- [x] **design-system-atoms** — 13 atoms (Brand, Chip, Poster, GenreTabs, etc.) + golden tests. Issue #14. Dependencies: design-system-foundation, perf-safe-widgets. ✅ implemented + GO.
 
 ### Wave 1 — Primary screens (parallel-capable после Wave 0)
 
-- [ ] **home-cinematic-redesign** — Cinematic A с двойным rail, italic display, live эфир. Issue #5. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms.
-- [ ] **detail-screen-fullbleed** — Full-bleed Card с action row, hero transition, cast avatars. Issue #7. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms.
-- [ ] **player-cinematic-redesign** — channel deck, inline EPG, glass-panel controls. Issue #8. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **does not modify** sealed `PlayerUiState`.
-- [ ] **settings-redesign** — sidebar nav + 6 sections + live perf metrics + custom toggles. Issue #11. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms.
+- [ ] **home-cinematic-redesign** — Cinematic A с двойным rail, italic display, live эфир. Issue #5. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. 📋 spec ready_for_implementation.
+- [ ] **detail-screen-fullbleed** — Full-bleed Card с action row, hero transition, cast avatars. Issue #7. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. 📋 spec ready_for_implementation.
+- [ ] **player-cinematic-redesign** — channel deck, inline EPG, glass-panel controls. Issue #8. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **does not modify** sealed `PlayerUiState`. 📋 spec ready_for_implementation.
+- [ ] **settings-redesign** — sidebar nav + 6 sections + live perf metrics + custom toggles. Issue #11. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. 📋 spec ready_for_implementation.
 
 ### Wave 2 — Big new screens (sequential, требует backend extensions)
 
-- [ ] **epg-screen** — time-grid programme guide. Issue #9. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/epg/*` data layer**.
-- [ ] **search-screen** — TV-grade поиск с 6×6 кириллической клавиатурой. Issue #10. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/api/api_client.dart`** (`searchChannels`).
+- [ ] **epg-screen** — time-grid programme guide. Issue #9. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/epg/*` data layer**. 📋 spec ready_for_implementation.
+- [ ] **search-screen** — TV-grade поиск с 6×6 кириллической клавиатурой. Issue #10. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/api/api_client.dart`** (`searchChannels`). 📋 spec ready_for_implementation.
 
 ### Wave 3 — Optional / lower-priority
 
-- [ ] **home-editorial-redesign** — Editorial B (bento grid). Issue #6. Dependencies: home-cinematic-redesign (sibling); user не сделал explicit выбор Editorial vs Cinematic.
-- [ ] **mobile-adaptive-layout** — 3 mobile screens + tabbar. Issue #12. Dependencies: home-cinematic-redesign, detail-screen-fullbleed, player-cinematic-redesign (нужны TV equivalents).
+- [ ] **home-editorial-redesign** — Editorial B (bento grid). Issue #6. Dependencies: home-cinematic-redesign (sibling); user не сделал explicit выбор Editorial vs Cinematic. 📋 spec ready_for_implementation.
+- [ ] **mobile-adaptive-layout** — 3 mobile screens + tabbar. Issue #12. Dependencies: home-cinematic-redesign, detail-screen-fullbleed, player-cinematic-redesign (нужны TV equivalents). 📋 spec ready_for_implementation.
 
 ## Pilot strategy
 

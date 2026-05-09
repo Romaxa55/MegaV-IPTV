@@ -1,0 +1,37 @@
+{
+  "feature_name": "player-cinematic-redesign",
+  "created_at": "2026-05-09T00:00:00Z",
+  "updated_at": "2026-05-09T00:00:00Z",
+  "language": "ru",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "github_issue": 8,
+  "depends_on": [
+    "design-system-foundation",
+    "perf-safe-widgets",
+    "design-system-atoms",
+    "player-overlay-state-machine"
+  ],
+  "boundary_invariants": [
+    "PlayerUiState sealed type is read-only — no new variants, no field mutations.",
+    "_transition(PlayerUiState) atomic mutation point preserved.",
+    "_stateExpiryTimer single-timer invariant preserved.",
+    "_quickSwitchInFlight guard preserved.",
+    "Native player engines (lib/core/player/*) unchanged.",
+    "All 30+ existing tests in megav_iptv/test/ continue passing without modification."
+  ]
+}
