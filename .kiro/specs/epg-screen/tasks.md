@@ -129,7 +129,7 @@
   - _Depends: 2.1_
   - _Boundary: EpgTimeAxis_
 
-- [ ] 3.4 `EpgProgramCell`
+- [x] 3.4 `EpgProgramCell`
   - Создать `megav_iptv/lib/features/epg/widgets/epg_program_cell.dart` с `class EpgProgramCell extends StatelessWidget` (Req 4).
   - Параметры: `EpgProgram program`, `bool focused`, `double slotW = 180`, `double rowH = 88`, `VoidCallback? onTap`, `VoidCallback? onFocusChange`.
   - Build:
