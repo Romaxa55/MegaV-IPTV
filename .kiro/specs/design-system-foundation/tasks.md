@@ -97,7 +97,7 @@
   - _Depends: 1.1, 1.3_
   - _Boundary: AppColors + 9 call-site files (const-keyword drop only, no logic changes)_
 
-- [ ] 2.4 Refactor `app_theme.dart` использовать активную палитру + extension
+- [x] 2.4 Refactor `app_theme.dart` использовать активную палитру + extension
   - Открыть `megav_iptv/lib/core/theme/app_theme.dart`.
   - `ThemeData appTheme(AppPalette palette)` — принимает палитру параметром.
   - Использовать `palette.background` для `scaffoldBackgroundColor`, `palette.accent` для `colorScheme.primary` и т.д.
