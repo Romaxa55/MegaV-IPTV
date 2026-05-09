@@ -8,7 +8,7 @@
 
 ## 1. Foundation: asset + pre-mixed colors
 
-- [ ] 1.1 Добавить baked grain overlay PNG asset
+- [x] 1.1 Добавить baked grain overlay PNG asset
   - Prereq tooling: `brew install imagemagick pngquant` (или эквивалент на CI).
   - Сгенерировать `megav_iptv/assets/grain_overlay.png` через ImageMagick (deterministic recipe):
     ```
