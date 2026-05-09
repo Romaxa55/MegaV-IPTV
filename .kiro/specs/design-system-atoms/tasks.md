@@ -191,7 +191,7 @@
 
 ## 3. Refactor existing widgets (backward-compat)
 
-- [ ] 3.1 Refactor `glass_button.dart` → use `MvIconButton` internally
+- [x] 3.1 Refactor `glass_button.dart` → use `MvIconButton` internally
   - Открыть `megav_iptv/lib/features/home/widgets/glass_button.dart`.
   - **Public API contract — ОБЯЗАТЕЛЬНО preserved verbatim** (verified actual signature): `GlassButton({Key? key, required IconData icon, required VoidCallback onTap})`. NO renames, NO nullability changes, NO new required params. `GlassButton` — **icon-only** widget (НЕ `MvButton.ghost`!).
   - Заменить internal build на:

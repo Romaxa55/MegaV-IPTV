@@ -1,30 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../core/theme/app_colors.dart';
 
+import '../../../core/ui/atoms/atoms.dart';
+
+/// Compact 48×48 icon button. Backward-compat shim — internally delegates
+/// to [MvIconButton] from design-system-atoms.
+///
+/// Public API preserved: `GlassButton({Key? key, required IconData icon,
+/// required VoidCallback onTap})`.
 class GlassButton extends StatelessWidget {
+  const GlassButton({super.key, required this.icon, required this.onTap});
+
   final IconData icon;
   final VoidCallback onTap;
 
-  const GlassButton({super.key, required this.icon, required this.onTap});
-
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.chipBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-        side: BorderSide(color: AppColors.chipBorder),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12.r),
-        child: SizedBox(
-          width: 48.w,
-          height: 48.w,
-          child: Icon(icon, size: 20.sp, color: Colors.white.withValues(alpha: 0.50)),
-        ),
-      ),
+    return MvIconButton(
+      icon: Icon(icon, size: 20, color: Colors.white.withValues(alpha: 0.50)),
+      onPressed: onTap,
+      size: 48,
     );
   }
 }
