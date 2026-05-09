@@ -26,7 +26,7 @@
   - _Requirements: 4.2, 4.5_
   - _Boundary: assets + pubspec_
 
-- [ ] 1.2 (P) Создать `ComputedColors` class + factory `from(AppPalette)`
+- [x] 1.2 (P) Создать `ComputedColors` class + factory `from(AppPalette)`
   - Создать `megav_iptv/lib/core/theme/computed_colors.dart`.
   - `class ComputedColors` с тремя `final Color` полями: `textTintAccent`, `accentTintText`, `surfaceTintAccent` (private named ctor).
   - `factory ComputedColors.from(AppPalette p)` использует `Color.lerp(text, accent, 0.08)!` и т.д. для всех трёх tints.
