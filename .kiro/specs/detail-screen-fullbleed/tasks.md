@@ -33,7 +33,7 @@
 
 > Implementation order: 2.1 → 2.2 → 2.3 → 2.4 → 2.5 — ни один widget этой фазы не зависит от другого, кроме типов из atoms barrel и perf-safe primitives. Можно делать в любом порядке.
 
-- [ ] 2.1 (P) Widget `DetailBreadcrumb`
+- [x] 2.1 (P) Widget `DetailBreadcrumb`
   - Создать `megav_iptv/lib/features/detail/widgets/detail_breadcrumb.dart` per design.md §7.
   - `Row(children: [MvIconButton(icon: Icons.arrow_back_ios_new, onPressed: () => context.pop()), SizedBox(width: 14.w), Text(trail, style: Theme.of(context).megavText.metaMono)])`.
   - Импорт atoms через barrel `package:megav_iptv/core/ui/atoms/atoms.dart`.
@@ -41,7 +41,7 @@
   - _Requirements: 8.3_
   - _Boundary: detail/widgets/detail_breadcrumb.dart_
 
-- [ ] 2.2 (P) Widget `HeroMeta`
+- [x] 2.2 (P) Widget `HeroMeta`
   - Создать `megav_iptv/lib/features/detail/widgets/hero_meta.dart` per design.md §3.
   - Public API: `title`, `metaItems: List<HeroMetaItem>`, `synopsis: String?`, `chips: List<Widget>` (default `const []`).
   - `HeroMetaItem` — local data class в этом же файле: `(String label, bool isAccent, bool isGold)` (или эквивалент named ctor).
@@ -51,7 +51,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 9.2_
   - _Boundary: detail/widgets/hero_meta.dart_
 
-- [ ] 2.3 (P) Widget `ActionRow`
+- [x] 2.3 (P) Widget `ActionRow`
   - Создать `megav_iptv/lib/features/detail/widgets/action_row.dart` per design.md §4.
   - Public API: `playFocusNode: FocusNode`, `onPlay: VoidCallback`, optional callbacks `onFavorite/onTrailer/onShare/onEpg`.
   - `Row(spacing: 12.w, ...)`:
@@ -62,7 +62,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 4.7_
   - _Boundary: detail/widgets/action_row.dart_
 
-- [ ] 2.4 (P) Widget `CastAvatars`
+- [x] 2.4 (P) Widget `CastAvatars`
   - Создать `megav_iptv/lib/features/detail/widgets/cast_avatars.dart` per design.md §5.
   - Public API: `cast: List<String>`. Если `cast.isEmpty` → return `SizedBox.shrink()` (Req 6.4).
   - Иначе: `Column(children: [SectionTitle(title: 'В ролях'), SizedBox(height: 12.h), Wrap(spacing: 18.w, runSpacing: 12.h, children: [...])])`.
@@ -73,7 +73,7 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 11.2_
   - _Boundary: detail/widgets/cast_avatars.dart_
 
-- [ ] 2.5 (P) Widget `RelatedRail`
+- [x] 2.5 (P) Widget `RelatedRail`
   - Создать `megav_iptv/lib/features/detail/widgets/related_rail.dart` per design.md §6.
   - Public API: `currentChannelId: String`. Это `ConsumerWidget`, читает `relatedChannelsProvider(currentChannelId)`.
   - Если list empty → return `SizedBox.shrink()` (Req 7.6).
