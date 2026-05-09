@@ -68,7 +68,7 @@
   - _Depends: 2.1_
   - _Boundary: CinemaRow_
 
-- [ ] 3.2 (P) Widget-тест на отсутствие full overlay в дереве у нефокусированной карточки
+- [x] 3.2 (P) Widget-тест на отсутствие full overlay в дереве у нефокусированной карточки
   - Создать `test/features/home/widgets/cinema_card_offstage_full_test.dart`.
   - Test 1: pump `CinemaCard(isFocused: false, ...)` с fake item. Assert: `find.byKey(const ValueKey('rating-badge'))` → `findsNothing`. Same for 4 других keys (`age-rating`, `genre-emoji`, `programme-title`, `progress-section`). Channel-name (Key('channel-name')) — должен быть found (compact preserved).
   - Test 2: pump `isFocused: true`, `pump(Duration(milliseconds: 200))`. Assert: все 5 full keys → `findsOneWidget`. Channel-name тоже found.
