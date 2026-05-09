@@ -297,31 +297,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               if (_playerManager.activeEngine != null)
                 _playerManager.activeEngine!.buildVideoWidget(fit: BoxFit.contain),
 
-              StreamBuilder<PlayerState>(
-                stream: _playerManager.stateStream,
-                builder: (context, snapshot) {
-                  final state = snapshot.data ?? PlayerState.idle;
-                  if (state == PlayerState.loading) {
-                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-                  }
-                  if (state == PlayerState.error) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.error_outline, color: AppColors.error, size: 48.sp),
-                          SizedBox(height: 12.h),
-                          Text(
-                            'Playback error. Retrying...',
-                            style: TextStyle(color: AppColors.error, fontSize: 16.sp),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
+              const _LoadingErrorIndicator(),
 
               ..._buildOverlayLayer(channel),
             ],
@@ -458,5 +434,46 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     return KeyEventResult.ignored;
+  }
+}
+
+/// Изолированная подписка на `_playerManager.stateStream`.
+///
+/// Wrapped в `RepaintBoundary`, чтобы тики stream'а не вызывали ребилд
+/// родительского `Stack` плеера и не инвалидировали покраску видео-текстуры
+/// либо overlay-слоёв (Req 5.1, 5.2, 5.3).
+class _LoadingErrorIndicator extends ConsumerWidget {
+  const _LoadingErrorIndicator();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final manager = ref.watch(playerManagerProvider);
+    return RepaintBoundary(
+      child: StreamBuilder<PlayerState>(
+        stream: manager.stateStream,
+        builder: (context, snapshot) {
+          final state = snapshot.data ?? PlayerState.idle;
+          if (state == PlayerState.loading) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+          if (state == PlayerState.error) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: AppColors.error, size: 48.sp),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Playback error. Retrying...',
+                    style: TextStyle(color: AppColors.error, fontSize: 16.sp),
+                  ),
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+    );
   }
 }

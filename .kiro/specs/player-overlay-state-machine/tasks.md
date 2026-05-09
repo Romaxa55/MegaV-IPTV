@@ -81,7 +81,7 @@
 
 ## 3. Integration: isolated loading/error indicator
 
-- [ ] 3.1 Создать `_LoadingErrorIndicator` с RepaintBoundary
+- [x] 3.1 Создать `_LoadingErrorIndicator` с RepaintBoundary
   - В `player_screen.dart` (на уровне файла, после класса `_PlayerScreenState`) добавить `class _LoadingErrorIndicator extends ConsumerWidget` с конструктором `const _LoadingErrorIndicator()`.
   - В `build(context, ref)`: `final manager = ref.watch(playerManagerProvider);` → `RepaintBoundary(child: StreamBuilder<PlayerState>(stream: manager.stateStream, builder: (ctx, snap) {...}))`.
   - Builder: switch по `state ?? PlayerState.idle`:
