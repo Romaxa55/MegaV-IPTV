@@ -89,7 +89,7 @@
 
 ## Phase 3. Screen + Route wiring
 
-- [ ] 3.1 Создать `DetailScreen` root widget
+- [x] 3.1 Создать `DetailScreen` root widget
   - Создать `megav_iptv/lib/features/detail/detail_screen.dart` per design.md §2.
   - `class DetailScreen extends ConsumerStatefulWidget` с params `channelId`, optional `args`. State: `late FocusNode _playFocusNode`.
   - `initState`: `_playFocusNode = FocusNode()`; `WidgetsBinding.instance.addPostFrameCallback((_) => _playFocusNode.requestFocus())`.
@@ -105,7 +105,7 @@
   - _Depends: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 2.5_
   - _Boundary: detail/detail_screen.dart_
 
-- [ ] 3.2 Регистрация route в `lib/app.dart`
+- [x] 3.2 Регистрация route в `lib/app.dart`
   - Открыть `megav_iptv/lib/app.dart`, найти `routes:` array (line ~52), добавить **новый** `GoRoute` между `/home` и `/player`:
     ```dart
     GoRoute(

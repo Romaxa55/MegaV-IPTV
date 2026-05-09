@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/detail/detail_screen.dart';
+import 'features/detail/providers/detail_arguments.dart';
 import 'features/home/cinematic/cinematic_home_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
@@ -54,6 +56,15 @@ final _router = GoRouter(
         GoRoute(path: '/', redirect: (context, state) => '/home'),
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/home-cinematic', builder: (context, state) => const CinematicHomeScreen()),
+        GoRoute(
+          path: '/channel/:id',
+          builder: (context, state) {
+            final idStr = state.pathParameters['id'] ?? '';
+            final id = int.tryParse(idStr) ?? -1;
+            final args = state.extra is DetailArgs ? state.extra as DetailArgs : null;
+            return DetailScreen(channelId: id, args: args);
+          },
+        ),
         GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
       ],
