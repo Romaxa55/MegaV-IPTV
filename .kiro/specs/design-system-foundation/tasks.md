@@ -145,7 +145,7 @@
   - _Depends: 1.2_
   - _Boundary: AppRadius_
 
-- [ ] 4.3 Unit-тест 6 palettes complete + unique
+- [x] 4.3 Unit-тест 6 palettes complete + unique
   - Создать `megav_iptv/test/core/theme/app_palettes_test.dart`.
   - Test 1: `AppPaletteName.values.length == 6`.
   - Test 2: для каждого `name in AppPaletteName.values` — `name.resolve()` возвращает non-null `AppPalette` со всеми non-null tokens.
