@@ -94,7 +94,7 @@
 
 ## 3. Dual-rail + section title
 
-- [ ] 3.1 `CinematicRail` (внутренний rail-builder)
+- [x] 3.1 `CinematicRail` (внутренний rail-builder)
   - Создать `megav_iptv/lib/features/home/cinematic/cinematic_rail.dart` с `class CinematicRail extends StatefulWidget` (params: `orientation: PosterOrientation`, `items: List<NowPlayingItem>`, `onItemTap`, `onItemFocus`).
   - Внутри: `ListView.builder(scrollDirection: Axis.horizontal, cacheExtent: 1500, addAutomaticKeepAlives: true, addRepaintBoundaries: true, clipBehavior: Clip.none, itemCount: items.length, itemBuilder: ...)` (Req 9.4).
   - Каждый item: `Focus(onFocusChange: ..., child: AnimatedScale(scale: focused ? 1.08 : 1.0, duration: Duration(milliseconds: 150), curve: Curves.easeOutCubic, child: Poster(orientation: widget.orientation, image: ..., hideText: true, isFocused: focused)))` (Req 4.2, 4.3, 8.3, 8.4).
