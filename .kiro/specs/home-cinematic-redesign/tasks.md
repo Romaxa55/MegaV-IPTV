@@ -202,7 +202,7 @@
 
 ## 5. Integration + regression + perf gate
 
-- [ ] 5.1 Wire all components в `CinematicHomeScreen`
+- [x] 5.1 Wire all components в `CinematicHomeScreen`
   - Модифицировать `megav_iptv/lib/features/home/cinematic/cinematic_home_screen.dart` (созданный в 1.2) — заполнить body composition согласно design.md §1 component layout:
     1. Status / brand bar row (Brand + StatusBar from atoms barrel).
     2. `CinematicGenreTabsBar`.
