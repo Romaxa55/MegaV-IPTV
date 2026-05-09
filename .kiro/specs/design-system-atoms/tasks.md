@@ -130,7 +130,7 @@
   - _Depends: 1.1_
   - _Boundary: GenreTabs_
 
-- [ ] 2.9 (P) Atom `SectionTitle`
+- [x] 2.9 (P) Atom `SectionTitle`
   - Создать `megav_iptv/lib/core/ui/atoms/section_title.dart` с `class SectionTitle extends StatelessWidget` (required `title`, optional `emphasis`, `count`, `onMore`).
   - Title — `Theme.of(context).megavText.displayLarge`. Emphasis (italic) — `displayItalic`. Count — small badge через `Chip(variant: ghost, label: count.toString())`. «more →» — `MvButton.ghost(label: 'more →', onPressed: onMore)` если onMore != null.
   - Раскомментировать `export 'section_title.dart';` в `atoms.dart`.
@@ -327,4 +327,4 @@
 
 ## Implementation Notes
 
-(пусто на момент генерации; импл-цикл может добавить cross-cutting findings)
+- **Chip name collision with Flutter Material**: Material library exports its own `Chip` widget; downstream consumers of our atom must use `import 'package:flutter/material.dart' hide Chip;` или импортировать atoms barrel ПЕРЕД material (последний import wins). Discovered when implementing task 2.9 (SectionTitle uses our `ChipVariant.ghost` for count badge). Fix is a single-line `hide Chip` clause.
