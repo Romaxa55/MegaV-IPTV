@@ -79,7 +79,7 @@
   - _Depends: 2.2_
   - _Boundary: CinemaCard_
 
-- [ ] 3.3 Запустить все 22 теста (17 существующих + 5 новых) и убедиться что регрессий нет
+- [x] 3.3 Запустить все 22 теста (17 существующих + 5 новых) и убедиться что регрессий нет
   - `cd megav_iptv && flutter test test/`.
   - Все тесты должны проходить.
   - Наблюдаемое: `+22 -0`, exit code 0.
@@ -91,7 +91,7 @@
 
 ## 4. Manual: приёмка на TV
 
-- [ ] 4.1 Снять after-снапшоты с TV
+- [x] 4.1 Снять after-снапшоты с TV
   - Запустить `cd megav_iptv && flutter run -d 192.168.100.8:5555 --profile`.
   - Дождаться загрузки главного экрана.
   - Снять чистый скрин: `adb -s 192.168.100.8:5555 exec-out screencap -p > .kiro/specs/home-grid-visual-polish/snapshots/after_clean.png`.
@@ -101,7 +101,7 @@
   - _Depends: 3.3_
   - _Boundary: ReferenceDevice_
 
-- [ ] 4.2 Сравнить baseline и after
+- [x] 4.2 Сравнить baseline и after
   - Открыть baseline_clean.png и after_clean.png рядом — визуально оценить fade-edge и bottom padding.
   - Открыть baseline_perf_overlay.png и after_perf_overlay.png — записать в комментарий numeric values: было `avg 20.3 ms / max 34.2 ms`, стало `avg X / max Y`.
   - Если avg ≤ 16.7 мс и max ≤ 25 мс — Req 4.1, 4.2 PASS.
@@ -122,3 +122,7 @@
 ## Implementation Notes
 
 - **Task 2.2 forced extraction**: Pre-commit hook `check-file-size` (max 600 lines) blocked the original commit because cinema_card.dart grew to 619 lines. Resolved by extracting poster sub-tree into `_card_poster.dart` as `CardPoster` StatefulWidget. Class name is public (`CardPoster`) because Dart privacy is library-scoped — `_`-prefixed class can't be imported across files; file itself is `_`-prefixed by project convention. Pattern matches existing `_grid_tokens.dart` → `class GridTokens`. Future tasks touching cinema_card.dart should keep its size headroom in mind (currently 539/600).
+
+- **Critical perf regression in task 2.1 — found and fixed post-validate-impl**: Profile-build VM Service timeline of a 5s scroll on the reference TV box (rtd2851a SoC, 32-bit ARM Mali-class GPU) showed `avg 46.6 ms/frame, p95 94, max 310 ms, 99% of frames over 16.7 ms budget` — the `ShaderMask + BlendMode.dstOut` introduced in task 2.1 caused (a) one-time 260 ms shader-compile jank on first scroll frame and (b) ~26 ms saveLayer + flush every subsequent frame over the full row width. Fixed by replacing ShaderMask with a Stack-overlay strategy: a 5%-wide right-edge `Positioned > IgnorePointer > DecoratedBox > LinearGradient(transparent → AppColors.background)`. New scroll measurement: `avg 10.2 ms (98 fps), p95 13.8, max 24.9, 1% over budget` — dramatic improvement. Operator-confirmed «летает». Lesson: **never trust `ShaderMask` perf on TV-box GPUs** — the saveLayer + shader-compile cost is two orders of magnitude worse than on phone-class hardware. Prefer overlay strategies when possible. Trace artifacts kept in `snapshots/scroll_trace_with_shadermask.json` (before) and `snapshots/scroll_trace_after_fix.json` (after).
+
+- **Task 4.1, 4.2, 4.3 — closed via VM Service-driven measurement** instead of subjective performance overlay observation. The Flutter `--profile` build's Dart VM Service was queried directly via `curl http://127.0.0.1:NNNNN/TOKEN/getVMTimeline` (no DevTools UI required). This gave per-frame raster durations across phases (idle / scroll / post). Operator scrolled with the right arrow on the remote for 5 seconds while Claude pulled the timeline immediately after. Honest comparison required ≥5s app warmup before measurement (first-launch shader compilation otherwise pollutes idle phase numbers). Final numbers: idle avg 10.2 ms (0% over budget), scroll avg 10.2 ms (1% over budget). Req 4.1/4.2/4.4 PASS without invoking the residual-gap clause (Req 4.3).
