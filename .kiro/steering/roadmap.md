@@ -82,7 +82,7 @@ Existing issue #3 (PlayerManager retry) — out of scope этого roadmap (net
 - [x] **home-cinematic-redesign** — Cinematic A с двойным rail, italic display, live эфир. Issue #5. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. ✅ implemented + GO (5.4 rollout flag flip deferred for manual TV smoke).
 - [x] **detail-screen-fullbleed** — Full-bleed Card с action row, hero transition, cast avatars. Issue #7. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. ✅ implemented + GO.
 - [x] **player-cinematic-redesign** — channel deck, inline EPG, glass-panel controls. Issue #8. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **does not modify** sealed `PlayerUiState`. ✅ implemented + GO (4.3/4.5 manual TV smoke deferred).
-- [ ] **settings-redesign** — sidebar nav + 6 sections + live perf metrics + custom toggles. Issue #11. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. 📋 spec ready_for_implementation.
+- [x] **settings-redesign** — sidebar nav + 6 sections + live perf metrics + custom toggles. Issue #11. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms. ✅ implemented + GO (9.3 manual TV smoke deferred).
 
 ### Wave 2 — Big new screens (sequential, требует backend extensions)
 
