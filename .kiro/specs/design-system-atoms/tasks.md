@@ -59,7 +59,7 @@
   - _Depends: 1.1_
   - _Boundary: MMLogo_
 
-- [ ] 2.3 Atom `Chip` + `ChipVariant` enum
+- [x] 2.3 Atom `Chip` + `ChipVariant` enum
   - Создать `megav_iptv/lib/core/ui/atoms/chip.dart` с:
     - `enum ChipVariant { live, brand, gold, ghost, defaultVariant }`.
     - `class Chip extends StatefulWidget` (required `label`, optional `icon`, default `variant = defaultVariant`).
