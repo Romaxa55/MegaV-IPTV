@@ -162,7 +162,7 @@
   - _Depends: 1.1_
   - _Boundary: MvIconButton_
 
-- [ ] 2.12 Atom `RemoteHint` + `RemoteHintEntry` value class
+- [x] 2.12 Atom `RemoteHint` + `RemoteHintEntry` value class
   - Создать `megav_iptv/lib/core/ui/atoms/remote_hint.dart` с:
     - `class RemoteHintEntry` (immutable, `glyph` + `label` String fields).
     - `class RemoteHint extends StatelessWidget` (required `hints: List<RemoteHintEntry>`, optional `alignment = MainAxisAlignment.start`).
