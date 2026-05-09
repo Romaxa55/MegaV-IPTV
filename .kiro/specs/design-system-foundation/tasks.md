@@ -127,7 +127,7 @@
 
 ## 4. Validation: тесты
 
-- [ ] 4.1 (P) Unit-тест `AppPalette` token surface
+- [x] 4.1 (P) Unit-тест `AppPalette` token surface
   - Создать `megav_iptv/test/core/theme/app_palette_test.dart`.
   - Tests: const constructor работает; все поля non-null; backward-compat getters (`primary`, `error`, etc.) возвращают валидные `Color`.
   - Запуск: `flutter test test/core/theme/app_palette_test.dart`.
