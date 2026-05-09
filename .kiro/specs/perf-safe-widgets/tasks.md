@@ -61,7 +61,7 @@
   - _Depends: 2.1 (file already exists)_
   - _Boundary: SafeFocusRing_
 
-- [ ] 2.3 Создать `SafeFilmGrain` widget
+- [x] 2.3 Создать `SafeFilmGrain` widget
   - В `lib/core/perf/perf_safe_widgets.dart` добавить `class SafeFilmGrain extends StatelessWidget`.
   - Required: `child`. Optional: `opacity = 0.08` (clamped to `[0, 0.20]` on construction), `assetPath = 'assets/grain_overlay.png'`.
   - Build: `Stack(fit: passthrough, children: [child, Positioned.fill(child: IgnorePointer(child: Opacity(opacity: clamped, child: Image.asset(assetPath, fit: cover, repeat: ImageRepeat.repeat, errorBuilder: ... => SizedBox.shrink()))))])`.

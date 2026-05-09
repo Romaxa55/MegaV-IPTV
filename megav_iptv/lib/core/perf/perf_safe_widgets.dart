@@ -115,3 +115,62 @@ class SafeFocusRing extends StatelessWidget {
     );
   }
 }
+
+/// Baked-PNG film grain overlay applied via Opacity.
+///
+/// Replaces CSS `mix-blend-mode: overlay` + SVG turbulence which
+/// would force a saveLayer per frame. The PNG (`assets/grain_overlay.png`)
+/// has noise + light tone pre-applied; we just composite it over the
+/// child with a low alpha. `BlendMode.srcOver` (default) is the only
+/// blend used.
+///
+/// **Apply ONLY to static layers** (boot overlay, hero backdrop,
+/// detail-screen background). NEVER on scrolling content — even
+/// the cheap composite cost adds up across many frames.
+///
+/// Opacity is clamped to [0, 0.20] on construction; recommended
+/// default 0.08.
+///
+/// Usage:
+/// ```dart
+/// SafeFilmGrain(
+///   opacity: 0.08,
+///   child: HeroBackdropImage(...),
+/// )
+/// ```
+class SafeFilmGrain extends StatelessWidget {
+  const SafeFilmGrain({
+    super.key,
+    required this.child,
+    this.opacity = 0.08,
+    this.assetPath = 'assets/grain_overlay.png',
+  });
+
+  final Widget child;
+  final double opacity;
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = opacity.clamp(0.0, 0.20);
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: clamped,
+              child: Image.asset(
+                assetPath,
+                fit: BoxFit.cover,
+                repeat: ImageRepeat.repeat,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
