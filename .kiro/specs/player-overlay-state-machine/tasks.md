@@ -98,7 +98,7 @@
 
 ## 4. Validation: автотесты
 
-- [ ] 4.1 (P) Юнит-тесты sealed `PlayerUiState`
+- [x] 4.1 (P) Юнит-тесты sealed `PlayerUiState`
   - Создать `megav_iptv/test/features/player/player_ui_state_test.dart`.
   - Тесты:
     - `HiddenState()` constructable + equals (если equality добавлена).
