@@ -17,6 +17,46 @@ import 'widgets/player_bottom_info.dart';
 import 'widgets/player_overlay.dart';
 import 'widgets/similar_overlay.dart';
 
+/// Единый источник истины для видимости UI поверх видео в `PlayerScreen`.
+///
+/// Sealed-class даёт compile-time exhaustiveness в `switch` и невозможность
+/// представить невалидную комбинацию (Req 1.5).
+sealed class PlayerUiState {
+  const PlayerUiState();
+}
+
+/// UI скрыт, видно только видео.
+final class HiddenState extends PlayerUiState {
+  const HiddenState();
+}
+
+/// Полные controls overlay'и (back-button, OSD bar). Авто-скрытие через 4с.
+final class ControlsState extends PlayerUiState {
+  /// Когда таймер expiry должен сработать.
+  final DateTime hideAt;
+  const ControlsState({required this.hideAt});
+}
+
+/// Краткий OSD при открытии канала или quick-switch commit. Авто-скрытие через 3с.
+final class BriefOsdState extends PlayerUiState {
+  final DateTime hideAt;
+  const BriefOsdState({required this.hideAt});
+}
+
+/// Preview следующего/предыдущего канала перед фактическим переключением.
+/// Через 1.5с фиксируется как текущий канал.
+final class SwitchPreviewState extends PlayerUiState {
+  final Channel previewChannel;
+  final DateTime commitAt;
+  const SwitchPreviewState({required this.previewChannel, required this.commitAt});
+}
+
+/// Полный модальный overlay (EPG, Channels, Info, Similar). Без авто-скрытия.
+final class OverlayState extends PlayerUiState {
+  final PlayerOverlayMode mode;
+  const OverlayState({required this.mode});
+}
+
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
 
