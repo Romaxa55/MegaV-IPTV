@@ -141,7 +141,7 @@
   - _Depends: 1.2_
   - _Boundary: computed_colors_test_
 
-- [ ] 4.3 Полный прогон тестов и regression check
+- [x] 4.3 Полный прогон тестов и regression check
   - `cd megav_iptv && flutter test` — ожидаемо 65/65 (53 baseline + 9 perf-widget + 3 ComputedColors).
   - `cd megav_iptv && flutter analyze` — 0 errors, 1 pre-existing baseline info acceptable.
   - `grep -rn "BackdropFilter\|ShaderMask" megav_iptv/lib/core/perf/` — пусто (Req 10.1).
