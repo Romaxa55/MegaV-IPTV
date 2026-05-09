@@ -58,7 +58,7 @@
   - _Depends: 1.2_
   - _Boundary: CinematicHeroSection_
 
-- [ ] 2.2 `CinematicHeroSection` widget test
+- [x] 2.2 `CinematicHeroSection` widget test
   - Создать `megav_iptv/test/features/home/cinematic/cinematic_hero_section_test.dart`.
   - Тест 1: pump с моком `NowPlayingItem`, ожидает `find.byKey(const Key('cinematic-hero'))` finds one + `find.byType(SafeBackdrop)` ≥ 1 + `find.byType(SafeFilmGrain)` ≥ 1.
   - Тест 2: проверка отсутствия forbidden — `find.byType(BackdropFilter)` finds none.
