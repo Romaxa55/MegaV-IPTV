@@ -80,4 +80,8 @@ class GridTokens {
 
   /// Вертикальный зазор между рядами. Используется как `GridTokens.rowVerticalGapDp.h`.
   static const double rowVerticalGapDp = 20;
+
+  /// Доля ширины ряда, занимаемая правым fade-edge gradient. 0.05 = 5%
+  /// (Netflix/Leanback `lb_browse_rows_fading_edge` эталон).
+  static const double fadeEdgeFraction = 0.05;
 }
