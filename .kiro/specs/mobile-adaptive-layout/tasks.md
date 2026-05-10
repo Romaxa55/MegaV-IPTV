@@ -12,7 +12,7 @@
 
 ## 1. Foundation: breakpoint detector
 
-- [ ] 1.1 `ScreenKind` enum + `screenKindOf` + `screenKindProvider`
+- [x] 1.1 `ScreenKind` enum + `screenKindOf` + `screenKindProvider`
   - Создать `megav_iptv/lib/core/layout/` directory.
   - Создать `megav_iptv/lib/core/layout/screen_kind.dart` с:
     - `enum ScreenKind { mobile, tablet, tv }`.
@@ -22,7 +22,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.5, 1.6_
   - _Boundary: ScreenKind public API_
 
-- [ ] 1.2 `AdaptiveScaffold` widget
+- [x] 1.2 `AdaptiveScaffold` widget
   - Создать `megav_iptv/lib/core/layout/adaptive_scaffold.dart` с:
     - `class AdaptiveScaffold extends StatelessWidget { const AdaptiveScaffold({super.key, required this.mobile, required this.tv, this.tablet}); final WidgetBuilder mobile; final WidgetBuilder tv; final WidgetBuilder? tablet; ... }`.
     - В `build`: switch on `screenKindOf(context)` → mobile / tablet (fallback tv) / tv (Req 1.4).
@@ -31,7 +31,7 @@
   - _Depends: 1.1_
   - _Boundary: AdaptiveScaffold widget_
 
-- [ ] 1.3 Breakpoint switch tests
+- [x] 1.3 Breakpoint switch tests
   - Создать `megav_iptv/test/core/layout/screen_kind_test.dart` — unit tests для `screenKindOf`:
     - При `MediaQuery(size: Size(390, 844))` → `mobile`.
     - При `MediaQuery(size: Size(800, 1024))` → `tablet`.
@@ -51,7 +51,7 @@
 
 ## 2. Adaptive screen roots — minimal-touch mounting layer
 
-- [ ] 2.1 `HomeRootScreen`
+- [x] 2.1 `HomeRootScreen`
   - Создать `megav_iptv/lib/features/home/home_root.dart` с:
     - `class HomeRootScreen extends StatelessWidget { const HomeRootScreen({super.key}); @override Widget build(BuildContext context) => AdaptiveScaffold(mobile: (_) => const HomeMobileScreen(), tv: (_) => const CinematicHomeScreen()); }`.
     - `HomeMobileScreen` ещё не существует — в этом task'е использовать stub `Scaffold(body: Center(child: Text('mobile home')))` или `const Placeholder()` с `Key('home-mobile-root')`. Реальный widget будет в task 3.1.
@@ -61,7 +61,7 @@
   - _Depends: 1.2_
   - _Boundary: HomeRootScreen mount_
 
-- [ ] 2.2 `DetailRootScreen`
+- [x] 2.2 `DetailRootScreen`
   - Создать `megav_iptv/lib/features/detail/detail_root.dart` аналогично — `AdaptiveScaffold(mobile: stub, tv: <existing TV detail widget>)`.
   - TV detail widget импортируется READ-ONLY (точное имя класса implementer определяет из `lib/features/detail/` после ландинга #7 — например, `DetailFullbleedScreen`).
   - Stub `DetailMobileScreen` с `Key('detail-mobile-root')` будет заменён в task 4.1.
@@ -70,7 +70,7 @@
   - _Depends: 1.2_
   - _Boundary: DetailRootScreen mount_
 
-- [ ] 2.3 `PlayerRootScreen`
+- [x] 2.3 `PlayerRootScreen`
   - Создать `megav_iptv/lib/features/player/player_root.dart` аналогично.
   - TV player widget импортируется READ-ONLY (имя из landing'а #8 — например, `PlayerCinematicScreen`).
   - Stub `PlayerMobileScreen` с `Key('player-mobile-root')` будет заменён в task 5.1.
@@ -79,7 +79,7 @@
   - _Depends: 1.2_
   - _Boundary: PlayerRootScreen mount_
 
-- [ ] 2.4 Router 3-line swap
+- [x] 2.4 Router 3-line swap
   - Найти существующий route registration файл (наиболее вероятно `megav_iptv/lib/app_router.dart`, либо `main.dart`, либо `lib/app/router.dart` — implementer определяет).
   - Заменить три route entries:
     - `/home` (или эквивалент) → `HomeRootScreen` instead of `CinematicHomeScreen`.
