@@ -71,7 +71,7 @@
 
 ## 4. CyrillicKeyboard widget с D-pad navigation
 
-- [ ] 4.1 Создать `CyrillicKeyboard` `StatefulWidget` с D-pad-handlers
+- [x] 4.1 Создать `CyrillicKeyboard` `StatefulWidget` с D-pad-handlers
   - Создать `megav_iptv/lib/features/search/widgets/cyrillic_keyboard.dart`:
     - `class CyrillicKeyboard extends StatefulWidget` props: `onKeyPressed`, `onExitRight`, `locale = KeyboardLocale.ru`, `@visibleForTesting initialFocus = (0,0)`.
     - `_CyrillicKeyboardState`: state `(int focusRow, int focusCol)`, инициализирован из `widget.initialFocus`.
@@ -92,7 +92,7 @@
 
 ## 5. SearchInput с blinking caret в RepaintBoundary
 
-- [ ] 5.1 Создать `SearchInput` `StatefulWidget` с caret через `AnimationController`
+- [x] 5.1 Создать `SearchInput` `StatefulWidget` с caret через `AnimationController`
   - Создать `megav_iptv/lib/features/search/widgets/search_input.dart`:
     - `class SearchInput extends StatefulWidget` props: `String query`, `String placeholder = 'Найти что-то стоящее'`.
     - `_SearchInputState with SingleTickerProviderStateMixin`:
