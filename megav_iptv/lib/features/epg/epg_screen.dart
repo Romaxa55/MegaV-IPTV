@@ -118,13 +118,9 @@ class _EpgScreenState extends ConsumerState<EpgScreen> {
   /// resolved channel list. Routes through [_transition] so the loading /
   /// ready / error transitions remain on the single mutation path.
   Future<void> _refetch() async {
-    // Window: for offset == 0 (today) start "now" so backend's upcoming-only
-    // endpoint returns matching programmes; for past/future days start at midnight.
-    final now = DateTime.now();
-    final base = DateTime(now.year, now.month, now.day);
-    final from = _selectedDayOffset == 0
-        ? now.subtract(const Duration(minutes: 30))
-        : base.add(Duration(days: _selectedDayOffset));
+    final today = DateTime.now();
+    final base = DateTime(today.year, today.month, today.day);
+    final from = base.add(Duration(days: _selectedDayOffset));
     final to = from.add(const Duration(hours: 8));
 
     _transition(const EpgLoadingState());
@@ -327,46 +323,21 @@ class _EpgScreenState extends ConsumerState<EpgScreen> {
   Widget _buildHeader(BuildContext context, DateTime today) {
     final theme = Theme.of(context);
     final styles = theme.extension<MegaVTextStyles>();
-    // On narrower viewports scale the font down so it doesn't push the
-    // DayPicker off-screen.  56.sp uses ScreenUtil design-pixel scaling;
-    // on a 1100-px window that resolves to ~32 sp which is still legible.
     final headerStyle = (styles?.displayLarge ?? theme.textTheme.headlineMedium ?? const TextStyle()).copyWith(
       fontStyle: FontStyle.italic,
       fontSize: 56.sp,
     );
-
-    final availableWidth = MediaQuery.sizeOf(context).width;
-    // Below 900 logical pixels the title and 7-day picker cannot share a
-    // single row comfortably — stack them vertically instead.
-    final useVerticalLayout = availableWidth < 900;
-
-    final title = Text('Программа передач', style: headerStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
-
-    // Always wrap DayPicker in a horizontal SingleChildScrollView so it
-    // never overflows regardless of viewport width.
-    final dayPicker = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: EpgDayPicker(today: today, selectedOffset: _selectedDayOffset, onDaySelected: _onDaySelected),
-    );
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
-      child: useVerticalLayout
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                title,
-                SizedBox(height: 8.h),
-                dayPicker,
-              ],
-            )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: title),
-                dayPicker,
-              ],
-            ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text('Программа передач', style: headerStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          EpgDayPicker(today: today, selectedOffset: _selectedDayOffset, onDaySelected: _onDaySelected),
+        ],
+      ),
     );
   }
 
