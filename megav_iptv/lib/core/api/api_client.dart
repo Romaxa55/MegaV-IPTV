@@ -193,6 +193,23 @@ class ApiClient {
     );
   }
 
+  Future<({List<Channel> channels, int total})> searchChannels({
+    required String query,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final params = <String, String>{'search': query, 'limit': limit.toString(), 'offset': offset.toString()};
+    final uri = Uri.parse('$baseUrl/api/channels').replace(queryParameters: params);
+    final response = await _client.get(uri);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final List<dynamic> channelsJson = (data['channels'] as List<dynamic>?) ?? const [];
+      final total = data['total'] as int? ?? 0;
+      return (channels: channelsJson.map((j) => Channel.fromJson(j as Map<String, dynamic>)).toList(), total: total);
+    }
+    throw Exception('Failed to search channels: ${response.statusCode}');
+  }
+
   void dispose() {
     _client.close();
   }

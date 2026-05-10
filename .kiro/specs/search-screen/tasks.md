@@ -172,7 +172,7 @@
 
 ## 9. API extension: `searchChannels` с backward-compat verification
 
-- [ ] 9.1 Расширить `ApiClient` методом `searchChannels` (без касания других)
+- [x] 9.1 Расширить `ApiClient` методом `searchChannels` (без касания других)
   - Открыть `megav_iptv/lib/core/api/api_client.dart`.
   - **Pre-condition**: зафиксировать текущий список public методов класса. Запустить:
     ```bash
