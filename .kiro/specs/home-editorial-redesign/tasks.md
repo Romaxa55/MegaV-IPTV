@@ -99,7 +99,7 @@
 
 ## 3. Hero section + side card
 
-- [ ] 3.1 `EditorialSideCard`
+- [x] 3.1 `EditorialSideCard`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_side_card.dart` с:
     - `class EditorialSideCard extends StatefulWidget` (Focus state needed).
     - Named ctors: `.next({required NowPlayingItem item, required String remaining})` (label = 'ДАЛЕЕ В ЭФИРЕ'), `.featured({required NowPlayingItem item, required String remaining})` (label = 'РЕКОМЕНДУЕМ').
@@ -112,7 +112,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialSideCard_
 
-- [ ] 3.2 `EditorialSideCard` widget test
+- [x] 3.2 `EditorialSideCard` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_side_card_test.dart`.
   - Тест 1: `EditorialSideCard.next(item: mockItem, remaining: 'через 55 мин')` — `find.byKey(const Key('editorial-side-card-next'))` finds one; `find.text('ДАЛЕЕ В ЭФИРЕ')` finds one; `find.text('через 55 мин')` finds one.
   - Тест 2: `EditorialSideCard.featured(item: mockItem, remaining: '2ч 06м')` — `find.byKey(const Key('editorial-side-card-featured'))` finds one; `find.text('РЕКОМЕНДУЕМ')` finds one.
@@ -123,7 +123,7 @@
   - _Depends: 3.1_
   - _Boundary: side card test_
 
-- [ ] 3.3 `EditorialHeroSection`
+- [x] 3.3 `EditorialHeroSection`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_hero_section.dart` с `class EditorialHeroSection extends ConsumerStatefulWidget` (params: `item`, `nextItem`, `featuredItem`, `onPlay`, `onFavoriteToggle`, `onEpgOpen`).
   - Build tree:
     ```
@@ -152,7 +152,7 @@
   - _Depends: 1.2, 3.1_
   - _Boundary: EditorialHeroSection_
 
-- [ ] 3.4 `EditorialHeroSection` widget test
+- [x] 3.4 `EditorialHeroSection` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_hero_section_test.dart`.
   - Тест 1: pump с моком `NowPlayingItem` × 3 (item, next, featured); ожидает `find.byKey(const Key('editorial-hero'))` finds one + `find.byType(SafeBackdrop)` ≥ 1 + 2× `EditorialSideCard`.
   - Тест 2: `find.byType(BackdropFilter)` finds none, `find.byType(ShaderMask)` finds none.
