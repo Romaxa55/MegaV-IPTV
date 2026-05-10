@@ -4,6 +4,22 @@
 
 Применяй эти правила **до** того как писать новый UI или добавлять «красоту» — не после, когда всё уже тормозит.
 
+## Hardware envelope (worst case target)
+
+- **Reference device**: Realtek `rtd2851a` Android TV-box, 32-bit ARM, Mali-class GPU.
+- **Worst case target**: дешёвый Android 6 TV-box с **512 МБ RAM**. Всё должно «летать» — 60 fps скролл, ≤16.7 ms/frame на GPU rasterizer.
+- **Память — критичный ресурс**. На 512 МБ:
+  - Не держи в памяти больше 50–100 каналов одновременно (используй `ListView.builder` + `cacheExtent` ≤ 1500, а не `Column` с тысячей children).
+  - Минимизируй `Image.network` без `cacheWidth` — без него raw bitmap может быть 5–10 МБ на постер.
+  - Освобождай controllers/streams в `dispose()` — leak любого `StreamSubscription` или `AnimationController` копится.
+  - Текстуры video preview — только одна активная одновременно. Никакой mosaic preview.
+- **Запрещено в TV-target коде** (`lib/features/<screen>/`, кроме `mobile/` подпапок):
+  - `BackdropFilter`, `ImageFilter.blur`, `ShaderMask` — saveLayer + GPU shader = 26+ ms/frame на Mali.
+  - `BoxShadow.blurRadius > 12` (`kSafeShadowBlurMax`).
+  - `AnimatedContainer.width` (forces relayout).
+  - Тяжёлые SVG (`flutter_svg` для иконок размером > 64dp).
+  - `flutter_screenutil`-расчёт размеров внутри `build()` без `const` (.w / .h каждый кадр пересчитываются — лучше кешировать).
+
 ---
 
 ## TL;DR — три правила

@@ -434,32 +434,50 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                       left: 0,
                       right: 0,
                       height: heroH,
-                      child: AnimatedCrossFade(
-                        duration: const Duration(milliseconds: 220),
-                        crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-                        firstChild: CinematicHeroBlock(
-                          backdropImage: backdropImage,
-                          heroItem: heroItem,
-                          heroWatchFocusNode: _heroWatchFocusNode,
-                          isPreviewVideoReady: _isPreviewVideoReady,
-                          previewPlayer: _previewPlayer,
-                          clockTime: _clockTime,
-                          onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
-                          onEpg: heroItem != null
-                              ? () => context.push(
-                                  '/channel/${heroItem.channelId}',
-                                  extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
-                                )
-                              : null,
-                          onFavourite: () {},
-                          onWatchFocusChanged: (focused) {
-                            if (!mounted) return;
-                            setState(() => _isWatchFocused = focused);
-                          },
+                      child: FocusScope(
+                        onFocusChange: (focused) {
+                          // Hero re-expands as soon as ANY descendant gains
+                          // focus (D-pad ↑ from rail traversal lands on
+                          // whichever focusable is closest; not always the
+                          // Watch button). Mirrors Watch-only listener so
+                          // either path works.
+                          if (focused != _heroFocused) {
+                            setState(() => _heroFocused = focused);
+                            if (focused) {
+                              final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
+                              if (featured.isNotEmpty) _restartCarousel(featured);
+                            } else {
+                              _carouselTimer?.cancel();
+                            }
+                          }
+                        },
+                        child: AnimatedCrossFade(
+                          duration: const Duration(milliseconds: 220),
+                          crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                          firstChild: CinematicHeroBlock(
+                            backdropImage: backdropImage,
+                            heroItem: heroItem,
+                            heroWatchFocusNode: _heroWatchFocusNode,
+                            isPreviewVideoReady: _isPreviewVideoReady,
+                            previewPlayer: _previewPlayer,
+                            clockTime: _clockTime,
+                            onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
+                            onEpg: heroItem != null
+                                ? () => context.push(
+                                    '/channel/${heroItem.channelId}',
+                                    extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
+                                  )
+                                : null,
+                            onFavourite: () {},
+                            onWatchFocusChanged: (focused) {
+                              if (!mounted) return;
+                              setState(() => _isWatchFocused = focused);
+                            },
+                          ),
+                          secondChild: heroItem != null
+                              ? CinematicCompactHero(item: heroItem)
+                              : SizedBox(height: collapsedH),
                         ),
-                        secondChild: heroItem != null
-                            ? CinematicCompactHero(item: heroItem)
-                            : SizedBox(height: collapsedH),
                       ),
                     ),
                   ],
