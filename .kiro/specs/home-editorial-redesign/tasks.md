@@ -235,7 +235,7 @@
 
 ## 5. Film-reel strip + section title + genre tabs bar
 
-- [ ] 5.1 `EditorialFilmReelStrip`
+- [x] 5.1 `EditorialFilmReelStrip`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_film_reel_strip.dart` с `class EditorialFilmReelStrip extends StatelessWidget` (params: `channelCount: int`, `activeIndex: int`, `frameCount: int = 18`).
   - Build: `Row(children: [Text('КАНАЛЫ ↓', style: theme.megavText.metaMono.copyWith(color: palette.textMute, letterSpacing: 0.16)), const SizedBox(width: 18), Expanded(child: MvStrip(frameCount: frameCount, activeIndex: activeIndex)), Text('${(activeIndex + 1).toString().padLeft(2, '0')} / ${channelCount.toString().padLeft(3, '0')}', style: theme.megavText.metaMono.copyWith(color: palette.textMute, letterSpacing: 0.12))])`.
   - Корневой widget получает `Key('editorial-film-reel-strip')`.
@@ -245,7 +245,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialFilmReelStrip_
 
-- [ ] 5.2 `EditorialFilmReelStrip` widget test
+- [x] 5.2 `EditorialFilmReelStrip` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_film_reel_strip_test.dart`.
   - Тест 1: pump с `channelCount=124, activeIndex=4, frameCount=18` — `find.byKey(const Key('editorial-film-reel-strip'))` finds one; `find.byType(MvStrip)` finds one; `find.text('КАНАЛЫ ↓')` finds one; `find.text('05 / 124')` finds one.
   - Тест 2: `find.byType(BackdropFilter)` finds none.
@@ -254,7 +254,7 @@
   - _Depends: 5.1_
   - _Boundary: film-reel strip test_
 
-- [ ] 5.3 `EditorialSectionTitle`
+- [x] 5.3 `EditorialSectionTitle`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_section_title.dart` с `class EditorialSectionTitle extends StatelessWidget` (params: `label: String`, `emphasis: String`, `count: int?`, `onMoreTap: VoidCallback?`).
   - Build: тонкая обёртка над `SectionTitle` атом — пробрасывает label / italic em / count / onMoreTap.
   - Italic em применяется через атом (атом уже умеет italic em через `MegaVTextStyles.displayMedium`).
@@ -265,7 +265,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialSectionTitle_
 
-- [ ] 5.4 `EditorialSectionTitle` widget test
+- [x] 5.4 `EditorialSectionTitle` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_section_title_test.dart`.
   - Тест 1: `EditorialSectionTitle(label: 'Кино', emphasis: 'без расписания')` — `find.byType(SectionTitle)` finds one; `find.text('без расписания')` finds one.
   - Тест 2: с `count: 30` — `find.textContaining('30')` finds one.
@@ -275,7 +275,7 @@
   - _Depends: 5.3_
   - _Boundary: section title test_
 
-- [ ] 5.5 `EditorialGenreTabsBar`
+- [x] 5.5 `EditorialGenreTabsBar`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_genre_tabs_bar.dart` с `class EditorialGenreTabsBar extends ConsumerWidget` (Req 8.4).
   - Build tree: `Stack(children: [SizedBox(height: ..., child: GenreTabs(tabs: ..., activeIndex: ..., onSelected: ...)), Positioned(left:0, top:0, bottom:0, width: 32, child: IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: centerLeft, end: centerRight, colors: [palette.background, palette.background.withAlpha(0)]))))), Positioned(right:0, top:0, bottom:0, width: 32, child: ... mirrored ...)])` — ТОЛЬКО `DecoratedBox` + `LinearGradient`, никакого `ShaderMask` (Req 8.4, 9.1).
   - Корневой widget получает `Key('editorial-genre-tabs')`.
@@ -285,7 +285,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialGenreTabsBar_
 
-- [ ] 5.6 `EditorialGenreTabsBar` widget test
+- [x] 5.6 `EditorialGenreTabsBar` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_genre_tabs_bar_test.dart`.
   - Тест 1: pump с 5 жанрами, активный=2; ожидает `find.byKey(const Key('editorial-genre-tabs'))` + `find.byType(GenreTabs)` finds one.
   - Тест 2: `find.byType(ShaderMask)` finds none (Req 8.4 enforcement).
