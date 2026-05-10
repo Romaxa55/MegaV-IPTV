@@ -324,7 +324,7 @@
   - _Depends: 3.1, 3.3, 3.4, 4.1, 4.3, 5.1, 5.2, 5.3, 5.4_
   - _Boundary: EpgScreen integration_
 
-- [ ] 6.2 Player-overlay EPG invariant regression test
+- [x] 6.2 Player-overlay EPG invariant regression test
   - Создать `megav_iptv/test/features/epg/epg_player_overlay_invariant_test.dart` (Req 11.8, 14.4 — **критично для проверки что закрытый player-overlay-state-machine не сломан**).
   - Тест 1: программный вызов `currentProgramProvider(<channelId>)` через `ProviderContainer` с моковым `ApiClient` возвращает ожидаемое `EpgProgram?` — поведение **идентично** baseline (до данного спека). Сигнатура провайдера не изменилась.
   - Тест 2: программный вызов `upcomingProgramsProvider(<channelId>)` через `ProviderContainer` — поведение идентично baseline. Сигнатура не изменилась.
