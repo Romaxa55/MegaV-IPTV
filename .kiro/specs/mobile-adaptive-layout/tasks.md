@@ -222,7 +222,7 @@
 
 ## 6. Shared mobile widgets — TabBar, IconBtn, LiveDot
 
-- [ ] 6.1 `MTabBar` + `activeMobileTabProvider`
+- [x] 6.1 `MTabBar` + `activeMobileTabProvider`
   - Создать `megav_iptv/lib/features/mobile/state/active_mobile_tab_provider.dart` с `final activeMobileTabProvider = StateProvider<int>((ref) => 0);` (Req 5.3).
   - Создать `megav_iptv/lib/features/mobile/widgets/m_tab_bar.dart` с `class MTabBar extends ConsumerWidget` (Req 5.1).
   - Build: `ClipRRect(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: Container(color: theme.surface1.withValues(alpha: 0.6), padding: EdgeInsets.only(bottom: viewPadding.bottom + 8, top: 8, left: 16, right: 16), child: Row(mainAxisAlignment: spaceAround, children: 5 × _MTab(icon: ..., label: ..., active: idx == activeIndex, onTap: () => ref.read(activeMobileTabProvider.notifier).state = idx)))))` — RAW BackdropFilter PERMITTED (Req 5.4, 11.1).
@@ -237,7 +237,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 11.1, 12.1_
   - _Boundary: MTabBar + tab provider_
 
-- [ ] 6.2 `MIconBtn`
+- [x] 6.2 `MIconBtn`
   - Создать `megav_iptv/lib/features/mobile/widgets/m_icon_btn.dart` с `class MIconBtn extends StatelessWidget` (params: `icon: IconData`, `onTap: VoidCallback?`, `label: String?`) (Req 7.2).
   - Build: `Material(color: Colors.transparent, child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(AppRadius.md), child: Container(constraints: BoxConstraints(minWidth: 44, minHeight: 44), padding: EdgeInsets.all(8), child: Column(mainAxisSize: min, children: [Icon(icon, size: 24), if (label != null) Text(label, style: theme.megavText.metaMono.copyWith(fontSize: 11))]))))`.
   - Min touch area 44×44 px (Req 7.2).
@@ -245,7 +245,7 @@
   - _Requirements: 7.2_
   - _Boundary: MIconBtn_
 
-- [ ] 6.3 `MLiveDot`
+- [x] 6.3 `MLiveDot`
   - Создать `megav_iptv/lib/features/mobile/widgets/m_live_dot.dart` с `class MLiveDot extends StatefulWidget` (Req 7.7).
   - Внутри: `AnimationController(duration: Duration(milliseconds: 1500), vsync: ...)` `.repeat(reverse: true)` → `AnimatedBuilder` modulating dot opacity / scale.
   - **Wrapped в `RepaintBoundary`** (Req 4.5, 11.3).
