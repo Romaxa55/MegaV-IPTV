@@ -152,7 +152,7 @@
 
 ## 4. Detail mobile
 
-- [ ] 4.1 `DetailMobileScreen`
+- [x] 4.1 `DetailMobileScreen`
   - Создать `megav_iptv/lib/features/detail/mobile/` directory.
   - Создать `megav_iptv/lib/features/detail/mobile/detail_mobile_screen.dart` с `class DetailMobileScreen extends ConsumerWidget` (params: `itemId: String`).
   - Build: `Scaffold(body: ListView(children: [Stack(poster + back-arrow MIconBtn top-left), Padding(Column([Text(title via headline, ≤22px), Row(meta), Row(actions: Play/Add/Share via MIconBtn), SizedBox, Text(description, body 16px)]))]))` (Req 3.2, 3.3, 3.4).
@@ -164,7 +164,7 @@
   - _Depends: 2.2, 6.2 (MIconBtn)_
   - _Boundary: DetailMobileScreen_
 
-- [ ] 4.2 `DetailMobileScreen` smoke test
+- [x] 4.2 `DetailMobileScreen` smoke test
   - Создать `megav_iptv/test/features/detail/mobile/detail_mobile_screen_smoke_test.dart`.
   - Pump под `MediaQuery(size: Size(390, 844))` + mocked item provider.
   - Тест 1: `find.byKey(Key('detail-mobile-root'))` finds one; no exception.
@@ -177,7 +177,7 @@
 
 ## 5. Player mobile
 
-- [ ] 5.1 `PlayerMobileScreen` + swipe gesture
+- [x] 5.1 `PlayerMobileScreen` + swipe gesture
   - Создать `megav_iptv/lib/features/player/mobile/` directory.
   - Создать `megav_iptv/lib/features/player/mobile/player_mobile_screen.dart` с `class PlayerMobileScreen extends ConsumerStatefulWidget` (params: `channelId: String`) (Req 4.1).
   - Build: `Scaffold(body: Stack(children: [<video surface> (consumes playerUiStateProvider read-only), GestureDetector(onHorizontalDragEnd: ... → next/prev channel, behavior: HitTestBehavior.opaque), Positioned(top: 16, left: 16, child: MLiveDot()), Positioned(bottom: 0, left: 0, right: 0, child: MPlayerControls()), MSwipeHint() (overlay until first swipe)]))` (Req 4.2-4.5).
@@ -189,7 +189,7 @@
   - _Depends: 2.3, 5.2, 5.3, 6.4 (MLiveDot)_
   - _Boundary: PlayerMobileScreen_
 
-- [ ] 5.2 `MPlayerControls`
+- [x] 5.2 `MPlayerControls`
   - Создать `megav_iptv/lib/features/player/mobile/widgets/m_player_controls.dart` с `class MPlayerControls extends ConsumerWidget` (Req 7.5).
   - Build: `ClipRRect(borderRadius: BorderRadius.circular(AppRadius.lg), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28), child: Container(color: theme.surface1.withValues(alpha: 0.6), padding: ..., child: Row(children: [MIconBtn(prev), MIconBtn(play/pause), MIconBtn(next), Expanded(Slider(volume))]))))` — RAW BackdropFilter PERMITTED (Req 11).
   - Корневой widget получает `Key('m-player-controls')`.
@@ -198,7 +198,7 @@
   - _Depends: 6.2 (MIconBtn)_
   - _Boundary: MPlayerControls_
 
-- [ ] 5.3 `MSwipeHint`
+- [x] 5.3 `MSwipeHint`
   - Создать `megav_iptv/lib/features/player/mobile/widgets/m_swipe_hint.dart` с `class MSwipeHint extends StatefulWidget` (Req 7.6).
   - Внутри: `AnimationController(duration: Duration(milliseconds: 1500), vsync: ...)` репитный (`repeat(reverse: true)`) → `AnimatedOpacity` или `FadeTransition` over the hint Text «SWIPE ↔ КАНАЛ».
   - **Wrapped в `RepaintBoundary`** (Req 11.3).
@@ -208,7 +208,7 @@
   - _Requirements: 4.4, 7.6, 11.3, 12.1_
   - _Boundary: MSwipeHint_
 
-- [ ] 5.4 `PlayerMobileScreen` smoke test
+- [x] 5.4 `PlayerMobileScreen` smoke test
   - Создать `megav_iptv/test/features/player/mobile/player_mobile_screen_smoke_test.dart`.
   - Pump под `MediaQuery(size: Size(390, 844))` + mocked `playerUiStateProvider`.
   - Тест 1: `find.byKey(Key('player-mobile-root'))` finds one; `find.byKey(Key('m-player-controls'))` finds one; `find.byKey(Key('m-live-dot'))` finds one.

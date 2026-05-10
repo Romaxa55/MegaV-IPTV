@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:megav_iptv/core/layout/adaptive_scaffold.dart';
 import 'package:megav_iptv/features/detail/detail_screen.dart';
+import 'package:megav_iptv/features/detail/mobile/detail_mobile_screen.dart';
 import 'package:megav_iptv/features/detail/providers/detail_arguments.dart';
 
 /// Adaptive root for the channel-detail route.
 ///
 /// Forwards [channelId] and optional [args] to the TV variant
-/// ([DetailScreen]) and renders a stub for mobile until task 3.x lands a
-/// real mobile detail screen.
+/// ([DetailScreen]) and to the mobile variant ([DetailMobileScreen])
+/// depending on viewport size, resolved by [AdaptiveScaffold].
 class DetailRootScreen extends StatelessWidget {
   const DetailRootScreen({super.key, required this.channelId, this.args});
 
@@ -18,20 +19,8 @@ class DetailRootScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      mobile: (_) => const _DetailMobileStub(),
+      mobile: (_) => DetailMobileScreen(channelId: channelId),
       tv: (_) => DetailScreen(channelId: channelId, args: args),
-    );
-  }
-}
-
-class _DetailMobileStub extends StatelessWidget {
-  const _DetailMobileStub();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      key: Key('detail-mobile-root'),
-      body: Center(child: Text('mobile detail (stub)')),
     );
   }
 }
