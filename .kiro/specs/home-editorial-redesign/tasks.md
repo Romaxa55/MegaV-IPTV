@@ -168,7 +168,7 @@
 
 ## 4. Bento grid + bento card
 
-- [ ] 4.1 `EditorialBentoCard`
+- [x] 4.1 `EditorialBentoCard`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_bento_card.dart` с:
     - `class EditorialBentoCell` value-type (params: `item: NowPlayingItem`, `cols: int`, `rows: int`, `live: bool`).
     - `class EditorialBentoCard extends StatefulWidget` (params: `cell: EditorialBentoCell`, `onTap: VoidCallback`, `onFocusChange: ValueChanged<bool>?`).
@@ -194,7 +194,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialBentoCard_
 
-- [ ] 4.2 `EditorialBentoCard` widget test
+- [x] 4.2 `EditorialBentoCard` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_bento_card_test.dart`.
   - Тест 1: pump с `cols=2, rows=2, live=true` — title font size ≈ 36; `find.byType(Chip)` finds one (live).
   - Тест 2: pump с `cols=1, rows=1, live=false` — title font size ≈ 20; `find.byType(Chip)` finds none.
@@ -205,7 +205,7 @@
   - _Depends: 4.1_
   - _Boundary: bento card test_
 
-- [ ] 4.3 `EditorialBentoGrid`
+- [x] 4.3 `EditorialBentoGrid`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_bento_grid.dart` с `class EditorialBentoGrid extends StatelessWidget` (params: `cells: List<EditorialBentoCell>`, `onItemTap`, `onItemFocus?`).
   - Layout primitive: implementer выбирает между:
     - **Option A** (preferred if no new package): `CustomMultiChildLayout` с custom `MultiChildLayoutDelegate` который computes positions per cell `(cols, rows)` over a 6-column / 220-lp-row grid с 16-lp gap.
@@ -221,7 +221,7 @@
   - _Depends: 4.1_
   - _Boundary: EditorialBentoGrid_
 
-- [ ] 4.4 `EditorialBentoGrid` widget test
+- [x] 4.4 `EditorialBentoGrid` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_bento_grid_test.dart`.
   - Тест 1: pump с 8 cells разных размеров (1×1, 2×1, 1×2, 2×2 mix) — `find.byKey(const Key('editorial-bento-grid'))` finds one; `find.byType(EditorialBentoCard)` finds 8 (или меньше если viewport not enough — ≥ 6 acceptable).
   - Тест 2: `find.byType(BackdropFilter)` finds none.
