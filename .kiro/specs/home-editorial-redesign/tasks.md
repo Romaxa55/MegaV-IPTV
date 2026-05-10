@@ -14,7 +14,7 @@
 
 ## 1. Foundation: shared variant provider + scaffold + entry
 
-- [ ] 1.1 Создать shared `home_variant_provider.dart`
+- [x] 1.1 Создать shared `home_variant_provider.dart`
   - Создать `megav_iptv/lib/features/home/home_variant_provider.dart` с:
     - `enum HomeVariant { cinematic, editorial, legacy }`.
     - `const HomeVariant kHomeVariantDefault = HomeVariant.cinematic;` (single source of truth, Req 11.6).
@@ -30,7 +30,7 @@
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 13.4_
   - _Boundary: shared variant provider_
 
-- [ ] 1.2 Skeleton `EditorialHomeScreen` + entry switch
+- [x] 1.2 Skeleton `EditorialHomeScreen` + entry switch
   - Создать `megav_iptv/lib/features/home/editorial/` directory.
   - Создать `megav_iptv/lib/features/home/editorial/editorial_home_screen.dart` с `class EditorialHomeScreen extends ConsumerStatefulWidget` (Req 1.1).
   - В `build` — `Scaffold(body: SafeArea(child: const SizedBox.shrink()))` + root `Key('editorial-home-root')` (placeholder; subtree будет заполнена в phase 2-5).
@@ -42,7 +42,7 @@
   - _Depends: 1.1_
   - _Boundary: editorial_home_screen scaffold + entry_
 
-- [ ] 1.3 Smoke test для пустого скелета
+- [x] 1.3 Smoke test для пустого скелета
   - Создать `megav_iptv/test/features/home/editorial/editorial_home_screen_smoke_test.dart`.
   - Тест pump'ит `EditorialHomeScreen` внутри `ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(MockSharedPreferences())])` + `MaterialApp` с замоканной темой; `await tester.pump(); await tester.pump();` → ожидает no exception + `find.byKey(const Key('editorial-home-root'))` finds one.
   - Наблюдаемое: `flutter test test/features/home/editorial/editorial_home_screen_smoke_test.dart` зелёный; полный `flutter test` всё ещё green (baseline + cinematic + 1 новый editorial).

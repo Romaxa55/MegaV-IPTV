@@ -12,6 +12,7 @@ import 'features/detail/detail_screen.dart';
 import 'features/detail/providers/detail_arguments.dart';
 import 'features/epg/epg_screen.dart';
 import 'features/home/cinematic/cinematic_home_screen.dart';
+import 'features/home/editorial/editorial_home_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
 import 'features/search/search_screen.dart';
@@ -58,6 +59,7 @@ final _router = GoRouter(
         GoRoute(path: '/', redirect: (context, state) => '/home'),
         GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(path: '/home-cinematic', builder: (context, state) => const CinematicHomeScreen()),
+        GoRoute(path: '/home-editorial', builder: (context, state) => const EditorialHomeScreen()),
         GoRoute(
           path: '/channel/:id',
           builder: (context, state) {
