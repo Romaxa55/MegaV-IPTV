@@ -270,7 +270,7 @@
   - _Depends: 6.1_
   - _Boundary: search_results_grid_test.dart_
 
-- [ ] 10.6 Regression + grep gates + analyzer
+- [x] 10.6 Regression + grep gates + analyzer
   - Запустить `flutter test` из `megav_iptv/` — все тесты (65 pre-existing + новые из task 10.1–10.5) зелёные (Req 12.8).
   - Запустить grep на perf-rules:
     ```bash
