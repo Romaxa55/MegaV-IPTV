@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/atoms/atoms.dart';
 import 'cinematic_dual_rail.dart';
@@ -57,14 +58,16 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
             clipBehavior: Clip.none,
             padding: EdgeInsets.zero,
             children: [
-              // Top bar — Brand + (optional StatusBar)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(32, 16, 32, 8),
+              // Top bar — Brand + search affordance + StatusBar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 16, 32, 8),
                 child: Row(
                   children: [
-                    Brand(size: 40),
-                    Spacer(),
-                    StatusBar(city: 'Moscow', tempC: 5, time: '20:30'),
+                    const Brand(size: 40),
+                    const Spacer(),
+                    MvIconButton(icon: const Icon(Icons.search), onPressed: () => context.push('/search')),
+                    const SizedBox(width: 12),
+                    const StatusBar(city: 'Moscow', tempC: 5, time: '20:30'),
                   ],
                 ),
               ),

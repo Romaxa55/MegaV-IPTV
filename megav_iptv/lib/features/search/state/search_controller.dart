@@ -58,6 +58,14 @@ class SearchController extends StateNotifier<SearchUiState> {
     _scheduleSearch();
   }
 
+  /// Public retry hook for the error-state UI (Req 6.6).
+  ///
+  /// Forwards to the private [_scheduleSearch] so `_ErrorRetry` (in
+  /// `widgets/search_results_grid.dart`) can re-enqueue the current `_query`
+  /// with the standard 350 ms debounce, without exposing `_scheduleSearch`
+  /// itself to the rest of the codebase.
+  void retry() => _scheduleSearch();
+
   void _scheduleSearch() {
     _debounce?.cancel();
     if (_query.isEmpty) {

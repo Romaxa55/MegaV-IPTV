@@ -14,6 +14,7 @@ import 'features/epg/epg_screen.dart';
 import 'features/home/cinematic/cinematic_home_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/player/player_screen.dart';
+import 'features/search/search_screen.dart';
 import 'features/settings/settings_screen.dart';
 
 Future<void> _onRootBackPressed(BuildContext context) async {
@@ -67,6 +68,7 @@ final _router = GoRouter(
           },
         ),
         GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
+        GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
         GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
         GoRoute(path: '/epg', builder: (context, state) => const EpgScreen()),
       ],

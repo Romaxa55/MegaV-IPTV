@@ -109,7 +109,7 @@
 
 ## 6. SearchResultsGrid с exhaustive sealed switch + lazy paging
 
-- [ ] 6.1 Создать `SearchResultsGrid` `ConsumerWidget` с per-state rendering
+- [x] 6.1 Создать `SearchResultsGrid` `ConsumerWidget` с per-state rendering
   - Создать `megav_iptv/lib/features/search/widgets/search_results_grid.dart`:
     - Top-level helper `int pickColumnsClamped(double w)`: вызывает существующий `pickColumns(w)` (из `lib/features/home/widgets/_grid_tokens.dart`) и `.clamp(2, 4)` (правая панель уже full screen).
     - `class SearchResultsGrid extends ConsumerWidget`. Build: `final state = ref.watch(searchControllerProvider);` и `switch(state) { Idle() => _IdleHint(), Loading() => _LoadingOverlay(), Empty(:final query) => _EmptyMessage(query), Error(:final message) => _ErrorRetry(message: message), Results(:final items, :final hasMore) => _ResultsGridView(items: items, hasMore: hasMore) }`. **Без `default:`** (Req 10.4).
@@ -133,7 +133,7 @@
 
 ## 7. SearchScreen с 2-pane layout + integration
 
-- [ ] 7.1 Создать `SearchScreen` `ConsumerWidget` с two-pane layout
+- [x] 7.1 Создать `SearchScreen` `ConsumerWidget` с two-pane layout
   - Создать `megav_iptv/lib/features/search/search_screen.dart`:
     - `class SearchScreen extends ConsumerWidget` (НЕ `ConsumerStatefulWidget` — Req 10.5).
     - Build: `Scaffold(backgroundColor: Theme.of(context).colorScheme.surface, body: SafeArea(child: Row(children: [SizedBox(width: 360, child: _LeftPane()), const Expanded(child: SearchResultsGrid())])))`.
@@ -152,7 +152,7 @@
 
 ## 8. Route registration + home-screen affordance
 
-- [ ] 8.1 Зарегистрировать `/search` route в `lib/app.dart`
+- [x] 8.1 Зарегистрировать `/search` route в `lib/app.dart`
   - Открыть `megav_iptv/lib/app.dart` и в существующий `_router` `routes:` список добавить **ровно одну** строку: `GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),`.
   - Импорт `import 'features/search/search_screen.dart';`.
   - Никакие другие routes (`/`, `/home`, `/player`, `/settings`) не модифицируются.
@@ -160,7 +160,7 @@
   - _Requirements: 1.1, 1.2_
   - _Boundary: app.dart (1-line addition)_
 
-- [ ] 8.2 Добавить search-affordance в home-screen header
+- [x] 8.2 Добавить search-affordance в home-screen header
   - Найти существующий header home-screen (`lib/features/home/home_screen.dart` или `lib/features/home/widgets/<header>.dart`) — секция с logo/status и т.п.
   - Добавить `MvIconButton(icon: Icons.search, onPressed: () => context.push('/search'))` (atom from barrel) внутрь header `Row`. Должно быть focusable (atom уже использует `SafeFocusRing` per Req 1.4 — verify).
   - Никакая другая логика home-screen не меняется.
