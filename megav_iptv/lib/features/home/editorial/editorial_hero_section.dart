@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/perf/perf_safe_widgets.dart';
 import '../../../core/playlist/models/now_playing.dart';
@@ -97,54 +96,59 @@ class _EditorialHeroSectionState extends ConsumerState<EditorialHeroSection> {
       widget.item.program?.icon ?? widget.item.thumbnailUrl ?? widget.item.logoUrl ?? '',
     );
 
+    // Hero row — portrait poster (420×620) + expanded meta column.
+    // JSX: grid "auto 1fr", gap 36, padding "0 56px 40px".
+    // Backdrop + gradient are painted behind the row via a Stack that sizes
+    // itself to the row's intrinsic height (no forced SizedBox height).
+    final heroRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SizedBox(
+              // JSX: Poster w=420 h=620.
+              width: 420,
+              height: 620,
+              child: Poster(image: posterProvider, orientation: PosterOrientation.portrait, hideText: true),
+            ),
+            Positioned(
+              left: -10,
+              top: 20,
+              child: Transform.rotate(
+                angle: -math.pi / 2,
+                alignment: Alignment.topLeft,
+                child: const _EditorsPickBadge(index: 1),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 36),
+        Expanded(
+          child: _MetaColumn(
+            item: widget.item,
+            nextItem: widget.nextItem,
+            featuredItem: widget.featuredItem,
+            onPlay: widget.onPlay,
+            onFavoriteToggle: widget.onFavoriteToggle,
+            onEpgOpen: widget.onEpgOpen,
+            heroFocus: _heroFocus,
+          ),
+        ),
+      ],
+    );
+
     return Stack(
       key: const Key('editorial-hero'),
       children: [
+        // Backdrop fills the Stack — Stack sizes itself to heroRow's height.
         Positioned.fill(
           child: SafeBackdrop(imageProvider: backdropProvider, fallbackBackground: palette.background),
         ),
         Positioned.fill(
           child: DecoratedBox(decoration: BoxDecoration(gradient: combinedHeroGradient(palette))),
         ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 56.w, vertical: 28.h),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  SizedBox(
-                    width: 420.w,
-                    height: 620.h,
-                    child: Poster(image: posterProvider, orientation: PosterOrientation.portrait, hideText: true),
-                  ),
-                  Positioned(
-                    left: -10.w,
-                    top: 20.h,
-                    child: Transform.rotate(
-                      angle: -math.pi / 2,
-                      alignment: Alignment.topLeft,
-                      child: const _EditorsPickBadge(index: 1),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(width: 36.w),
-              Expanded(
-                child: _MetaColumn(
-                  item: widget.item,
-                  nextItem: widget.nextItem,
-                  featuredItem: widget.featuredItem,
-                  onPlay: widget.onPlay,
-                  onFavoriteToggle: widget.onFavoriteToggle,
-                  onEpgOpen: widget.onEpgOpen,
-                  heroFocus: _heroFocus,
-                ),
-              ),
-            ],
-          ),
-        ),
+        heroRow,
       ],
     );
   }
@@ -205,44 +209,46 @@ class _MetaColumn extends StatelessWidget {
             const Chip(variant: ChipVariant.gold, label: 'Premiere'),
           ],
         ),
-        SizedBox(height: 16.h),
-        // Italic display title with single safe shadow (Req 9.2).
-        // FontStyle is explicit so the italic invariant survives even if
-        // the [MegaVTextStyles] extension is absent (theme-fallback path).
+        const SizedBox(height: 16),
+        // Italic display title 84sp — JSX: fontSize: 84, fontStyle: italic.
         Text(
           title,
           style: displayItalic.copyWith(
             fontSize: 84,
             fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w400,
+            height: 0.95,
+            letterSpacing: -0.02 * 84,
             color: palette.text,
             shadows: const [Shadow(color: Color(0x66000000), blurRadius: kSafeShadowBlurMax, offset: Offset(0, 2))],
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        SizedBox(height: 12.h),
-        // Mono meta-line.
-        if (metaLine.isNotEmpty) Text(metaLine, style: metaMono.copyWith(color: palette.textDim)),
-        SizedBox(height: 12.h),
-        // Summary, capped to 540 lp wide and 4 lines.
+        const SizedBox(height: 12),
+        // Mono meta-line — JSX: fontSize: 12, letterSpacing: "0.14em", uppercase.
+        if (metaLine.isNotEmpty)
+          Text(
+            metaLine.toUpperCase(),
+            style: metaMono.copyWith(fontSize: 12, letterSpacing: 0.14 * 12, color: palette.textDim),
+          ),
+        const SizedBox(height: 12),
+        // Summary — JSX: fontSize: 17, lineHeight: 1.55, maxWidth: 540.
         if (summary.isNotEmpty)
           ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 540.w),
+            constraints: const BoxConstraints(maxWidth: 540),
             child: Text(
               summary,
-              style: body.copyWith(color: palette.textDim),
+              style: body.copyWith(fontSize: 17, height: 1.55, color: palette.textDim),
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-        SizedBox(height: 16.h),
-        // Progress.
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 540.w),
-          child: const _HeroProgress(),
-        ),
-        SizedBox(height: 16.h),
-        // Action row — primary CTA owns the hero FocusNode.
+        const SizedBox(height: 16),
+        // Progress — JSX: mv-track maxWidth: 480, mv-ticks below.
+        ConstrainedBox(constraints: const BoxConstraints(maxWidth: 480), child: const _HeroProgress()),
+        const SizedBox(height: 16),
+        // Action row — JSX: gap 12px, primary + 2 ghost buttons.
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -250,21 +256,20 @@ class _MetaColumn extends StatelessWidget {
               focusNode: heroFocus,
               child: MvButton.primary(label: 'Смотреть', onPressed: onPlay, isFocused: heroFocus.hasFocus),
             ),
-            SizedBox(width: 12.w),
+            const SizedBox(width: 12),
             MvButton.ghost(label: '+ В избранное', onPressed: onFavoriteToggle),
-            SizedBox(width: 12.w),
+            const SizedBox(width: 12),
             MvButton.ghost(label: 'Программа', onPressed: onEpgOpen),
           ],
         ),
-        SizedBox(height: 20.h),
-        // Side cards — strip the unused progress so caller-injected items
-        // simply render as-is. Caller computes the remaining countdown.
+        const SizedBox(height: 20),
+        // Side cards — JSX: gridTemplateColumns "1fr 1fr", gap 14, marginTop 8.
         Row(
           children: [
             Expanded(
               child: EditorialSideCard.next(item: nextItem, remaining: '55 мин'),
             ),
-            SizedBox(width: 14.w),
+            const SizedBox(width: 14),
             Expanded(
               child: EditorialSideCard.featured(item: featuredItem, remaining: '2ч 06м'),
             ),

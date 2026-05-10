@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/playlist/models/now_playing.dart';
@@ -16,27 +15,27 @@ import 'editorial_section_title.dart';
 
 /// Editorial Home — print-magazine styled variant of the Home surface.
 ///
-/// Phase 6 of the `home-editorial-redesign` spec wires every previously
-/// landed atom (`EditorialBrandHeader`, `EditorialMasthead`,
-/// `EditorialHeroSection`, `EditorialGenreTabsBar`, `EditorialBentoGrid`,
-/// `EditorialFilmReelStrip`) into a single vertically-scrollable composition
-/// inside a single [ListView]. The screen reads channels from
-/// [featuredChannelsProvider] and projects them into [NowPlayingItem]
-/// instances expected by the editorial atoms. When the provider is still
-/// loading or empty, placeholder items keep the chrome mounted so the
-/// smoke and coexistence tests can assert root keys.
+/// JSX reference: `home-editorial.jsx`.
 ///
-/// **Perf contract** (Req 9.1, 9.2, 9.3, 13.3):
-/// - NO [BackdropFilter], NO [ShaderMask], NO [ImageFilter.blur] in this
-///   composition; downstream atoms own the same contract.
-/// - The single outer [ListView] owns the scroll; every section is a
-///   flat child of `ListView.children` to avoid nested scrollables.
-/// - `cacheExtent`, `addAutomaticKeepAlives` and `addRepaintBoundaries`
-///   mirror the cinematic-spec settings — kept in lockstep so the two
-///   variants share one scroll perf profile.
+/// Layout matches JSX structure:
+/// 1. `Header` — Brand + StatusBar (56px horizontal padding).
+/// 2. Masthead block — `padding: "8px 56px 28px"`.
+/// 3. Hero row — `padding: "0 56px 40px"`.
+/// 4. `GenreTabs` — full width strip.
+/// 5. Bento section — `padding: "32px 56px"`.
+/// 6. Film reel strip — `padding: "12px 56px 0"`.
 ///
-/// Maps to Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 11.6, 13.1, 13.2 and
-/// 13.3 of `home-editorial-redesign`.
+/// The ListView itself has `padding: EdgeInsets.zero`; each child owns its
+/// own horizontal padding of 56 lp. This mirrors the JSX where each section
+/// has `padding: "... 56px"`.
+///
+/// Perf contract (Req 9.1, 9.2, 9.3, 13.3):
+/// - NO BackdropFilter, NO ShaderMask, NO ImageFilter.blur in this file.
+/// - Single outer ListView; every section is a flat child.
+/// - cacheExtent / addAutomaticKeepAlives / addRepaintBoundaries match
+///   cinematic-spec settings.
+///
+/// Maps to Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 11.6, 13.1, 13.2, 13.3.
 class EditorialHomeScreen extends ConsumerStatefulWidget {
   const EditorialHomeScreen({super.key});
 
@@ -52,7 +51,10 @@ class _EditorialHomeScreenState extends ConsumerState<EditorialHomeScreen> {
     final heroItem = channels.isNotEmpty ? _toMockNow(channels[0]) : _placeholderNow('hero');
     final nextItem = channels.length > 1 ? _toMockNow(channels[1]) : _placeholderNow('next');
     final featuredItem = channels.length > 2 ? _toMockNow(channels[2]) : _placeholderNow('featured');
-    final bentoCells = channels.length > 3 ? channels.skip(3).take(8).toList() : const <Channel>[];
+    final bentoChannels = channels.length > 3 ? channels.skip(3).take(8).toList() : const <Channel>[];
+
+    // Bento layout mirrors JSX: [2×2, 2×1, 2×1, 1×1, 1×1, 2×1, 2×1, 2×1].
+    final bentoCells = _buildBentoCells(bentoChannels);
 
     return Scaffold(
       key: const Key('editorial-home-root'),
@@ -62,19 +64,29 @@ class _EditorialHomeScreenState extends ConsumerState<EditorialHomeScreen> {
           addAutomaticKeepAlives: true,
           addRepaintBoundaries: true,
           clipBehavior: Clip.none,
-          padding: EdgeInsets.symmetric(horizontal: 56.w, vertical: 28.h),
+          padding: EdgeInsets.zero,
           children: [
-            const EditorialBrandHeader(),
-            SizedBox(height: 24.h),
-            EditorialMasthead(
-              label: 'Главная',
-              emphasis: 'сегодня',
-              dateLine: _formatToday(),
-              issueNumber: _issueNumber(),
+            // ── Header: Brand + StatusBar ───────────────────────────────
+            // JSX: <Header /> inside mv-header → padding: 28px 56px.
+            const Padding(padding: EdgeInsets.fromLTRB(56, 28, 56, 28), child: EditorialBrandHeader()),
+
+            // ── Masthead block ──────────────────────────────────────────
+            // JSX: padding "8px 56px 28px", borderBottom hairline.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(56, 8, 56, 0),
+              child: EditorialMasthead(
+                label: 'Главная',
+                emphasis: 'сегодня',
+                dateLine: _formatToday(),
+                issueNumber: _issueNumber(),
+              ),
             ),
-            SizedBox(height: 24.h),
-            SizedBox(
-              height: 700.h,
+            const SizedBox(height: 24),
+
+            // ── Hero row ────────────────────────────────────────────────
+            // JSX: padding "0 56px 40px", grid auto sized.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(56, 0, 56, 40),
               child: EditorialHeroSection(
                 item: heroItem,
                 nextItem: nextItem,
@@ -84,27 +96,40 @@ class _EditorialHomeScreenState extends ConsumerState<EditorialHomeScreen> {
                 onEpgOpen: () {},
               ),
             ),
-            SizedBox(height: 24.h),
+
+            // ── Genre tabs ──────────────────────────────────────────────
+            // JSX: <GenreTabs> — full width strip with borders.
             EditorialGenreTabsBar(
-              tabs: const ['Все', 'Кино', 'Сериалы', 'Спорт', 'Новости'],
-              activeIndex: 0,
+              tabs: const ['В эфире', 'Кино', 'Сериалы', 'Спорт', 'Новости', 'Дети', 'Музыка'],
+              activeIndex: 1,
               onSelected: (_) {},
             ),
-            SizedBox(height: 24.h),
-            EditorialSectionTitle(label: 'Кино', emphasis: 'без расписания', count: bentoCells.length),
-            SizedBox(height: 16.h),
-            if (bentoCells.isNotEmpty)
-              EditorialBentoGrid(
-                cells: bentoCells.map((c) => EditorialBentoCell(item: _toMockNow(c), cols: 1, rows: 1)).toList(),
-              ),
-            SizedBox(height: 24.h),
-            // Film-reel strip needs a bounded height — its internal
-            // `OverflowBox` would otherwise demand an infinite-height
-            // constraint inside the unbounded ListView slot.
-            SizedBox(
-              height: 88.h,
-              child: EditorialFilmReelStrip(channelCount: channels.length, activeIndex: 0, frameCount: 18),
+
+            // ── Bento grid section ──────────────────────────────────────
+            // JSX: padding "32px 56px", SectionTitle + grid.
+            const SizedBox(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 56),
+              child: EditorialSectionTitle(label: 'Кино', emphasis: 'без расписания', count: bentoChannels.length),
             ),
+            const SizedBox(height: 16),
+            if (bentoCells.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 56),
+                child: EditorialBentoGrid(cells: bentoCells),
+              ),
+
+            // ── Film reel strip ─────────────────────────────────────────
+            // JSX: padding "12px 56px 0", height ~48px.
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(56, 0, 56, 0),
+              child: SizedBox(
+                height: 48,
+                child: EditorialFilmReelStrip(channelCount: channels.length, activeIndex: 0, frameCount: 18),
+              ),
+            ),
+            const SizedBox(height: 60),
           ],
         ),
       ),
@@ -112,9 +137,29 @@ class _EditorialHomeScreenState extends ConsumerState<EditorialHomeScreen> {
   }
 }
 
-/// Produces a Russian-locale date string in the magazine masthead idiom
-/// (e.g. `9 МАЯ 2026`). Independent of system locale so the masthead
-/// reads identically on every device.
+/// Maps [bentoChannels] to [EditorialBentoCell] list with the JSX bento
+/// layout: [2×2, 2×1, 2×1, 1×1, 1×1, 2×1, 2×1, 2×1].
+/// Falls back to 1×1 when insufficient items.
+List<EditorialBentoCell> _buildBentoCells(List<Channel> channels) {
+  if (channels.isEmpty) return const [];
+  final spans = <(int, int)>[
+    (2, 2), // idx 0 — big
+    (2, 1), // idx 1
+    (2, 1), // idx 2
+    (1, 1), // idx 3
+    (1, 1), // idx 4
+    (2, 1), // idx 5
+    (2, 1), // idx 6
+    (2, 1), // idx 7
+  ];
+  final result = <EditorialBentoCell>[];
+  for (var i = 0; i < channels.length && i < spans.length; i++) {
+    final (cols, rows) = spans[i];
+    result.add(EditorialBentoCell(item: _toMockNow(channels[i]), cols: cols, rows: rows, live: i == 0));
+  }
+  return result;
+}
+
 String _formatToday() {
   const months = <String>[
     'ЯНВАРЯ',
@@ -131,13 +176,9 @@ String _formatToday() {
     'ДЕКАБРЯ',
   ];
   final now = DateTime.now();
-  final m = months[now.month - 1];
-  return '${now.day} $m ${now.year}';
+  return '${now.day} ${months[now.month - 1]} ${now.year}';
 }
 
-/// Magazine-style issue counter — number of days elapsed since
-/// 1 January 2026 (the editorial-redesign launch reference). Caps at
-/// `999` to keep the masthead glyph budget at three digits.
 int _issueNumber() {
   final base = DateTime(2026, 1, 1);
   final days = DateTime.now().difference(base).inDays;
@@ -146,30 +187,14 @@ int _issueNumber() {
   return days;
 }
 
-/// Wraps a [Channel] into a minimal [NowPlayingItem]. The editorial atoms
-/// only read `channelId`, `channelName`, `groupTitle`, `logoUrl` and
-/// `thumbnailUrl` for layout / mock display — no EPG program is required.
-NowPlayingItem _toMockNow(Channel c) {
-  return NowPlayingItem(
-    channelId: c.id,
-    channelName: c.name,
-    groupTitle: c.groupTitle,
-    logoUrl: c.logoUrl,
-    thumbnailUrl: c.thumbnailUrl,
-    program: null,
-  );
-}
+NowPlayingItem _toMockNow(Channel c) => NowPlayingItem(
+  channelId: c.id,
+  channelName: c.name,
+  groupTitle: c.groupTitle,
+  logoUrl: c.logoUrl,
+  thumbnailUrl: c.thumbnailUrl,
+  program: null,
+);
 
-/// Empty placeholder — used when the channels provider is still loading
-/// or returned an empty list, so the chrome (hero + side cards + masthead)
-/// stays mounted and exposes its keys to widget tests.
-NowPlayingItem _placeholderNow(String label) {
-  return NowPlayingItem(
-    channelId: -1,
-    channelName: label,
-    groupTitle: '',
-    logoUrl: null,
-    thumbnailUrl: null,
-    program: null,
-  );
-}
+NowPlayingItem _placeholderNow(String label) =>
+    NowPlayingItem(channelId: -1, channelName: label, groupTitle: '', logoUrl: null, thumbnailUrl: null, program: null);

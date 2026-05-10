@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:megav_iptv/core/ui/atoms/atoms.dart';
 import 'package:megav_iptv/features/home/editorial/editorial_section_title.dart';
 
 Widget _wrap(Widget child) {
@@ -39,8 +38,9 @@ void main() {
       await tester.pump();
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(SectionTitle), findsOneWidget);
-      // Emphasis fragment renders as a sibling Text widget inside SectionTitle.
+      // EditorialSectionTitle now has its own layout (1-in-1 JSX accuracy)
+      // rather than delegating to the SectionTitle atom.
+      // Verify the emphasis fragment is visible in the RichText span tree.
       expect(
         find.textContaining('без расписания', findRichText: true),
         findsOneWidget,
@@ -64,6 +64,7 @@ void main() {
       await tester.pump();
 
       expect(tester.takeException(), isNull);
+      // Count is rendered as zero-padded mono text (e.g. "30").
       expect(find.textContaining('30'), findsOneWidget);
     },
   );
@@ -85,10 +86,8 @@ void main() {
       await tester.pump();
 
       expect(tester.takeException(), isNull);
-      // The atom renders an MvButton.ghost when onMore is non-null. We
-      // verify the trailing action exists and that tapping it dispatches
-      // the callback.
-      final moreButton = find.text('more →');
+      // The trailing more button renders as "ВСЕ →" (JSX-accurate label).
+      final moreButton = find.text('ВСЕ →');
       expect(moreButton, findsOneWidget);
       await tester.tap(moreButton);
       await tester.pump();

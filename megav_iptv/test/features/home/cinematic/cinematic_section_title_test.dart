@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:megav_iptv/core/ui/atoms/atoms.dart';
 import 'package:megav_iptv/features/home/cinematic/cinematic_section_title.dart';
 
 void main() {
@@ -20,8 +19,12 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(find.byType(SectionTitle), findsOneWidget);
-      expect(find.text('эфире'), findsOneWidget);
+      // CinematicSectionTitle uses its own RichText layout (JSX-faithful,
+      // no SectionTitle atom wrapper). Verify the emphasis text is visible.
+      expect(
+        find.textContaining('эфире', findRichText: true),
+        findsOneWidget,
+      );
     });
 
     testWidgets('count: 12 surfaces in tree', (tester) async {
@@ -42,7 +45,7 @@ void main() {
       expect(find.textContaining('12'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('onMoreTap: non-null surfaces "more →" trailing action', (tester) async {
+    testWidgets('onMoreTap: non-null surfaces "ВСЕ →" trailing action', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
@@ -56,8 +59,8 @@ void main() {
         ),
       );
       await tester.pump();
-      // SectionTitle internally renders MvButton.ghost when onMore != null.
-      expect(find.byType(MvButton), findsOneWidget);
+      // CinematicSectionTitle renders a trailing InkWell with "ВСЕ →" text.
+      expect(find.textContaining('ВСЕ →'), findsOneWidget);
     });
   });
 }

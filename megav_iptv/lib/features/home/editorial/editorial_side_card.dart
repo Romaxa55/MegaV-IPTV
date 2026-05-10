@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart' hide Chip;
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/perf/perf_safe_widgets.dart';
 import '../../../core/playlist/models/now_playing.dart';
@@ -7,52 +6,41 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/megav_text_styles.dart';
 import '../../../core/ui/atoms/atoms.dart';
 
-/// Editorial side card — flat semi-opaque tile that pairs a portrait
-/// poster thumbnail with an eyebrow label, italic display title, mono
-/// year/genre meta line and an accent-coloured countdown.
+/// Editorial side card — flat semi-opaque tile: poster thumb + eyebrow +
+/// italic title + meta line + accent countdown.
 ///
-/// Two named ctors set the eyebrow label:
-/// - `EditorialSideCard.next(...)` → label `ДАЛЕЕ В ЭФИРЕ` (slot
-///   `next`).
-/// - `EditorialSideCard.featured(...)` → label `РЕКОМЕНДУЕМ` (slot
-///   `featured`).
+/// JSX reference (`home-editorial.jsx` SideCard):
+/// ```jsx
+/// <div style={{display:"flex", gap: 14, padding: 14,
+///   background: "rgba(20,20,26,0.55)", border: "1px solid var(--line)",
+///   borderRadius: "var(--r-md)", backdropFilter: "blur(12px)"}}>
+///   <Poster idx={idx} w={84} h={112} />
+///   <div style={{flex:1}}>
+///     <div style={{fontFamily:"var(--font-mono)", fontSize:10, letterSpacing:"0.14em",
+///       color:"var(--text-mute)", textTransform:"uppercase"}}>{label}</div>
+///     <div style={{fontFamily:"var(--font-display)", fontStyle:"italic",
+///       fontSize:22, lineHeight:1.1, marginTop:6}}>{t.t}</div>
+///     <div style={{fontSize:12, color:"var(--text-dim)", marginTop:4}}>{t.y} · {t.g}</div>
+///     <div style={{fontFamily:"var(--font-mono)", fontSize:10,
+///       color:"var(--accent)", letterSpacing:"0.1em"}}>{remaining}</div>
+///   </div>
+/// </div>
+/// ```
 ///
-/// The widget tracks focus via a [Focus] callback so the surrounding
-/// [SafeFocusRing] can light up — focus state is the only reason the
-/// widget is a `StatefulWidget`.
-///
-/// **Perf contract**: NO `BackdropFilter` (Req 4.2). The semi-opaque
-/// look is built from `palette.surface2.withValues(alpha: 0.55)` over a
-/// hairline `palette.line` border — runtime blur over Texture layers is
-/// catastrophic on the rtd2851a target.
-///
-/// Maps to Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 9.1, 9.2 and 13.1 of
-/// `home-editorial-redesign`.
+/// Perf contract: NO BackdropFilter (JSX uses blur(12px) — forbidden on
+/// 512 MB Android 6; replaced by opaque surface2.withAlpha(0x8C)).
 class EditorialSideCard extends StatefulWidget {
-  /// Eyebrow label `ДАЛЕЕ В ЭФИРЕ`.
   const EditorialSideCard.next({super.key, required this.item, required this.remaining})
     : label = 'ДАЛЕЕ В ЭФИРЕ',
       slot = 'next';
 
-  /// Eyebrow label `РЕКОМЕНДУЕМ`.
   const EditorialSideCard.featured({super.key, required this.item, required this.remaining})
     : label = 'РЕКОМЕНДУЕМ',
       slot = 'featured';
 
-  /// Source item providing poster / title / meta-fields. The card
-  /// gracefully falls back to channel-level fields when no EPG program
-  /// is attached.
   final NowPlayingItem item;
-
-  /// Pre-formatted countdown (e.g. `через 55 мин`, `2ч 06м`). Caller
-  /// owns formatting.
   final String remaining;
-
-  /// Eyebrow label baked in by the named ctor.
   final String label;
-
-  /// Slot identifier used to namespace the root [Key] (`next` or
-  /// `featured`).
   final String slot;
 
   @override
@@ -68,9 +56,34 @@ class _EditorialSideCardState extends State<EditorialSideCard> {
     final styles = theme.extension<MegaVTextStyles>();
     final palette = AppColors.activePalette;
 
-    final metaMono = styles?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle();
-    final displayItalic = styles?.displayItalic ?? theme.textTheme.headlineSmall ?? const TextStyle();
-    final bodyDim = styles?.bodyDim ?? theme.textTheme.bodySmall ?? const TextStyle();
+    // Eyebrow: mono 10sp, ls=0.14em, textMute, uppercase.
+    final eyebrowStyle = (styles?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+      fontSize: 10,
+      letterSpacing: 0.14 * 10,
+      color: palette.textMute,
+    );
+
+    // Title: display italic 22sp, lh=1.1, text.
+    final titleStyle = (styles?.displayItalic ?? theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+      fontSize: 22,
+      fontStyle: FontStyle.italic,
+      fontWeight: FontWeight.w400,
+      height: 1.1,
+      color: palette.text,
+    );
+
+    // Meta line: 12sp, textDim.
+    final metaStyle = (styles?.bodyDim ?? theme.textTheme.bodySmall ?? const TextStyle()).copyWith(
+      fontSize: 12,
+      color: palette.textDim,
+    );
+
+    // Countdown: mono 10sp, ls=0.1em, accent.
+    final countdownStyle = (styles?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+      fontSize: 10,
+      letterSpacing: 0.1 * 10,
+      color: palette.accent,
+    );
 
     final program = widget.item.program;
     final title = program?.title ?? widget.item.channelName;
@@ -78,63 +91,62 @@ class _EditorialSideCardState extends State<EditorialSideCard> {
     final genre = program?.category ?? widget.item.groupTitle;
     final metaParts = <String>[if (year != null && year.isNotEmpty) year, if (genre.isNotEmpty) genre];
     final metaLine = metaParts.join(' · ');
-
     final posterUrl = program?.icon ?? widget.item.thumbnailUrl ?? widget.item.logoUrl ?? '';
 
     return Focus(
       onFocusChange: (hasFocus) {
-        if (_focused != hasFocus) {
-          setState(() => _focused = hasFocus);
-        }
+        if (_focused != hasFocus) setState(() => _focused = hasFocus);
       },
       child: SafeFocusRing(
         isFocused: _focused,
         child: DecoratedBox(
           key: Key('editorial-side-card-${widget.slot}'),
           decoration: BoxDecoration(
-            color: palette.surface2.withValues(alpha: 0.55),
+            // JSX: rgba(20,20,26,0.55) — no backdrop blur (perf constraint).
+            color: palette.surface2.withAlpha(0x8C),
             border: Border.all(color: palette.line),
-            borderRadius: BorderRadius.circular(8),
+            // JSX: borderRadius var(--r-md) = 14px.
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Padding(
-            padding: EdgeInsets.all(14.w),
+            // JSX: padding: 14.
+            padding: const EdgeInsets.all(14),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // JSX: Poster w=84 h=112.
                 SizedBox(
-                  width: 84.w,
-                  height: 112.h,
+                  width: 84,
+                  height: 112,
                   child: Poster(
                     image: NetworkImage(posterUrl),
                     orientation: PosterOrientation.portrait,
                     hideText: true,
                   ),
                 ),
-                SizedBox(width: 14.w),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(widget.label, style: metaMono.copyWith(color: palette.textMute)),
-                      SizedBox(height: 6.h),
-                      Text(
-                        title,
-                        style: displayItalic.copyWith(fontSize: 20, height: 1.1, color: palette.text),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Eyebrow label.
+                          Text(widget.label, style: eyebrowStyle, maxLines: 1),
+                          const SizedBox(height: 6),
+                          // Italic display title.
+                          Text(title, style: titleStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          if (metaLine.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(metaLine, style: metaStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ],
                       ),
-                      if (metaLine.isNotEmpty) ...[
-                        SizedBox(height: 4.h),
-                        Text(
-                          metaLine,
-                          style: bodyDim.copyWith(color: palette.textDim),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      SizedBox(height: 8.h),
-                      Text(widget.remaining, style: metaMono.copyWith(color: palette.accent)),
+                      const SizedBox(height: 8),
+                      // Accent countdown.
+                      Text(widget.remaining, style: countdownStyle),
                     ],
                   ),
                 ),

@@ -1,24 +1,29 @@
 import 'package:flutter/material.dart' hide Chip;
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/megav_text_styles.dart';
 
-/// Editorial masthead — print-magazine styled section header that combines
-/// an upright label with an italic emphasis fragment, terminated by a mono
-/// dateline and issue counter, all separated from the page body by a
-/// hairline bottom border.
+/// Editorial masthead — print-magazine styled section header.
 ///
-/// Typography is sourced from the registered [MegaVTextStyles] theme
-/// extension (`displayLarge` for the title, `metaMono` for the dateline).
-/// Colors are read through the active [AppPalette] via
-/// `AppColors.activePalette` — the project does not register the palette
-/// as a [ThemeExtension]; the documented bridge is the static accessor
-/// (see `lib/core/theme/app_colors.dart`).
+/// JSX reference (`home-editorial.jsx` masthead block):
+/// ```jsx
+/// <div style={{
+///   fontFamily: "var(--font-display)", fontStyle: "italic",
+///   fontSize: 56, lineHeight: 1, letterSpacing: "-0.01em"
+/// }}>Главная <em style={{color:"var(--text-dim)"}}>сегодня</em></div>
+/// <div style={{
+///   fontFamily: "var(--font-mono)", fontSize: 11,
+///   letterSpacing: "0.16em", color: "var(--text-mute)"
+/// }}>9 МАЯ 2026 · ВЫПУСК №127</div>
+/// ```
+/// Container: `padding: "8px 56px 28px"`, `borderBottom: "1px solid var(--line)"`.
 ///
-/// No backdrops, no shaders, no soft blurs — the surface is a flat
-/// hairline-bordered container. Maps to Requirements 2.1, 2.2, 2.3, 2.4,
-/// 2.5, 9.1, 9.2 and 13.1 of `home-editorial-redesign`.
+/// Typography spec:
+/// - Label + emphasis: display italic 56sp, lineHeight 1.0, letterSpacing -0.01em.
+/// - Emphasis color: `textDim`.
+/// - Dateline: mono 11sp, letterSpacing 0.16em (= 0.16 * 11 = 1.76 lp), textMute.
+///
+/// Perf contract: NO blur, NO ShaderMask, NO BoxShadow.blurRadius > 12.
 class EditorialMasthead extends StatelessWidget {
   const EditorialMasthead({
     super.key,
@@ -31,14 +36,13 @@ class EditorialMasthead extends StatelessWidget {
   /// Upright label text (e.g. `Главная`).
   final String label;
 
-  /// Italic emphasis fragment appended after the label (e.g. `сегодня`).
+  /// Italic emphasis fragment (e.g. `сегодня`).
   final String emphasis;
 
-  /// Pre-formatted dateline (e.g. `9 МАЯ 2026`). Caller owns formatting.
+  /// Pre-formatted dateline (e.g. `9 МАЯ 2026`).
   final String dateLine;
 
-  /// Issue number rendered as a 3-digit zero-padded counter (e.g. `127`
-  /// becomes `№127`, `7` becomes `№007`).
+  /// Issue number (e.g. `127` → `ВЫПУСК №127`).
   final int issueNumber;
 
   @override
@@ -47,15 +51,29 @@ class EditorialMasthead extends StatelessWidget {
     final styles = theme.extension<MegaVTextStyles>();
     final palette = AppColors.activePalette;
 
-    final displayLarge = styles?.displayLarge ?? theme.textTheme.displayLarge ?? const TextStyle();
-    final metaMono = styles?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle();
+    // Base display style — 56sp italic, lh=1.0, ls=-0.01em.
+    final baseDisplay = styles?.displayItalic ?? theme.textTheme.headlineLarge ?? const TextStyle();
+    final displayStyle = baseDisplay.copyWith(
+      fontSize: 56,
+      fontStyle: FontStyle.italic,
+      fontWeight: FontWeight.w400,
+      height: 1.0,
+      letterSpacing: -0.01 * 56,
+      color: palette.text,
+    );
+    final emphasisStyle = displayStyle.copyWith(color: palette.textDim);
+
+    // Mono dateline — 11sp, ls=0.16em.
+    final monoBase = styles?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle();
+    final dateStyle = monoBase.copyWith(fontSize: 11, letterSpacing: 0.16 * 11, color: palette.textMute);
 
     return Container(
       key: const Key('editorial-masthead'),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: palette.line)),
       ),
-      padding: EdgeInsets.symmetric(vertical: 16.h),
+      // JSX: paddingBottom 16 inside the masthead container.
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
@@ -64,19 +82,14 @@ class EditorialMasthead extends StatelessWidget {
             child: RichText(
               text: TextSpan(
                 children: [
-                  TextSpan(text: label, style: displayLarge),
-                  TextSpan(
-                    text: ' $emphasis',
-                    style: displayLarge.copyWith(fontStyle: FontStyle.italic, color: palette.textDim),
-                  ),
+                  TextSpan(text: label, style: displayStyle),
+                  TextSpan(text: ' $emphasis', style: emphasisStyle),
                 ],
               ),
             ),
           ),
-          Text(
-            '$dateLine · ВЫПУСК №${issueNumber.toString().padLeft(3, '0')}',
-            style: metaMono.copyWith(color: palette.textMute),
-          ),
+          const SizedBox(width: 16),
+          Text('$dateLine · ВЫПУСК №${issueNumber.toString().padLeft(3, '0')}', style: dateStyle),
         ],
       ),
     );
