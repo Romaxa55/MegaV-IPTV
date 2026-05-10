@@ -335,7 +335,7 @@
   - _Depends: 1.1, 1.2_
   - _Boundary: player-overlay invariant regression_
 
-- [ ] 6.3 Final regression — full `flutter test` + perf greps + closed-spec diff
+- [x] 6.3 Final regression — full `flutter test` + perf greps + closed-spec diff
   - Run `flutter test` в `megav_iptv/`. Ожидаемый итог: **baseline + новые epg-screen tests все зелёные** (Req 14.1).
   - Подсчитать общее число тестов после landing — задокументировать в commit message (e.g., «baseline N + 30 новых = (N+30)/(N+30) зелёных»).
   - Run `flutter analyze megav_iptv/lib/features/epg/ megav_iptv/lib/core/epg/` — 0 issues (Req 14.6).
@@ -423,3 +423,7 @@ grep -rE "blurRadius:\s*([2-9][0-9]+|1[3-9])" megav_iptv/lib/features/epg/ megav
 | `home-grid-optimization`, `home-grid-visual-polish` | `lib/features/home/widgets/*`, `home_screen.dart`, `cinema_row.dart`, `cinema_card.dart`, `_grid_tokens.dart` — read-only. `git diff` gate в 6.3. |
 | Existing data layer | `lib/core/providers/providers.dart` existing providers (`currentProgramProvider`, `upcomingProgramsProvider`, ...), `EpgProgram` model, existing `ApiClient` methods — read-only. Test 6.2 + `git diff` gate. |
 | Foundation specs (`design-system-foundation`, `perf-safe-widgets`, `design-system-atoms`) | `lib/core/theme/*`, `lib/core/perf/*`, `lib/core/ui/atoms/*` — read-only. Imported via barrel only. |
+
+## Implementation Notes
+
+- **Spec closed (2026-05-10):** все 6 фаз и 24 подзадачи выполнены; финальный regression gate (task 6.3) пройден — `flutter test` 189/189 (baseline 154 + 35 new across 11 test files), `flutter analyze` 0 issues, perf-grep 0 hits в коде (6 в doc-комментах), closed-spec diffs пусты, router diff `+2 -0` (1 import + 1 GoRoute('/epg')), pubspec без новых пакетов; Req 11.6 batch endpoint deferred (graceful fallback в `EpgRepository`); manual TV smoke на rtd2851a NOT_PERFORMED — рекомендация провести перед следующим epic'ом. Полный отчёт: `.kiro/specs/epg-screen/REGRESSION-REPORT.md`.
