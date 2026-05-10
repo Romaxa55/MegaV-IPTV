@@ -97,55 +97,77 @@ class _EditorialHeroSectionState extends ConsumerState<EditorialHeroSection> {
       widget.item.program?.icon ?? widget.item.thumbnailUrl ?? widget.item.logoUrl ?? '',
     );
 
-    return Stack(
-      key: const Key('editorial-hero'),
-      children: [
-        Positioned.fill(
-          child: SafeBackdrop(imageProvider: backdropProvider, fallbackBackground: palette.background),
-        ),
-        Positioned.fill(
-          child: DecoratedBox(decoration: BoxDecoration(gradient: combinedHeroGradient(palette))),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 56.w, vertical: 28.h),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // On narrow viewports (< 800 lp wide) the fixed-width poster would
+        // eat more than half the row — hide it and go single-column so the
+        // meta column gets full width.  The backdrop still fills the hero.
+        final showPoster = constraints.maxWidth >= 800;
+
+        return Stack(
+          key: const Key('editorial-hero'),
+          children: [
+            Positioned.fill(
+              child: SafeBackdrop(imageProvider: backdropProvider, fallbackBackground: palette.background),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(decoration: BoxDecoration(gradient: combinedHeroGradient(palette))),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 56.w, vertical: 28.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 420.w,
-                    height: 620.h,
-                    child: Poster(image: posterProvider, orientation: PosterOrientation.portrait, hideText: true),
-                  ),
-                  Positioned(
-                    left: -10.w,
-                    top: 20.h,
-                    child: Transform.rotate(
-                      angle: -math.pi / 2,
-                      alignment: Alignment.topLeft,
-                      child: const _EditorsPickBadge(index: 1),
+                  if (showPoster) ...[
+                    // Poster width: 420 design-px on TV.  On narrower
+                    // viewports cap at 22% of the available width so the
+                    // meta column always gets at least 60% of the row.
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        SizedBox(
+                          width: (constraints.maxWidth * 0.22).clamp(160.0, 420.w),
+                          child: AspectRatio(
+                            aspectRatio: 2 / 3,
+                            child: Poster(
+                              image: posterProvider,
+                              orientation: PosterOrientation.portrait,
+                              hideText: true,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: -10.w,
+                          top: 20.h,
+                          child: Transform.rotate(
+                            angle: -math.pi / 2,
+                            alignment: Alignment.topLeft,
+                            child: const _EditorsPickBadge(index: 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: 36.w),
+                  ],
+                  Expanded(
+                    child: _MetaColumn(
+                      item: widget.item,
+                      nextItem: widget.nextItem,
+                      featuredItem: widget.featuredItem,
+                      onPlay: widget.onPlay,
+                      onFavoriteToggle: widget.onFavoriteToggle,
+                      onEpgOpen: widget.onEpgOpen,
+                      heroFocus: _heroFocus,
+                      // Compact the action row when width is tight.
+                      compactActions: constraints.maxWidth < 1200,
                     ),
                   ),
                 ],
               ),
-              SizedBox(width: 36.w),
-              Expanded(
-                child: _MetaColumn(
-                  item: widget.item,
-                  nextItem: widget.nextItem,
-                  featuredItem: widget.featuredItem,
-                  onPlay: widget.onPlay,
-                  onFavoriteToggle: widget.onFavoriteToggle,
-                  onEpgOpen: widget.onEpgOpen,
-                  heroFocus: _heroFocus,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -161,6 +183,7 @@ class _MetaColumn extends StatelessWidget {
     required this.onFavoriteToggle,
     required this.onEpgOpen,
     required this.heroFocus,
+    this.compactActions = false,
   });
 
   final NowPlayingItem item;
@@ -170,6 +193,10 @@ class _MetaColumn extends StatelessWidget {
   final VoidCallback? onFavoriteToggle;
   final VoidCallback? onEpgOpen;
   final FocusNode heroFocus;
+
+  /// When true the action row wraps via [Wrap] instead of a fixed [Row],
+  /// preventing overflow on viewports narrower than ~1200 lp.
+  final bool compactActions;
 
   @override
   Widget build(BuildContext context) {
@@ -243,19 +270,35 @@ class _MetaColumn extends StatelessWidget {
         ),
         SizedBox(height: 16.h),
         // Action row — primary CTA owns the hero FocusNode.
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Focus(
-              focusNode: heroFocus,
-              child: MvButton.primary(label: 'Смотреть', onPressed: onPlay, isFocused: heroFocus.hasFocus),
-            ),
-            SizedBox(width: 12.w),
-            MvButton.ghost(label: '+ В избранное', onPressed: onFavoriteToggle),
-            SizedBox(width: 12.w),
-            MvButton.ghost(label: 'Программа', onPressed: onEpgOpen),
-          ],
-        ),
+        // On narrow viewports Wrap prevents overflow by breaking into a new
+        // line; on TV the buttons stay in a single Row (compactActions=false).
+        if (compactActions)
+          Wrap(
+            spacing: 12.w,
+            runSpacing: 8.h,
+            children: [
+              Focus(
+                focusNode: heroFocus,
+                child: MvButton.primary(label: 'Смотреть', onPressed: onPlay, isFocused: heroFocus.hasFocus),
+              ),
+              MvButton.ghost(label: '+ В избранное', onPressed: onFavoriteToggle),
+              MvButton.ghost(label: 'Программа', onPressed: onEpgOpen),
+            ],
+          )
+        else
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Focus(
+                focusNode: heroFocus,
+                child: MvButton.primary(label: 'Смотреть', onPressed: onPlay, isFocused: heroFocus.hasFocus),
+              ),
+              SizedBox(width: 12.w),
+              MvButton.ghost(label: '+ В избранное', onPressed: onFavoriteToggle),
+              SizedBox(width: 12.w),
+              MvButton.ghost(label: 'Программа', onPressed: onEpgOpen),
+            ],
+          ),
         SizedBox(height: 20.h),
         // Side cards — strip the unused progress so caller-injected items
         // simply render as-is. Caller computes the remaining countdown.

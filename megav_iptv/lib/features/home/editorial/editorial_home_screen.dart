@@ -73,16 +73,25 @@ class _EditorialHomeScreenState extends ConsumerState<EditorialHomeScreen> {
               issueNumber: _issueNumber(),
             ),
             SizedBox(height: 24.h),
-            SizedBox(
-              height: 700.h,
-              child: EditorialHeroSection(
-                item: heroItem,
-                nextItem: nextItem,
-                featuredItem: featuredItem,
-                onPlay: () {},
-                onFavoriteToggle: () {},
-                onEpgOpen: () {},
-              ),
+            // Hero section height: on TV 700 design-px; on narrower viewports
+            // use 60% of the current window height, clamped to [280, 700.h]
+            // so it always fits without overflowing the visible area.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final windowH = MediaQuery.sizeOf(context).height;
+                final heroH = (windowH * 0.60).clamp(280.0, 700.h);
+                return SizedBox(
+                  height: heroH,
+                  child: EditorialHeroSection(
+                    item: heroItem,
+                    nextItem: nextItem,
+                    featuredItem: featuredItem,
+                    onPlay: () {},
+                    onFavoriteToggle: () {},
+                    onEpgOpen: () {},
+                  ),
+                );
+              },
             ),
             SizedBox(height: 24.h),
             EditorialGenreTabsBar(

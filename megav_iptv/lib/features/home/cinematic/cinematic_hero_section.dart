@@ -68,9 +68,16 @@ class CinematicHeroSection extends ConsumerWidget {
     );
     final metaStyle = styles?.metaMono ?? theme.textTheme.labelSmall;
 
+    // Hero height: 360 logical px on TV (1080p target), scaled down to at
+    // most 38% of the window height on smaller viewports so the rails below
+    // ("Сейчас в эфире", "Фильмы") remain visible without scrolling far.
+    // Minimum 200 px keeps the CTA reachable.
+    final windowH = MediaQuery.sizeOf(context).height;
+    final heroHeight = windowH >= 900 ? 360.0 : (windowH * 0.38).clamp(200.0, 360.0);
+
     return SizedBox(
       key: const Key('cinematic-hero'),
-      height: 360,
+      height: heroHeight,
       child: Stack(
         fit: StackFit.expand,
         children: [

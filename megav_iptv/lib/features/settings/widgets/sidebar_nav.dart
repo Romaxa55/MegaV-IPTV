@@ -53,8 +53,13 @@ class _SidebarNavState extends State<SidebarNav> {
   Widget build(BuildContext context) {
     final palette = AppColors.activePalette;
 
+    // Sidebar width: 300 design-px on TV; on narrower viewports capped at
+    // 25% of window width (min 160 px) so the body section always has room.
+    final windowW = MediaQuery.sizeOf(context).width;
+    final sidebarW = windowW >= 1280 ? 300.w : (windowW * 0.25).clamp(160.0, 300.w);
+
     return Container(
-      width: 300.w,
+      width: sidebarW,
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       decoration: BoxDecoration(
         border: Border(right: BorderSide(color: palette.line)),
