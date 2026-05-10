@@ -299,7 +299,7 @@
 
 ## 6. Integration + coexistence + regression + perf gate
 
-- [ ] 6.1 Wire all components в `EditorialHomeScreen`
+- [x] 6.1 Wire all components в `EditorialHomeScreen`
   - Модифицировать `megav_iptv/lib/features/home/editorial/editorial_home_screen.dart` (созданный в 1.2) — заполнить body composition согласно design.md §1 component layout:
     1. `EditorialBrandHeader`.
     2. `EditorialMasthead(label: 'Главная', emphasis: 'сегодня', dateLine: ..., issueNumber: ...)`.
@@ -317,7 +317,7 @@
   - _Depends: 2.1, 2.3, 3.3, 4.3, 5.1, 5.3, 5.5_
   - _Boundary: EditorialHomeScreen integration_
 
-- [ ] 6.2 Coexistence test — Cinematic vs Editorial vs legacy via `homeVariantProvider`
+- [x] 6.2 Coexistence test — Cinematic vs Editorial vs legacy via `homeVariantProvider`
   - Создать `megav_iptv/test/features/home/editorial/home_variant_coexistence_test.dart`.
   - Тест 1 — `HomeVariant.editorial`:
     - Pump app с `ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(MockSharedPreferences())])`.
@@ -339,7 +339,7 @@
   - _Depends: 6.1, 1.1_
   - _Boundary: coexistence test_
 
-- [ ] 6.3 Regression test для `pickColumns`
+- [x] 6.3 Regression test для `pickColumns`
   - Создать `megav_iptv/test/features/home/editorial/pick_columns_regression_test.dart`.
   - Тест импортирует `pickColumns` из `package:megav_iptv/features/home/widgets/_grid_tokens.dart` (READ-ONLY).
   - Asserts: `pickColumns(1280) == 3`, `pickColumns(2560) == 4`, `pickColumns(3840) == 5` (Req 12.3, 10.4 защита).
@@ -349,7 +349,7 @@
   - _Depends: 1.1_
   - _Boundary: pickColumns regression_
 
-- [ ] 6.4 Final regression — full `flutter test` + perf greps + immutability checks
+- [x] 6.4 Final regression — full `flutter test` + perf greps + immutability checks
   - Run `flutter test` в `megav_iptv/`. Ожидаемый итог: **все ранее-зелёные тесты (94 baseline + cinematic-spec additions) + все новые editorial tests зелёные** (Req 12.5).
   - Подсчитать общее число тестов после landing — задокументировать в commit message (e.g., «94 baseline + 20 cinematic + 22 editorial = 136/136 зелёных»).
   - Run `flutter analyze megav_iptv/lib/features/home/editorial/ megav_iptv/lib/features/home/home_variant_provider.dart` — 0 issues (Req 13.2).
@@ -364,7 +364,7 @@
   - _Depends: 6.1, 6.2, 6.3, 5.6, 5.4, 5.2, 4.4, 4.2, 3.4, 3.2, 2.4, 2.2, 1.3_
   - _Boundary: final regression gate_
 
-- [ ] 6.5 Rollout (opt-in) — НЕ flip default
+- [x] 6.5 Rollout (opt-in) — НЕ flip default
   - **Editorial остаётся opt-in**: `kHomeVariantDefault` остаётся `HomeVariant.cinematic` (или `legacy` — что было до этого спека). User не сделал явного выбора Editorial vs Cinematic, поэтому default НЕ меняется этим спеком (Req 11.6).
   - Editorial reachable через:
     - explicit route `/home-editorial` (если Option B);
