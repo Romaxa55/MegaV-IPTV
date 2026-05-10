@@ -259,7 +259,7 @@
 
 ## 7. Final regression + boundary gate
 
-- [ ] 7.1 Boundary grep — RAW blur localized
+- [x] 7.1 Boundary grep — RAW blur localized
   - Run `grep -rE "BackdropFilter|ImageFilter\.blur|ShaderMask" megav_iptv/lib/`.
   - Expected hits ONLY in:
     - `megav_iptv/lib/core/layout/` (none expected — but allowed).
@@ -273,7 +273,7 @@
   - _Depends: 5.4, 6.1_
   - _Boundary: mobile blur boundary check_
 
-- [ ] 7.2 TV-path immutability check
+- [x] 7.2 TV-path immutability check
   - Run `git diff master --name-only -- megav_iptv/lib/features/home/cinematic/ megav_iptv/lib/features/home/widgets/ megav_iptv/lib/features/home/home_screen.dart` → expected empty (Req 9.1, 9.4).
   - Run `git diff master --name-only -- megav_iptv/lib/features/detail/` → expected to show ONLY `lib/features/detail/detail_root.dart` and `lib/features/detail/mobile/` files. TV detail widget files unchanged (Req 9.2).
   - Run `git diff master --name-only -- megav_iptv/lib/features/player/` → expected ONLY `lib/features/player/player_root.dart` and `lib/features/player/mobile/` files. TV player widget files unchanged. `lib/core/player/` untouched (Req 9.3, 9.6).
@@ -283,7 +283,7 @@
   - _Depends: 2.4_
   - _Boundary: TV immutability gate_
 
-- [ ] 7.3 Final regression — full `flutter test` + analyze
+- [x] 7.3 Final regression — full `flutter test` + analyze
   - Run `flutter test` в `megav_iptv/`. Ожидаемый итог: prior baseline (94 + tests added by Wave 3 #5/#7/#8) + ВСЕ новые mobile tests зелёные (Req 10.5).
   - Подсчитать total и записать в commit message (e.g., «`baseline N + new 25 = N+25 / N+25` зелёных»).
   - Run `flutter analyze megav_iptv/lib/core/layout/ megav_iptv/lib/features/home/mobile/ megav_iptv/lib/features/detail/mobile/ megav_iptv/lib/features/player/mobile/ megav_iptv/lib/features/mobile/` → 0 issues (Req 12.2).
