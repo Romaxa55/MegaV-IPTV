@@ -34,7 +34,7 @@
 
 ## 2. Sealed UI state + provider scaffolding
 
-- [ ] 2.1 Создать sealed `SearchUiState` + provider hookup
+- [x] 2.1 Создать sealed `SearchUiState` + provider hookup
   - Создать `megav_iptv/lib/features/search/widgets/search_state.dart`:
     - `sealed class SearchUiState { const SearchUiState(); String get query; }`.
     - 5 final подклассов: `Idle`, `Loading(query)`, `Empty(query)`, `Error({message, lastQuery})`, `Results({items, total, query, hasMore})`.
@@ -49,7 +49,7 @@
 
 ## 3. SearchController с debounce + paging + re-entry guard
 
-- [ ] 3.1 Создать `SearchController` `StateNotifier` + Riverpod provider
+- [x] 3.1 Создать `SearchController` `StateNotifier` + Riverpod provider
   - Создать `megav_iptv/lib/features/search/state/search_controller.dart` с `class SearchController extends StateNotifier<SearchUiState>`:
     - Поля: `ApiClient _api`, `Timer? _debounce`, `bool _inFlight = false`, `String _query = ''`, `int _offset = 0`, `int _total = 0`, `List<Channel> _items = const []`.
     - Метод `onKeyPressed(KeyboardKey)`:
