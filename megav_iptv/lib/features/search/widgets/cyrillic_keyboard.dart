@@ -156,6 +156,7 @@ class _CyrillicKeyboardState extends State<CyrillicKeyboard> {
     final label = _label(cell);
     final focused = focusRow == r && focusCol == c;
     return Padding(
+      key: Key('kb-cell-$r-$c'),
       padding: const EdgeInsets.all(4),
       child: Focus(
         autofocus: focused,

@@ -216,7 +216,7 @@
 
 ## 10. Tests + regression + analyzer
 
-- [ ] 10.1 Unit-test `SearchController` debounce + paging + `_inFlight`
+- [x] 10.1 Unit-test `SearchController` debounce + paging + `_inFlight`
   - Создать `megav_iptv/test/features/search/search_controller_test.dart`:
     - Stub `ApiClient` (можно через manual mock class implementing real signature).
     - Test: 2 синхронных `onKeyPressed(Char('А'))` + `Char('Б'))` + `await Future.delayed(400ms)` → assert `searchChannels` called **exactly once** с `query: 'АБ'` (Req 5.2, 5.3, 12.5).
@@ -230,7 +230,7 @@
   - _Depends: 3.1_
   - _Boundary: search_controller_test.dart_
 
-- [ ] 10.2 Unit-test `searchChannels` parsing + `getChannels` regression
+- [x] 10.2 Unit-test `searchChannels` parsing + `getChannels` regression
   - Создать `megav_iptv/test/features/search/api_client_search_test.dart`:
     - Mock `http.Client` returning `200` с body `{"channels":[{...}], "total": 42}` → assert `searchChannels(query: 'q')` returns `(channels.length == 1, total == 42)` (Req 8.5, 12.6).
     - Mock returning `500` → assert throws `Exception` whose message contains «search channels» (Req 8.6).
@@ -239,7 +239,7 @@
   - _Depends: 9.1_
   - _Boundary: api_client_search_test.dart_
 
-- [ ] 10.3 Widget-test `CyrillicKeyboard` D-pad nav + OK callbacks
+- [x] 10.3 Widget-test `CyrillicKeyboard` D-pad nav + OK callbacks
   - Создать `megav_iptv/test/features/search/cyrillic_keyboard_test.dart`:
     - Pump `CyrillicKeyboard(initialFocus: (0, 0), ...)` → simulate `arrowDown` via `tester.sendKeyEvent(LogicalKeyboardKey.arrowDown)` → assert focus moved to `(1, 0)` (Req 3.3, 12.3).
     - Pump `(5, 0)` + `arrowDown` → assert focus stays `(5, 0)` (no wrap — Req 3.3, 12.3).
@@ -250,7 +250,7 @@
   - _Depends: 4.1_
   - _Boundary: cyrillic_keyboard_test.dart_
 
-- [ ] 10.4 Widget-test `SearchInput` caret blink + RepaintBoundary
+- [x] 10.4 Widget-test `SearchInput` caret blink + RepaintBoundary
   - Создать `megav_iptv/test/features/search/search_input_test.dart`:
     - Pump `SearchInput(query: '')` → assert placeholder rendered.
     - Pump `SearchInput(query: 'тест')` → assert query rendered; assert `find.byType(RepaintBoundary)` finds at least one RB whose subtree contains the caret `Container(width: 3)` (Req 4.3, 9.3).
@@ -258,7 +258,7 @@
   - _Depends: 5.1_
   - _Boundary: search_input_test.dart_
 
-- [ ] 10.5 Widget-test `SearchResultsGrid` per-state rendering
+- [x] 10.5 Widget-test `SearchResultsGrid` per-state rendering
   - Создать `megav_iptv/test/features/search/search_results_grid_test.dart`:
     - Stub `searchControllerProvider` через `ProviderScope(overrides: ...)` для каждого из 5 состояний.
     - Idle → finds `_IdleHint` text «Начните вводить».
