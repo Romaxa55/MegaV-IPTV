@@ -53,14 +53,15 @@ void main() {
       expect(tester.takeException(), isNull);
       // Root container key.
       expect(find.byKey(const Key('cinematic-home-root')), findsOneWidget);
-      // Genre tabs row.
-      expect(find.byKey(const Key('cinematic-genre-tabs')), findsOneWidget);
-      // Hero block.
+      // Hero block — expanded by default (hero is focused on mount).
       expect(find.byKey(const Key('cinematic-hero')), findsOneWidget);
-      // Live strip separator between hero and category rows.
-      expect(find.byKey(const Key('cinematic-live-strip'), skipOffstage: false), findsOneWidget);
       // Remote hint footer at the bottom.
-      expect(find.byKey(const Key('cinematic-remote-hint'), skipOffstage: false), findsOneWidget);
+      expect(
+        find.byKey(const Key('cinematic-remote-hint'), skipOffstage: false),
+        findsOneWidget,
+      );
+      // Genre tabs must NOT be present (removed per UX decision).
+      expect(find.byKey(const Key('cinematic-genre-tabs')), findsNothing);
     },
   );
 }

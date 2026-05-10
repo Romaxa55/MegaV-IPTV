@@ -6,25 +6,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/perf/perf_safe_widgets.dart';
 import '../../../core/player/player_engine.dart';
 import '../../../core/player/player_manager.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/ui/atoms/atoms.dart';
 import '../../detail/providers/detail_arguments.dart';
 import '../widgets/_grid_tokens.dart';
 import '../widgets/cinema_row.dart';
 import '../widgets/home_boot_overlay.dart';
-import 'cinematic_genre_tabs_bar.dart';
-import 'cinematic_hero_content.dart';
-import 'cinematic_live_strip.dart';
+import 'cinematic_compact_hero.dart';
+import 'cinematic_hero_block.dart';
 import 'cinematic_remote_hint_footer.dart';
 
-/// Cinematic home screen — full-bleed JSX-faithful layout with complete
-/// backend integration mirroring legacy [HomeScreen].
+/// Cinematic home screen — full-bleed layout with complete backend integration
+/// mirroring legacy [HomeScreen].
 ///
 /// Data flow is identical to [HomeScreen]:
 ///   - [featuredNowPlayingProvider] → hero + backdrop + carousel.
@@ -33,11 +30,18 @@ import 'cinematic_remote_hint_footer.dart';
 ///   - [apiClientProvider] → stream URL for preview player.
 ///   - [baseUrlProvider] → retry / URL prompt in boot overlay.
 ///
-/// Visual design: home-cinematic.jsx (.kiro/design/megav-iptv-handoff/).
+/// Layout structure (mirrors legacy [HomeScreen]):
+///   Stack {
+///     Positioned(below hero) → ListView.builder([rails…, footer])
+///     AnimatedPositioned(top) → AnimatedCrossFade(expanded↔compact hero)
+///   }
+///
+/// TV-standard hero collapse: D-pad ↓ to first rail → hero shrinks to
+/// [CinematicCompactHero] (~110px). D-pad ↑ back to hero → re-expands
+/// to full 620px. Carousel pauses while collapsed.
 ///
 /// Keys preserved for smoke tests:
-///   cinematic-home-root, cinematic-genre-tabs, cinematic-hero,
-///   cinematic-live-strip, cinematic-remote-hint.
+///   cinematic-home-root, cinematic-hero, cinematic-remote-hint.
 class CinematicHomeScreen extends ConsumerStatefulWidget {
   const CinematicHomeScreen({super.key});
 
@@ -50,7 +54,11 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   late final FocusNode _focusNode;
   late final FocusNode _heroWatchFocusNode;
 
-  // ── Hero carousel (mirrors HeroSection._carouselTimer in legacy) ───────────
+  // ── Hero collapse state (TV-standard) ─────────────────────────────────────
+  /// True while focus is inside the hero area; false when focus is on rails.
+  bool _heroFocused = true;
+
+  // ── Hero carousel ──────────────────────────────────────────────────────────
   static const Duration _carouselInterval = Duration(seconds: 8);
   int _carouselIndex = 0;
   Timer? _carouselTimer;
@@ -71,9 +79,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   bool _bootFadeOut = false;
   String? _bootError;
   late final TextEditingController _bootUrlController;
-
-  // ── Genre tabs state ───────────────────────────────────────────────────────
-  int _activeGenreTab = 0;
 
   // ── Clock tick for StatusBar ───────────────────────────────────────────────
   late final Timer _clockTimer;
@@ -97,6 +102,8 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _clockTime = _nowTime());
     });
+    // Detect when focus leaves/returns to hero watch button → collapse/expand.
+    _heroWatchFocusNode.addListener(_onHeroWatchFocusChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_runHomeBootstrap());
     });
@@ -104,6 +111,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
 
   @override
   void dispose() {
+    _heroWatchFocusNode.removeListener(_onHeroWatchFocusChanged);
     _previewTimer?.cancel();
     _hoveredClearDebounce?.cancel();
     _carouselTimer?.cancel();
@@ -116,18 +124,36 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Carousel (mirrors HeroSection._restartCarousel / _carouselTimer)
+  // Hero focus collapse / expand
+  // ──────────────────────────────────────────────────────────────────────────
+
+  void _onHeroWatchFocusChanged() {
+    if (!mounted) return;
+    final focused = _heroWatchFocusNode.hasFocus;
+    if (focused == _heroFocused) return;
+    setState(() => _heroFocused = focused);
+    if (!focused) {
+      // Pause carousel while hero is collapsed.
+      _carouselTimer?.cancel();
+      _carouselTimer = null;
+    } else {
+      // Resume carousel when hero re-expands.
+      final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
+      _restartCarousel(featured);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Carousel
   // ──────────────────────────────────────────────────────────────────────────
 
   void _restartCarousel(List<NowPlayingItem> featured) {
     _carouselTimer?.cancel();
     _carouselTimer = null;
-    // Carousel pauses when override (hovered item) is active or when the
-    // "Смотреть" button has focus — same contract as legacy HeroSection.
     if (_hoveredItem != null) return;
     if (featured.length < 2) return;
     _carouselTimer = Timer.periodic(_carouselInterval, (_) {
-      if (!mounted || _hoveredItem != null || _isWatchFocused) return;
+      if (!mounted || _hoveredItem != null || _isWatchFocused || !_heroFocused) return;
       final list = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
       if (list.isEmpty) return;
       setState(() => _carouselIndex = (_carouselIndex + 1) % list.length);
@@ -135,7 +161,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Bootstrap (mirrored from HomeScreen._runHomeBootstrap)
+  // Bootstrap
   // ──────────────────────────────────────────────────────────────────────────
 
   Future<void> _runHomeBootstrap() async {
@@ -169,7 +195,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
       if (futures.isNotEmpty) await Future.wait(futures);
       if (!mounted) return;
 
-      // Start hero carousel now that data is ready.
       _restartCarousel(featured);
       setState(() => _bootFadeOut = true);
     } catch (e) {
@@ -208,7 +233,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Hover / preview (mirrored from HomeScreen)
+  // Hover / preview
   // ──────────────────────────────────────────────────────────────────────────
 
   void _onHoveredItemChanged(NowPlayingItem? item) {
@@ -223,22 +248,18 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
           unawaited(precacheImage(NetworkImage(thumb), context));
         }
       }
-      // Pause carousel while hovering a rail card.
       _carouselTimer?.cancel();
       setState(() => _hoveredItem = item);
       _previewTimer = Timer(const Duration(milliseconds: 7000), () {
-        if (mounted && _hoveredItem?.channelId == item.channelId) {
-          _startPreview(item);
-        }
+        if (mounted && _hoveredItem?.channelId == item.channelId) _startPreview(item);
       });
     } else {
       _hoveredClearDebounce = Timer(const Duration(milliseconds: 200), () {
         if (!mounted) return;
         setState(() => _hoveredItem = null);
         _stopPreview();
-        // Resume carousel when hover clears.
         final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
-        _restartCarousel(featured);
+        if (_heroFocused) _restartCarousel(featured);
       });
     }
   }
@@ -333,27 +354,22 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     final movies = moviesAsync.value ?? [];
 
     final baseCats = categoriesAsync.valueOrNull ?? [];
-    // Mirrors legacy: prepend "Фильмы в эфире" when movies row has data.
     final categories = [
       if (movies.isNotEmpty) const CinemaCategory(id: 'live-movies', name: 'Фильмы в эфире'),
       ...baseCats,
     ];
 
-    // Genre tab labels from real backend categories.
-    final tabLabels = ['Все', ...baseCats.map((c) => c.name).take(6)];
-
-    // Hero item: hovered card takes priority, otherwise carousel through featured.
     final safeCarousel = featured.isEmpty ? 0 : _carouselIndex % featured.length;
     final heroItem = _hoveredItem ?? (featured.isNotEmpty ? featured[safeCarousel] : null);
 
-    // Backdrop image for hero.
     final backdropUrl = heroItem != null ? (heroItem.thumbnailUrl ?? heroItem.program?.icon ?? heroItem.logoUrl) : null;
     final backdropImage = backdropUrl != null && backdropUrl.isNotEmpty
         ? NetworkImage(backdropUrl) as ImageProvider
         : null;
 
-    // Live strip data driven by current hero item program.
-    final heroProg = heroItem?.program;
+    final collapsedH = CinematicCompactHero.kCompactHeroHeight;
+    const expandedH = 620.0;
+    final heroH = _heroFocused ? expandedH : collapsedH;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -362,84 +378,90 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
         children: [
           ExcludeFocus(
             excluding: _showBootOverlay,
-            child: Focus(
-              focusNode: _focusNode,
-              canRequestFocus: false,
-              onKeyEvent: (_, event) {
-                if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
-                  if (_isPreviewPlaying) {
-                    _stopPreview();
-                    return KeyEventResult.handled;
-                  }
-                }
-                return KeyEventResult.ignored;
-              },
-              child: SizedBox.expand(
+            child: LayoutBuilder(
+              builder: (context, _) => Focus(
                 key: const Key('cinematic-home-root'),
-                child: ListView(
-                  cacheExtent: 1500,
-                  addAutomaticKeepAlives: true,
-                  addRepaintBoundaries: true,
-                  clipBehavior: Clip.none,
-                  padding: EdgeInsets.zero,
+                focusNode: _focusNode,
+                canRequestFocus: false,
+                onKeyEvent: (_, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
+                    if (_isPreviewPlaying) {
+                      _stopPreview();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Stack(
                   children: [
-                    // ── Full-bleed hero block ─────────────────────────────
-                    _HeroBlock(
-                      backdropImage: backdropImage,
-                      heroItem: heroItem,
-                      heroWatchFocusNode: _heroWatchFocusNode,
-                      isPreviewVideoReady: _isPreviewVideoReady,
-                      previewPlayer: _previewPlayer,
-                      clockTime: _clockTime,
-                      onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
-                      onEpg: heroItem != null
-                          ? () => context.push(
-                              '/channel/${heroItem.channelId}',
-                              extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
-                            )
-                          : null,
-                      onFavourite: () {},
-                      onWatchFocusChanged: (focused) {
-                        if (!mounted) return;
-                        setState(() => _isWatchFocused = focused);
-                      },
-                    ),
-
-                    // ── Genre tabs (real labels from cinemaCategoriesProvider) ──
-                    CinematicGenreTabsBar(
-                      labels: tabLabels,
-                      activeIndex: _activeGenreTab.clamp(0, tabLabels.length - 1),
-                      onTabChanged: (i) => setState(() => _activeGenreTab = i),
-                    ),
-
-                    // ── Live strip — driven by current hero item EPG ────────
-                    CinematicLiveStrip(
-                      currentTitle: heroProg?.title ?? heroItem?.channelName,
-                      nextLabel: heroProg != null ? 'ещё ${heroProg.remaining.inMinutes} мин' : null,
-                      progress: heroProg?.progress ?? 0.0,
-                    ),
-
-                    // ── Category rows — same logic as legacy HomeScreen ──────
-                    // Each CategoryRowWrapper self-subscribes to its own provider
-                    // (moviesNotifierProvider or categoryNotifierProvider(cat.name))
-                    // and handles loading/error/pagination internally.
-                    ...categories.map(
-                      (cat) => Padding(
-                        padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
-                        child: CategoryRowWrapper(
-                          key: ValueKey('cinematic-row-${cat.id}'),
-                          category: cat,
-                          onItemTap: _playNowPlaying,
-                          onItemFocus: _onHoveredItemChanged,
-                        ),
+                    // ── Rails list — positioned below hero ──────────────────
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      top: heroH,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ListView.builder(
+                        clipBehavior: Clip.none,
+                        padding: EdgeInsets.zero,
+                        // +1 for the remote hint footer slot.
+                        itemCount: categories.length + 1,
+                        itemBuilder: (context, rowIdx) {
+                          if (rowIdx == categories.length) {
+                            return const Padding(padding: EdgeInsets.only(top: 8), child: CinematicRemoteHintFooter());
+                          }
+                          final cat = categories[rowIdx];
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
+                            child: CategoryRowWrapper(
+                              key: ValueKey('cinematic-row-${cat.id}'),
+                              category: cat,
+                              onItemTap: _playNowPlaying,
+                              onItemFocus: _onHoveredItemChanged,
+                            ),
+                          );
+                        },
                       ),
                     ),
 
-                    // ── Remote hint footer ─────────────────────────────────
-                    const SizedBox(height: 24),
-                    const CinematicRemoteHintFooter(),
-                    const SizedBox(height: 16),
+                    // ── Hero — fixed at top, collapses when focus leaves ─────
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: heroH,
+                      child: AnimatedCrossFade(
+                        duration: const Duration(milliseconds: 220),
+                        crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                        firstChild: CinematicHeroBlock(
+                          backdropImage: backdropImage,
+                          heroItem: heroItem,
+                          heroWatchFocusNode: _heroWatchFocusNode,
+                          isPreviewVideoReady: _isPreviewVideoReady,
+                          previewPlayer: _previewPlayer,
+                          clockTime: _clockTime,
+                          onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
+                          onEpg: heroItem != null
+                              ? () => context.push(
+                                  '/channel/${heroItem.channelId}',
+                                  extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
+                                )
+                              : null,
+                          onFavourite: () {},
+                          onWatchFocusChanged: (focused) {
+                            if (!mounted) return;
+                            setState(() => _isWatchFocused = focused);
+                          },
+                        ),
+                        secondChild: heroItem != null
+                            ? CinematicCompactHero(item: heroItem)
+                            : SizedBox(height: collapsedH),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -461,120 +483,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                   onRetry: _onBootRetryConnect,
                 ),
               ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _HeroBlock — full-bleed cinematic hero with backdrop + gradient + content.
-// Extracted to stay within 600-line limit for cinematic_home_screen.dart.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _HeroBlock extends StatelessWidget {
-  const _HeroBlock({
-    required this.backdropImage,
-    required this.heroItem,
-    required this.heroWatchFocusNode,
-    required this.isPreviewVideoReady,
-    required this.previewPlayer,
-    required this.clockTime,
-    required this.onWatch,
-    required this.onEpg,
-    required this.onFavourite,
-    required this.onWatchFocusChanged,
-  });
-
-  final ImageProvider? backdropImage;
-  final NowPlayingItem? heroItem;
-  final FocusNode heroWatchFocusNode;
-  final bool isPreviewVideoReady;
-  final PlayerManager? previewPlayer;
-  final String clockTime;
-  final VoidCallback? onWatch;
-  final VoidCallback? onEpg;
-  final VoidCallback onFavourite;
-
-  /// Called when the "Смотреть" button gains / loses focus — used to pause
-  /// the carousel while the user is focused on the CTA (mirrors legacy
-  /// HeroSection._isWatchFocused guard).
-  final ValueChanged<bool> onWatchFocusChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppColors.activePalette;
-
-    return SizedBox(
-      key: const Key('cinematic-hero'),
-      height: 620,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Layer 0: blurred backdrop / preview video.
-          if (isPreviewVideoReady && previewPlayer?.activeEngine != null)
-            Positioned.fill(child: previewPlayer!.activeEngine!.buildVideoWidget(fit: BoxFit.cover))
-          else
-            SafeBackdrop(imageProvider: backdropImage, fallbackBackground: palette.background, blurSigma: 40),
-
-          // Layer 1: combined vignette + bottom-shade gradient.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.35, 0.7, 1.0],
-                  colors: [
-                    Colors.black.withValues(alpha: 0.15),
-                    Colors.black.withValues(alpha: 0.30),
-                    Colors.black.withValues(alpha: 0.60),
-                    Colors.black.withValues(alpha: 0.85),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Layer 2: film grain (static layer, Req 9.4).
-          const Positioned.fill(
-            child: IgnorePointer(child: SafeFilmGrain(opacity: 0.06, child: SizedBox.expand())),
-          ),
-
-          // Layer 3: header row (Brand + Spacer + StatusBar).
-          Positioned(
-            top: 0,
-            left: 56,
-            right: 56,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 24),
-              child: Row(
-                children: [
-                  const Brand(size: 36),
-                  const Spacer(),
-                  StatusBar(time: clockTime),
-                ],
-              ),
-            ),
-          ),
-
-          // Layer 4: hero foreground content.
-          if (heroItem != null)
-            CinematicHeroContent(
-              item: heroItem!,
-              watchFocusNode: heroWatchFocusNode,
-              onWatch: onWatch ?? () {},
-              onEpg: onEpg ?? () {},
-              onFavourite: onFavourite,
-              onWatchFocusChanged: onWatchFocusChanged,
-            )
-          else
-            const Positioned(
-              left: 56,
-              right: 56,
-              bottom: 40,
-              child: SizedBox(height: 4, child: LinearProgressIndicator()),
             ),
         ],
       ),
