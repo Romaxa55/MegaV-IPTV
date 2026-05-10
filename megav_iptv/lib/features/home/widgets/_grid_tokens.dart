@@ -61,7 +61,12 @@ class GridTokens {
   // --- Безразмерные коэффициенты (Requirement 3) ---
 
   /// Целевой scale активной плитки. Req 3.1.
-  static const double focusedScale = 1.08;
+  ///
+  /// Netflix-style: минимальный scale чтобы сетка не "плясала". Основной
+  /// focus-индикатор — яркая рамка + лёгкая тень (blurRadius=12).
+  /// Значение 1.02 визуально незаметно для соседних плиток, но даёт лёгкое
+  /// тактильное ощущение подъёма на фокусированной карточке.
+  static const double focusedScale = 1.02;
 
   /// Толщина рамки фокуса. Req 3.3.
   static const double focusBorderWidth = 3.0;

@@ -219,6 +219,13 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     _scheduleHeroWatchFocus();
   }
 
+  /// Запрашивает фокус на кнопке «Смотреть» после того как boot overlay
+  /// полностью скрыт.
+  ///
+  /// Паттерн скопирован из legacy [HomeScreen._scheduleHeroWatchFocus].
+  /// Дополнительно: если после двух кадров context ещё null — повторяем
+  /// запрос через [WidgetsBinding.endOfFrame], чтобы перехватить кейс
+  /// когда AnimatedCrossFade ещё не завершил монтирование firstChild.
   void _scheduleHeroWatchFocus() {
     void request() {
       if (!mounted || _showBootOverlay) return;
@@ -228,7 +235,16 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       request();
-      WidgetsBinding.instance.addPostFrameCallback((_) => request());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        request();
+        // Третий шанс — ждём полного конца кадра (endOfFrame), нужен если
+        // AnimatedCrossFade всё ещё строит firstChild в этом же кадре.
+        if (mounted && _heroWatchFocusNode.context == null) {
+          WidgetsBinding.instance.endOfFrame.then((_) {
+            if (mounted) request();
+          });
+        }
+      });
     });
   }
 
@@ -369,7 +385,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
 
     final collapsedH = CinematicCompactHero.kCompactHeroHeight;
     const expandedH = 620.0;
-    final heroH = _heroFocused ? expandedH : collapsedH;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -393,95 +408,113 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                   }
                   return KeyEventResult.ignored;
                 },
-                child: Stack(
-                  children: [
-                    // ── Rails list — positioned below hero ──────────────────
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      top: heroH,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: ListView.builder(
-                        clipBehavior: Clip.none,
-                        padding: EdgeInsets.zero,
-                        // +1 for the remote hint footer slot.
-                        itemCount: categories.length + 1,
-                        itemBuilder: (context, rowIdx) {
-                          if (rowIdx == categories.length) {
-                            return const Padding(padding: EdgeInsets.only(top: 8), child: CinematicRemoteHintFooter());
-                          }
-                          final cat = categories[rowIdx];
-                          return Padding(
-                            padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
-                            child: CategoryRowWrapper(
-                              key: ValueKey('cinematic-row-${cat.id}'),
-                              category: cat,
-                              onItemTap: _playNowPlaying,
-                              onItemFocus: _onHoveredItemChanged,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    // ── Hero — fixed at top, collapses when focus leaves ─────
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: heroH,
-                      child: FocusScope(
-                        onFocusChange: (focused) {
-                          // Hero re-expands as soon as ANY descendant gains
-                          // focus (D-pad ↑ from rail traversal lands on
-                          // whichever focusable is closest; not always the
-                          // Watch button). Mirrors Watch-only listener so
-                          // either path works.
-                          if (focused != _heroFocused) {
-                            setState(() => _heroFocused = focused);
-                            if (focused) {
-                              final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
-                              if (featured.isNotEmpty) _restartCarousel(featured);
-                            } else {
-                              _carouselTimer?.cancel();
+                // FocusTraversalGroup гарантирует, что D-pad стрелки проходят
+                // через hero-кнопки → rails-карточки через WidgetOrderTraversalPolicy.
+                // Это тот же паттерн что в cinema_row.dart (там внутренний group
+                // для горизонтального ряда). Без этого Flutter traversal не знает
+                // порядка фокусируемых элементов в смешанном Stack-layout.
+                child: FocusTraversalGroup(
+                  policy: WidgetOrderTraversalPolicy(),
+                  child: Stack(
+                    children: [
+                      // ── Hero — first in children so WidgetOrderTraversalPolicy
+                      // visits hero-buttons BEFORE rails on Tab/D-pad ↓.
+                      // Z-order: hero renders below rails (Stack paints first=bottom),
+                      // but hero is Positioned(top:0, height:expandedH) and rails
+                      // are Positioned(top:expandedH) so they never overlap visually.
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: expandedH,
+                        child: FocusScope(
+                          onFocusChange: (focused) {
+                            // Hero re-expands as soon as ANY descendant gains
+                            // focus (D-pad ↑ from rail traversal lands on
+                            // whichever focusable is closest; not always the
+                            // Watch button). Mirrors Watch-only listener so
+                            // either path works.
+                            if (focused != _heroFocused) {
+                              setState(() => _heroFocused = focused);
+                              if (focused) {
+                                final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
+                                if (featured.isNotEmpty) _restartCarousel(featured);
+                              } else {
+                                _carouselTimer?.cancel();
+                              }
                             }
-                          }
-                        },
-                        child: AnimatedCrossFade(
-                          duration: const Duration(milliseconds: 220),
-                          crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-                          firstChild: CinematicHeroBlock(
-                            backdropImage: backdropImage,
-                            heroItem: heroItem,
-                            heroWatchFocusNode: _heroWatchFocusNode,
-                            isPreviewVideoReady: _isPreviewVideoReady,
-                            previewPlayer: _previewPlayer,
-                            clockTime: _clockTime,
-                            onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
-                            onEpg: heroItem != null
-                                ? () => context.push(
-                                    '/channel/${heroItem.channelId}',
-                                    extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
+                          },
+                          child: AnimatedCrossFade(
+                            duration: const Duration(milliseconds: 220),
+                            crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                            firstChild: CinematicHeroBlock(
+                              backdropImage: backdropImage,
+                              heroItem: heroItem,
+                              heroWatchFocusNode: _heroWatchFocusNode,
+                              isPreviewVideoReady: _isPreviewVideoReady,
+                              previewPlayer: _previewPlayer,
+                              clockTime: _clockTime,
+                              onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
+                              onEpg: heroItem != null
+                                  ? () => context.push(
+                                      '/channel/${heroItem.channelId}',
+                                      extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
+                                    )
+                                  : null,
+                              onFavourite: () {},
+                              onWatchFocusChanged: (focused) {
+                                if (!mounted) return;
+                                setState(() => _isWatchFocused = focused);
+                              },
+                            ),
+                            secondChild: heroItem != null
+                                ? Align(
+                                    alignment: Alignment.topLeft,
+                                    child: CinematicCompactHero(item: heroItem),
                                   )
-                                : null,
-                            onFavourite: () {},
-                            onWatchFocusChanged: (focused) {
-                              if (!mounted) return;
-                              setState(() => _isWatchFocused = focused);
-                            },
+                                : SizedBox(height: collapsedH),
                           ),
-                          secondChild: heroItem != null
-                              ? CinematicCompactHero(item: heroItem)
-                              : SizedBox(height: collapsedH),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+
+                      // ── Rails list — positioned below hero (fixed offset) ──
+                      // Rails always start at expanded hero height. Hero collapse
+                      // animates only via crossfade — NOT via AnimatedPositioned
+                      // top change, because animating `top` reparents children
+                      // every frame and breaks ScrollController attachment.
+                      Positioned(
+                        top: expandedH,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: ListView.builder(
+                          clipBehavior: Clip.none,
+                          padding: EdgeInsets.zero,
+                          // +1 for the remote hint footer slot.
+                          itemCount: categories.length + 1,
+                          itemBuilder: (context, rowIdx) {
+                            if (rowIdx == categories.length) {
+                              return const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: CinematicRemoteHintFooter(),
+                              );
+                            }
+                            final cat = categories[rowIdx];
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
+                              child: CategoryRowWrapper(
+                                key: ValueKey('cinematic-row-${cat.id}'),
+                                category: cat,
+                                onItemTap: _playNowPlaying,
+                                onItemFocus: _onHoveredItemChanged,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ), // FocusTraversalGroup
               ),
             ),
           ),
