@@ -10,7 +10,7 @@
 
 ## 1. Foundation: keyboard layout grid + sealed key types
 
-- [ ] 1.1 Scaffold 6×6 cyrillic keyboard layout matrix + sealed `KeyboardKey`
+- [x] 1.1 Scaffold 6×6 cyrillic keyboard layout matrix + sealed `KeyboardKey`
   - Создать `megav_iptv/lib/features/search/widgets/keyboard_key.dart`:
     - `enum KeyboardLocale { ru, en }`.
     - `sealed class KeyboardKey { const KeyboardKey(); }`.
