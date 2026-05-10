@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart' hide Chip;
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/playlist/models/epg_program.dart';
@@ -7,52 +6,39 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/megav_text_styles.dart';
 import '../../../core/ui/atoms/atoms.dart';
 
-/// Sticky bottom preview strip rendered below the EPG time grid.
+/// Sticky bottom preview strip for the EPG screen.
 ///
-/// Shows the currently focused programme alongside its channel: a small
-/// `_PreviewThumb` (channel icon / programme icon) on the left, the
-/// programme title + meta line in the middle, and a single CTA on the
-/// right — `MvButton.primary('Смотреть')` if [program] is currently live,
-/// otherwise `MvButton.ghost('Подробнее')` (visually equivalent to a
-/// "secondary" button — `MvButton` exposes only `.primary`/`.ghost`/`.accent`
-/// named ctors, no `.secondary`).
+/// JSX reference (`epg-v2.jsx` PREVIEW STRIP):
+/// ```jsx
+/// <div style={{
+///   borderTop: "1px solid var(--line)", padding: "20px 56px",
+///   display: "flex", alignItems: "center", gap: 24,
+///   background: "rgba(15,15,20,0.8)",
+/// }}>
+///   <div style={{width: 132, height: 76, borderRadius: 8, ...}}>thumb</div>
+///   <div style={{flex: 1}}>
+///     <div style={{fontFamily:"var(--font-mono)", fontSize:10, ...}}>channel · time · LIVE</div>
+///     <div style={{fontFamily:"var(--font-display)", fontWeight:600, fontSize:30,
+///       lineHeight:1.05, letterSpacing:"-0.015em"}}>title</div>
+///     {isLive && progress track}
+///   </div>
+///   <button>Смотреть (OK)</button>
+///   <button>i Подробно</button>
+/// </div>
+/// ```
 ///
-/// The strip itself does NOT debounce focus changes — the caller is
-/// expected to drive [program] / [channel] from `EpgFocusController` after
-/// the 400 ms stabilisation timer fires (Req 9.5, 10.3).
+/// Performance contract:
+/// - No BackdropFilter (JSX uses blur(20px) — forbidden).
+/// - Thumb wrapped in RepaintBoundary.
+/// - No animated width containers.
 ///
-/// Null-safe: when [program] or [channel] is `null` (e.g. focus is on an
-/// empty cell or the screen has not yet selected a programme), the strip
-/// renders an empty container of the same height with the same root key,
-/// so smoke tests probing for `Key('epg-preview-strip')` keep passing.
-///
-/// Performance contract (Req 13.1, 13.2):
-/// - No GPU-blurring widgets in the build tree (no `BackdropFilter`,
-///   `ShaderMask`, `ImageFilter.blur`).
-/// - No animated `width:` on any container — the strip is a plain
-///   `Container` with a static `BoxDecoration`.
-/// - The thumb is wrapped in a [RepaintBoundary] so re-paints driven by
-///   the metadata column do not propagate into the image's render layer
-///   (Req 10.2).
-///
-/// Maps to Requirements 10.1, 10.2, 10.3, 10.4, 10.5, 13.1, 13.2.
+/// Maps to Requirements 10.1–10.5, 13.1, 13.2.
 class EpgPreviewStrip extends StatelessWidget {
   const EpgPreviewStrip({super.key, this.program, this.channel, this.onWatch, this.onDetails});
 
-  /// Currently focused programme. May be `null` when no programme is
-  /// focused yet.
   final EpgProgram? program;
-
-  /// Channel that owns [program]. May be `null` when the focused cell is
-  /// empty or the channel list has not yet loaded.
   final Channel? channel;
-
-  /// Tap handler for the primary "Смотреть" CTA — invoked only when
-  /// [program] is live (`program.isNow == true`).
   final VoidCallback? onWatch;
-
-  /// Tap handler for the ghost "Подробнее" CTA — invoked when [program]
-  /// is upcoming or finished (`program.isNow == false`).
   final VoidCallback? onDetails;
 
   @override
@@ -61,95 +47,126 @@ class EpgPreviewStrip extends StatelessWidget {
     final theme = Theme.of(context);
     final megavText = theme.extension<MegaVTextStyles>();
 
-    // Top hairline divider — uses `palette.line` (subtle divider token).
     final topBorder = Border(top: BorderSide(color: palette.line));
+    // JSX: background "rgba(15,15,20,0.8)" — opaque approx.
+    final stripBg = const Color(0xFF0F0F14).withAlpha(0xCC);
 
-    // Empty / loading state: keep the same key + same height so layout
-    // and smoke-tests remain stable.
     if (program == null || channel == null) {
+      // Empty placeholder: same key, fixed height for layout stability.
       return Container(
         key: const Key('epg-preview-strip'),
-        height: 96.h,
-        decoration: BoxDecoration(border: topBorder),
-        child: const SizedBox.shrink(),
+        height: 96,
+        decoration: BoxDecoration(border: topBorder, color: stripBg),
       );
     }
 
     final p = program!;
     final c = channel!;
 
-    final titleStyle = (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(fontStyle: FontStyle.normal);
-    final metaStyle = megavText?.metaMono ?? theme.textTheme.labelSmall;
+    // Title: display 30sp, w600, lh=1.05, ls=-0.015em. JSX uses font-display.
+    final titleStyle = (megavText?.displayLarge ?? theme.textTheme.titleLarge ?? const TextStyle()).copyWith(
+      fontSize: 30,
+      fontWeight: FontWeight.w600,
+      height: 1.05,
+      letterSpacing: -0.015 * 30,
+      color: palette.text,
+    );
+    // Meta: mono 10sp, ls=0.18em, textMute, uppercase.
+    final metaStyle = (megavText?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+      fontSize: 10,
+      letterSpacing: 0.18 * 10,
+      color: palette.textMute,
+    );
+    final liveChipStyle = metaStyle.copyWith(fontWeight: FontWeight.w600, color: Colors.white);
 
     return Container(
       key: const Key('epg-preview-strip'),
-      height: 96.h,
-      decoration: BoxDecoration(border: topBorder),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      decoration: BoxDecoration(border: topBorder, color: stripBg),
+      // JSX: padding "20px 56px".
+      padding: const EdgeInsets.symmetric(horizontal: 56, vertical: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _PreviewThumb(channel: c, programme: p),
-          SizedBox(width: 12.w),
+          // Thumbnail — 132×76, borderRadius 8.
+          RepaintBoundary(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(width: 132, height: 76, child: _buildThumb(p, c)),
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Meta + title + (optional progress).
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                // Channel · time range · LIVE chip.
+                Row(
+                  children: [
+                    Text(c.name, style: metaStyle),
+                    Text(' · ', style: metaStyle),
+                    Text(_formatRange(p), style: metaStyle),
+                    Text(' · ${p.duration.inMinutes} мин', style: metaStyle),
+                    if (p.isNow) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: palette.accent, borderRadius: BorderRadius.circular(4)),
+                        child: Text('● LIVE', style: liveChipStyle),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Programme title.
                 Text(p.title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                SizedBox(height: 4.h),
-                Text('${c.name} · ${_formatRange(p)}', style: metaStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                // Progress track for live programmes.
+                if (p.isNow) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: MvTrack(progress: p.progress, showKnob: false)),
+                      const SizedBox(width: 12),
+                      Text('ещё ${_remainingMin(p)} мин', style: metaStyle),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
-          SizedBox(width: 12.w),
-          if (p.isNow)
-            MvButton.primary(label: 'Смотреть', onPressed: onWatch)
-          else
-            // `MvButton` has no `.secondary` named ctor; `.ghost` is the
-            // direct visual equivalent for the inactive / non-live branch.
-            MvButton.ghost(label: 'Подробнее', onPressed: onDetails),
+          const SizedBox(width: 24),
+          // CTAs.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (p.isNow)
+                MvButton.primary(label: 'Смотреть', onPressed: onWatch)
+              else
+                MvButton.ghost(label: 'Напомнить', onPressed: onWatch),
+              const SizedBox(width: 10),
+              MvButton.ghost(label: 'Подробнее', onPressed: onDetails),
+            ],
+          ),
         ],
       ),
     );
   }
-}
 
-/// Private leaf widget that renders the strip's thumbnail.
-///
-/// Wrapped in a [RepaintBoundary] (Req 10.2) so changes in the parent
-/// `EpgPreviewStrip` (title text, focus updates, button state) never
-/// trigger a re-decode / re-paint of the underlying image. Sized to a
-/// fixed 132 × 76 design pixels so layout never reflows when the
-/// programme changes.
-class _PreviewThumb extends StatelessWidget {
-  const _PreviewThumb({required this.channel, required this.programme});
-
-  final Channel channel;
-  final EpgProgram programme;
-
-  @override
-  Widget build(BuildContext context) {
-    // Prefer programme icon (per-programme artwork from EPG XMLTV) and
-    // fall back to the channel logo when none is provided.
-    final imageUrl = programme.icon ?? channel.logoUrl;
-
-    return RepaintBoundary(
-      child: SizedBox(
-        width: 132.w,
-        height: 76.h,
-        child: imageUrl == null || imageUrl.isEmpty
-            ? const ColoredBox(color: Color(0xFF12121E))
-            : Poster(image: NetworkImage(imageUrl), orientation: PosterOrientation.landscape, hideText: true),
-      ),
-    );
+  Widget _buildThumb(EpgProgram p, Channel c) {
+    final url = p.icon ?? c.logoUrl;
+    if (url == null || url.isEmpty) {
+      return ColoredBox(color: AppColors.activePalette.surface2);
+    }
+    return Poster(image: NetworkImage(url), orientation: PosterOrientation.landscape, hideText: true);
   }
 }
 
-/// Formats a programme's `start – end` range as `HH:MM – HH:MM`
-/// (24-hour, zero-padded), mirroring the formatter in
-/// `epg_time_axis.dart` and `epg_program_cell.dart` so all EPG
-/// timestamps render identically.
-String _formatRange(EpgProgram p) => '${_hhmm(p.start)} – ${_hhmm(p.end)}';
+String _formatRange(EpgProgram p) => '${_hhmm(p.start)}–${_hhmm(p.end)}';
 
 String _hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+int _remainingMin(EpgProgram p) {
+  final remaining = p.end.difference(DateTime.now()).inMinutes;
+  return remaining < 0 ? 0 : remaining;
+}

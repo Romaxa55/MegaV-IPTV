@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/perf/perf_safe_widgets.dart';
 import '../../../core/playlist/models/channel.dart';
 import '../../../core/theme/megav_text_styles.dart';
-import '../../../core/ui/atoms/atoms.dart';
 
 /// Vertical channel rail for the EPG screen.
 ///
@@ -63,8 +61,17 @@ class _EpgChannelRailState extends ConsumerState<EpgChannelRail> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final megavText = theme.extension<MegaVTextStyles>();
-    final titleStyle = theme.textTheme.titleMedium;
-    final metaStyle = megavText?.metaMono ?? theme.textTheme.labelSmall;
+    // JSX ChannelCell: name fontSize 14, fontWeight 600, letterSpacing -0.005em.
+    final titleStyle = (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.005 * 14,
+    );
+    // JSX: category mono 11sp, ls=0.14em, uppercase, textMute.
+    final metaStyle = (megavText?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+      fontSize: 11,
+      letterSpacing: 0.14 * 11,
+    );
 
     return SizedBox(
       key: const Key('epg-channel-rail'),
@@ -81,8 +88,9 @@ class _EpgChannelRailState extends ConsumerState<EpgChannelRail> {
           final focused = widget.focusedChannelIndex == i;
           return SizedBox(
             key: Key('epg-channel-cell-${channel.id}'),
-            width: 240.w,
-            height: 88.h,
+            // JSX: CH_W = 240, ROW_H = 88.
+            width: 240,
+            height: 88,
             child: Focus(
               onFocusChange: (hasFocus) {
                 if (hasFocus) widget.onFocusChanged(i);
@@ -94,20 +102,27 @@ class _EpgChannelRailState extends ConsumerState<EpgChannelRail> {
                 child: SafeFocusRing(
                   isFocused: focused,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    // JSX ChannelCell: padding "12px 18px".
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Brand(size: 38, showWordmark: false),
-                        SizedBox(width: 12.w),
+                        // JSX: 38×38 gradient badge with channel index.
+                        _ChannelBadge(index: i),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(channel.name, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              SizedBox(height: 2.h),
-                              Text(channel.groupTitle, style: metaStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              Text(
+                                channel.groupTitle.toUpperCase(),
+                                style: metaStyle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
                         ),
@@ -119,6 +134,52 @@ class _EpgChannelRailState extends ConsumerState<EpgChannelRail> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// JSX ChannelCell badge: 38×38, borderRadius 8, gradient, mono index text.
+///
+/// JSX: `background: linear-gradient(135deg, palette[1], palette[2])`.
+/// Uses a fixed accent-based gradient since we don't have per-channel
+/// palettes in Flutter. Maps to the JSX visual intent.
+class _ChannelBadge extends StatelessWidget {
+  const _ChannelBadge({required this.index});
+
+  final int index;
+
+  // Simplified palette rotation matching JSX POSTER_PALETTES structure.
+  static const List<List<Color>> _palettes = [
+    [Color(0xFF6E56F7), Color(0xFF5A40E8)],
+    [Color(0xFFE5424A), Color(0xFF8A1820)],
+    [Color(0xFF22D3A8), Color(0xFF16A885)],
+    [Color(0xFFE8B96A), Color(0xFFB5843A)],
+    [Color(0xFF3D5DFF), Color(0xFF2540D8)],
+    [Color(0xFFFF3B5C), Color(0xFFCC1A38)],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = _palettes[index % _palettes.length];
+    final label = (index + 1).toString().padLeft(2, '0');
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'JetBrainsMono',
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+          color: Colors.white,
+          letterSpacing: 0.04 * 11,
+        ),
       ),
     );
   }

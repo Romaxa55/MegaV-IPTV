@@ -323,20 +323,57 @@ class _EpgScreenState extends ConsumerState<EpgScreen> {
   Widget _buildHeader(BuildContext context, DateTime today) {
     final theme = Theme.of(context);
     final styles = theme.extension<MegaVTextStyles>();
-    final headerStyle = (styles?.displayLarge ?? theme.textTheme.headlineMedium ?? const TextStyle()).copyWith(
-      fontStyle: FontStyle.italic,
-      fontSize: 56.sp,
+    // JSX: fontFamily var(--font-display), fontWeight 600, fontSize 56,
+    // lineHeight 0.95, letterSpacing -0.025em.
+    final eyebrowStyle = (styles?.metaMono ?? theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+      fontSize: 10,
+      letterSpacing: 0.22 * 10,
+      color: AppColors.activePalette.textMute,
     );
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Text('Программа передач', style: headerStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          EpgDayPicker(today: today, selectedOffset: _selectedDayOffset, onDaySelected: _onDaySelected),
-        ],
+    final titleStyle = (styles?.displayLarge ?? theme.textTheme.headlineMedium ?? const TextStyle()).copyWith(
+      fontWeight: FontWeight.w600,
+      fontSize: 56,
+      height: 0.95,
+      letterSpacing: -0.025 * 56,
+      color: AppColors.activePalette.text,
+    );
+    final dimStyle = titleStyle.copyWith(fontWeight: FontWeight.w400, color: AppColors.activePalette.textDim);
+    // JSX: padding "32px 56px 20px", borderBottom "1px solid var(--line)".
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.activePalette.line)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(56, 32, 56, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // JSX: "EPG · сетка вещания" eyebrow.
+                    Text('EPG · СЕТКА ВЕЩАНИЯ', style: eyebrowStyle),
+                    const SizedBox(height: 8),
+                    // JSX: "Программа" bold + "передач" dim w400.
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(text: 'Программа ', style: titleStyle),
+                          TextSpan(text: 'передач', style: dimStyle),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                EpgDayPicker(today: today, selectedOffset: _selectedDayOffset, onDaySelected: _onDaySelected),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
