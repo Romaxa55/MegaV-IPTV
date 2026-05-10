@@ -54,7 +54,7 @@
 
 ## 2. Brand header + masthead
 
-- [ ] 2.1 `EditorialBrandHeader`
+- [x] 2.1 `EditorialBrandHeader`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_brand_header.dart` с `class EditorialBrandHeader extends StatelessWidget` (params: `scale: double = 1.4`).
   - Build: `Row(children: [Transform.scale(scale: scale, alignment: Alignment.centerLeft, child: const Brand()), const Spacer(), const StatusBar()])`.
   - Корневой widget получает `Key('editorial-brand-header')`.
@@ -64,7 +64,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialBrandHeader_
 
-- [ ] 2.2 `EditorialBrandHeader` widget test
+- [x] 2.2 `EditorialBrandHeader` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_brand_header_test.dart`.
   - Тест 1: pump; `find.byKey(const Key('editorial-brand-header'))` finds one; `find.byType(Brand)` finds one; `find.byType(StatusBar)` finds one.
   - Тест 2: scale параметр применяется — `find.byType(Transform)` finds one с `Transform.scale` matrix.
@@ -73,7 +73,7 @@
   - _Depends: 2.1_
   - _Boundary: brand header test_
 
-- [ ] 2.3 `EditorialMasthead`
+- [x] 2.3 `EditorialMasthead`
   - Создать `megav_iptv/lib/features/home/editorial/editorial_masthead.dart` с `class EditorialMasthead extends StatelessWidget` (params: `label: String`, `emphasis: String`, `dateLine: String`, `issueNumber: int`).
   - Build tree: `Container(decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line)))) → Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [Expanded(child: RichText(text: TextSpan(children: [TextSpan(text: label, style: theme.megavText.displayLarge), TextSpan(text: ' $emphasis', style: theme.megavText.displayLarge.copyWith(fontStyle: FontStyle.italic, color: palette.textDim))]))), Text('$dateLine · ВЫПУСК №${issueNumber.toString().padLeft(3, '0')}', style: theme.megavText.metaMono.copyWith(color: palette.textMute))])`.
   - Title `Shadow(blurRadius: kSafeShadowBlurMax)` — НЕ выше (Req 9.2).
@@ -84,7 +84,7 @@
   - _Depends: 1.2_
   - _Boundary: EditorialMasthead_
 
-- [ ] 2.4 `EditorialMasthead` widget test
+- [x] 2.4 `EditorialMasthead` widget test
   - Создать `megav_iptv/test/features/home/editorial/editorial_masthead_test.dart`.
   - Тест 1: pump с label='Главная', emphasis='сегодня', dateLine='9 МАЯ 2026', issueNumber=127; ожидает `find.byKey(const Key('editorial-masthead'))` finds one; `find.textContaining('Главная')` finds one; `find.textContaining('сегодня')` finds one (italic em); `find.textContaining('9 МАЯ 2026 · ВЫПУСК №127')` finds one.
   - Тест 2: italic em — обнаружить `TextSpan` с `fontStyle == FontStyle.italic` через `find.byType(RichText)` walk.
