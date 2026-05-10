@@ -96,7 +96,7 @@
 
 ## 3. Home mobile
 
-- [ ] 3.1 `HomeMobileScreen`
+- [x] 3.1 `HomeMobileScreen`
   - Создать `megav_iptv/lib/features/home/mobile/` directory.
   - Создать `megav_iptv/lib/features/home/mobile/home_mobile_screen.dart` с `class HomeMobileScreen extends ConsumerWidget` (Req 2.1).
   - Build tree: `Scaffold(body: Stack(children: [ListView(children: [SizedBox(height: viewPadding.top), MTopBar(), MHeroCard(...), ...рейлы..., SizedBox(height: 96 /* tabbar reservation */)]), Positioned(left:0, right:0, bottom:0, child: MTabBar())]))` (Req 2.2-2.5).
@@ -109,7 +109,7 @@
   - _Depends: 2.1_
   - _Boundary: HomeMobileScreen_
 
-- [ ] 3.2 `MTopBar`
+- [x] 3.2 `MTopBar`
   - Создать `megav_iptv/lib/features/home/mobile/widgets/m_top_bar.dart` с `class MTopBar extends ConsumerWidget` (Req 7.1).
   - Build: `Row(children: [Column(crossAxisAlignment: start, children: [Text(city), Text('${temp}°'), Text(time)]), Spacer(), Brand()])`.
   - Reuse existing weather provider если такой есть, иначе stub strings (data wiring можно отложить — visual-first OK).
@@ -120,7 +120,7 @@
   - _Depends: 1.2_
   - _Boundary: MTopBar_
 
-- [ ] 3.3 `MHeroCard`
+- [x] 3.3 `MHeroCard`
   - Создать `megav_iptv/lib/features/home/mobile/widgets/m_hero_card.dart` с `class MHeroCard extends ConsumerWidget` (Req 7.3).
   - Build: `Column(children: [SizedBox(height: 380, child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.lg), child: Stack(children: [Image (poster), bottom-gradient, Padding(child: Column(title via theme.megavText.headline, MvButton.primary('Смотреть')))]))), SizedBox(height: 8), Row of paginator dots])`.
   - Mobile may use raw `BackdropFilter` if visually warranted (Req 11) — но default OK без blur здесь.
@@ -130,7 +130,7 @@
   - _Depends: 1.2_
   - _Boundary: MHeroCard_
 
-- [ ] 3.4 `MStackedRail`
+- [x] 3.4 `MStackedRail`
   - Создать `megav_iptv/lib/features/home/mobile/widgets/m_stacked_rail.dart` с `class MStackedRail extends StatelessWidget` (Req 7.4).
   - Build: `Column(crossAxisAlignment: start, children: [SectionTitle(label:..., emphasis:..., count:...), GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: NeverScrollableScrollPhysics(), children: items.map(Poster(orientation: portrait, hideText: false)).toList())])`.
   - Single-column / 2-column layout — НЕ horizontal `ListView` (Req 2.5, 2.6).
@@ -140,7 +140,7 @@
   - _Depends: 1.2_
   - _Boundary: MStackedRail_
 
-- [ ] 3.5 `HomeMobileScreen` smoke test
+- [x] 3.5 `HomeMobileScreen` smoke test
   - Создать `megav_iptv/test/features/home/mobile/home_mobile_screen_smoke_test.dart`.
   - Pump под `MediaQuery(size: Size(390, 844))` + `ProviderScope` с моками; ожидает `find.byKey(Key('home-mobile-root'))` finds one + no exception across two frames.
   - Тест 2: `find.byType(HomeMobileScreen)` finds one; `find.byKey(Key('m-tab-bar'))` finds one (после task 6.1) — пока MTabBar stub, проверять только root key.
