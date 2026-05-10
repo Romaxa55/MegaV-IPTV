@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:megav_iptv/core/api/api_client.dart';
 import 'package:megav_iptv/core/playlist/models/channel.dart';
+import 'package:megav_iptv/core/playlist/models/now_playing.dart';
 import 'package:megav_iptv/core/providers/providers.dart';
 import 'package:megav_iptv/features/home/cinematic/cinematic_home_screen.dart';
 import 'package:megav_iptv/features/home/editorial/editorial_home_screen.dart';
@@ -75,7 +77,17 @@ void main() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(_wrap(const CinematicHomeScreen(), prefs));
+      await tester.pumpWidget(
+        _wrap(
+          const CinematicHomeScreen(),
+          prefs,
+          extra: [
+            featuredNowPlayingProvider.overrideWith((_) async => const <NowPlayingItem>[]),
+            cinemaCategoriesProvider.overrideWith((_) async => const <CinemaCategory>[]),
+            moviesNotifierProvider.overrideWith((_) => MoviesNotifier(_StubApiClient())),
+          ],
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -136,4 +148,20 @@ void main() {
       expect(notifierC.state, HomeVariant.legacy);
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Stub helpers — no real HTTP calls.
+// ---------------------------------------------------------------------------
+
+/// [ApiClient] that returns empty collections for every method. Used to
+/// satisfy [MoviesNotifier]'s constructor so no real HTTP is attempted.
+class _StubApiClient extends ApiClient {
+  _StubApiClient() : super(baseUrl: 'http://localhost');
+
+  @override
+  Future<({List<NowPlayingItem> items, int total})> getMoviesNowPlaying({
+    int limit = 20,
+    int offset = 0,
+  }) async => (items: <NowPlayingItem>[], total: 0);
 }

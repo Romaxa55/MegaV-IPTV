@@ -15,26 +15,29 @@ import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/atoms/atoms.dart';
 import '../../detail/providers/detail_arguments.dart';
+import '../widgets/_grid_tokens.dart';
+import '../widgets/cinema_row.dart';
 import '../widgets/home_boot_overlay.dart';
-import 'cinematic_dual_rail.dart';
 import 'cinematic_genre_tabs_bar.dart';
 import 'cinematic_hero_content.dart';
 import 'cinematic_live_strip.dart';
-import 'cinematic_rail.dart';
 import 'cinematic_remote_hint_footer.dart';
-import 'cinematic_section_title.dart';
 
 /// Cinematic home screen — full-bleed JSX-faithful layout with complete
-/// backend integration ported from legacy [HomeScreen].
+/// backend integration mirroring legacy [HomeScreen].
+///
+/// Data flow is identical to [HomeScreen]:
+///   - [featuredNowPlayingProvider] → hero + backdrop + carousel.
+///   - [moviesNotifierProvider] → "Фильмы в эфире" row.
+///   - [cinemaCategoriesProvider] + [categoryNotifierProvider] → genre rows.
+///   - [apiClientProvider] → stream URL for preview player.
+///   - [baseUrlProvider] → retry / URL prompt in boot overlay.
 ///
 /// Visual design: home-cinematic.jsx (.kiro/design/megav-iptv-handoff/).
-/// Functional parity: all providers, preview player, boot overlay, retry,
-/// focus management, navigation — mirroring home_screen.dart.
 ///
-/// Keys preserved for smoke test:
+/// Keys preserved for smoke tests:
 ///   cinematic-home-root, cinematic-genre-tabs, cinematic-hero,
-///   cinematic-dual-rail-landscape, cinematic-live-strip,
-///   cinematic-dual-rail-portrait, cinematic-remote-hint.
+///   cinematic-live-strip, cinematic-remote-hint.
 class CinematicHomeScreen extends ConsumerStatefulWidget {
   const CinematicHomeScreen({super.key});
 
@@ -46,6 +49,12 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   // ── Focus ──────────────────────────────────────────────────────────────────
   late final FocusNode _focusNode;
   late final FocusNode _heroWatchFocusNode;
+
+  // ── Hero carousel (mirrors HeroSection._carouselTimer in legacy) ───────────
+  static const Duration _carouselInterval = Duration(seconds: 8);
+  int _carouselIndex = 0;
+  Timer? _carouselTimer;
+  bool _isWatchFocused = false;
 
   // ── Hover / preview state ──────────────────────────────────────────────────
   NowPlayingItem? _hoveredItem;
@@ -97,12 +106,32 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   void dispose() {
     _previewTimer?.cancel();
     _hoveredClearDebounce?.cancel();
+    _carouselTimer?.cancel();
     _clockTimer.cancel();
     _stopPreview();
     _focusNode.dispose();
     _heroWatchFocusNode.dispose();
     _bootUrlController.dispose();
     super.dispose();
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Carousel (mirrors HeroSection._restartCarousel / _carouselTimer)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  void _restartCarousel(List<NowPlayingItem> featured) {
+    _carouselTimer?.cancel();
+    _carouselTimer = null;
+    // Carousel pauses when override (hovered item) is active or when the
+    // "Смотреть" button has focus — same contract as legacy HeroSection.
+    if (_hoveredItem != null) return;
+    if (featured.length < 2) return;
+    _carouselTimer = Timer.periodic(_carouselInterval, (_) {
+      if (!mounted || _hoveredItem != null || _isWatchFocused) return;
+      final list = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
+      if (list.isEmpty) return;
+      setState(() => _carouselIndex = (_carouselIndex + 1) % list.length);
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -114,7 +143,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     setState(() => _bootError = null);
     try {
       final categories = await ref.read(cinemaCategoriesProvider.future);
-      await ref.read(featuredNowPlayingProvider.future);
+      final featured = await ref.read(featuredNowPlayingProvider.future);
       await ref.read(moviesNotifierProvider.notifier).waitForInit();
       for (final cat in categories) {
         await ref.read(categoryNotifierProvider(cat.name).notifier).waitForInit();
@@ -122,7 +151,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
       if (!mounted) return;
 
       const precachePerRow = 28;
-      final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
       final allItems = <NowPlayingItem>[...featured];
       final moviesList = ref.read(moviesNotifierProvider).valueOrNull ?? [];
       allItems.addAll(moviesList.take(precachePerRow));
@@ -140,6 +168,9 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
       }
       if (futures.isNotEmpty) await Future.wait(futures);
       if (!mounted) return;
+
+      // Start hero carousel now that data is ready.
+      _restartCarousel(featured);
       setState(() => _bootFadeOut = true);
     } catch (e) {
       if (mounted) setState(() => _bootError = 'Не удалось загрузить данные: $e');
@@ -192,6 +223,8 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
           unawaited(precacheImage(NetworkImage(thumb), context));
         }
       }
+      // Pause carousel while hovering a rail card.
+      _carouselTimer?.cancel();
       setState(() => _hoveredItem = item);
       _previewTimer = Timer(const Duration(milliseconds: 7000), () {
         if (mounted && _hoveredItem?.channelId == item.channelId) {
@@ -203,6 +236,9 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
         if (!mounted) return;
         setState(() => _hoveredItem = null);
         _stopPreview();
+        // Resume carousel when hover clears.
+        final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
+        _restartCarousel(featured);
       });
     }
   }
@@ -276,29 +312,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   );
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Rail item helpers
-  // ──────────────────────────────────────────────────────────────────────────
-
-  CinematicRailItem _toRailItem(NowPlayingItem item) {
-    final thumb = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
-    return CinematicRailItem(
-      id: item.channelId.toString(),
-      title: item.program?.title.isNotEmpty == true ? item.program!.title : item.channelName,
-      imageProvider: thumb != null && thumb.isNotEmpty ? NetworkImage(thumb) : null,
-    );
-  }
-
-  void _onRailItemTap(CinematicRailItem rail, List<NowPlayingItem> source) {
-    final match = source.where((i) => i.channelId.toString() == rail.id).firstOrNull;
-    if (match != null) _playNowPlaying(match);
-  }
-
-  void _onRailItemFocus(CinematicRailItem rail, List<NowPlayingItem> source) {
-    final match = source.where((i) => i.channelId.toString() == rail.id).firstOrNull;
-    _onHoveredItemChanged(match);
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
   // Build
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -316,29 +329,30 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
 
     final featured = ref.watch(featuredNowPlayingProvider).valueOrNull ?? [];
     final categoriesAsync = ref.watch(cinemaCategoriesProvider);
-    final categories = categoriesAsync.valueOrNull ?? [];
+    final moviesAsync = ref.watch(moviesNotifierProvider);
+    final movies = moviesAsync.value ?? [];
 
-    // Hero item: hovered (from rail) takes priority, else first featured.
-    final heroItem = _hoveredItem ?? featured.firstOrNull;
+    final baseCats = categoriesAsync.valueOrNull ?? [];
+    // Mirrors legacy: prepend "Фильмы в эфире" when movies row has data.
+    final categories = [
+      if (movies.isNotEmpty) const CinemaCategory(id: 'live-movies', name: 'Фильмы в эфире'),
+      ...baseCats,
+    ];
 
-    // Backdrop image
+    // Genre tab labels from real backend categories.
+    final tabLabels = ['Все', ...baseCats.map((c) => c.name).take(6)];
+
+    // Hero item: hovered card takes priority, otherwise carousel through featured.
+    final safeCarousel = featured.isEmpty ? 0 : _carouselIndex % featured.length;
+    final heroItem = _hoveredItem ?? (featured.isNotEmpty ? featured[safeCarousel] : null);
+
+    // Backdrop image for hero.
     final backdropUrl = heroItem != null ? (heroItem.thumbnailUrl ?? heroItem.program?.icon ?? heroItem.logoUrl) : null;
     final backdropImage = backdropUrl != null && backdropUrl.isNotEmpty
         ? NetworkImage(backdropUrl) as ImageProvider
         : null;
 
-    // Continue rail: first 5 featured (no true "continue" provider yet).
-    final continueItems = featured.take(5).map(_toRailItem).toList();
-    final continueSource = featured.take(5).toList();
-
-    // Now-on-air rail: next 6 from featured, or wrap around.
-    final nowOnAirSource = featured.length > 5 ? featured.skip(5).take(6).toList() : featured.take(6).toList();
-    final nowOnAirItems = nowOnAirSource.map(_toRailItem).toList();
-
-    // Genre tab labels from categories.
-    final tabLabels = ['Все', ...categories.map((c) => c.name).take(6)];
-
-    // Live strip data from hero.
+    // Live strip data driven by current hero item program.
     final heroProg = heroItem?.program;
 
     return Scaffold(
@@ -386,51 +400,41 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                             )
                           : null,
                       onFavourite: () {},
+                      onWatchFocusChanged: (focused) {
+                        if (!mounted) return;
+                        setState(() => _isWatchFocused = focused);
+                      },
                     ),
 
-                    // ── Genre tabs ────────────────────────────────────────
+                    // ── Genre tabs (real labels from cinemaCategoriesProvider) ──
                     CinematicGenreTabsBar(
                       labels: tabLabels,
                       activeIndex: _activeGenreTab.clamp(0, tabLabels.length - 1),
                       onTabChanged: (i) => setState(() => _activeGenreTab = i),
                     ),
 
-                    // ── Continue watching rail ─────────────────────────────
-                    if (continueItems.isNotEmpty) ...[
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(32.w, 32.h, 32.w, 12.h),
-                        child: CinematicSectionTitle(
-                          label: 'Продолжить',
-                          emphasis: 'смотреть',
-                          count: continueItems.length,
-                        ),
-                      ),
-                      CinematicDualRail.landscape(
-                        items: continueItems,
-                        onItemTap: (r) => _onRailItemTap(r, continueSource),
-                        onItemFocus: (r) => _onRailItemFocus(r, continueSource),
-                      ),
-                    ],
-
-                    // ── Live strip separator ───────────────────────────────
+                    // ── Live strip — driven by current hero item EPG ────────
                     CinematicLiveStrip(
                       currentTitle: heroProg?.title ?? heroItem?.channelName,
                       nextLabel: heroProg != null ? 'ещё ${heroProg.remaining.inMinutes} мин' : null,
                       progress: heroProg?.progress ?? 0.0,
                     ),
 
-                    // ── Now-on-air rail ────────────────────────────────────
-                    if (nowOnAirItems.isNotEmpty) ...[
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(32.w, 16.h, 32.w, 12.h),
-                        child: CinematicSectionTitle(label: 'Сейчас в эфире', count: nowOnAirItems.length),
+                    // ── Category rows — same logic as legacy HomeScreen ──────
+                    // Each CategoryRowWrapper self-subscribes to its own provider
+                    // (moviesNotifierProvider or categoryNotifierProvider(cat.name))
+                    // and handles loading/error/pagination internally.
+                    ...categories.map(
+                      (cat) => Padding(
+                        padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
+                        child: CategoryRowWrapper(
+                          key: ValueKey('cinematic-row-${cat.id}'),
+                          category: cat,
+                          onItemTap: _playNowPlaying,
+                          onItemFocus: _onHoveredItemChanged,
+                        ),
                       ),
-                      CinematicDualRail.portrait(
-                        items: nowOnAirItems,
-                        onItemTap: (r) => _onRailItemTap(r, nowOnAirSource),
-                        onItemFocus: (r) => _onRailItemFocus(r, nowOnAirSource),
-                      ),
-                    ],
+                    ),
 
                     // ── Remote hint footer ─────────────────────────────────
                     const SizedBox(height: 24),
@@ -466,7 +470,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _HeroBlock — full-bleed cinematic hero with backdrop + gradient + content.
-// Extracted to stay within 600-line limit.
+// Extracted to stay within 600-line limit for cinematic_home_screen.dart.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _HeroBlock extends StatelessWidget {
@@ -480,6 +484,7 @@ class _HeroBlock extends StatelessWidget {
     required this.onWatch,
     required this.onEpg,
     required this.onFavourite,
+    required this.onWatchFocusChanged,
   });
 
   final ImageProvider? backdropImage;
@@ -491,6 +496,11 @@ class _HeroBlock extends StatelessWidget {
   final VoidCallback? onWatch;
   final VoidCallback? onEpg;
   final VoidCallback onFavourite;
+
+  /// Called when the "Смотреть" button gains / loses focus — used to pause
+  /// the carousel while the user is focused on the CTA (mirrors legacy
+  /// HeroSection._isWatchFocused guard).
+  final ValueChanged<bool> onWatchFocusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -557,6 +567,7 @@ class _HeroBlock extends StatelessWidget {
               onWatch: onWatch ?? () {},
               onEpg: onEpg ?? () {},
               onFavourite: onFavourite,
+              onWatchFocusChanged: onWatchFocusChanged,
             )
           else
             const Positioned(

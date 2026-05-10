@@ -22,6 +22,7 @@ class CinematicHeroContent extends StatelessWidget {
     required this.onWatch,
     required this.onEpg,
     required this.onFavourite,
+    this.onWatchFocusChanged,
   });
 
   final NowPlayingItem item;
@@ -29,6 +30,10 @@ class CinematicHeroContent extends StatelessWidget {
   final VoidCallback onWatch;
   final VoidCallback onEpg;
   final VoidCallback onFavourite;
+
+  /// Notifies parent when the "Смотреть" button gains/loses focus.
+  /// Used to pause the hero carousel while the user is on the CTA.
+  final ValueChanged<bool>? onWatchFocusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +84,7 @@ class CinematicHeroContent extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Chips row ──────────────────────────────────────────────
-            _ChipsRow(genre: genre),
+            _ChipsRow(genre: genre, channelName: item.channelName),
             const SizedBox(height: 22),
 
             // ── Hero title ─────────────────────────────────────────────
@@ -120,7 +125,13 @@ class CinematicHeroContent extends StatelessWidget {
               const SizedBox(height: 32),
 
             // ── Action row ─────────────────────────────────────────────
-            _ActionRow(watchFocusNode: watchFocusNode, onWatch: onWatch, onEpg: onEpg, onFavourite: onFavourite),
+            _ActionRow(
+              watchFocusNode: watchFocusNode,
+              onWatch: onWatch,
+              onEpg: onEpg,
+              onFavourite: onFavourite,
+              onWatchFocusChanged: onWatchFocusChanged,
+            ),
           ],
         ),
       ),
@@ -133,8 +144,9 @@ class CinematicHeroContent extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ChipsRow extends StatelessWidget {
-  const _ChipsRow({required this.genre});
+  const _ChipsRow({required this.genre, required this.channelName});
   final String genre;
+  final String channelName;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +155,7 @@ class _ChipsRow extends StatelessWidget {
       runSpacing: 8,
       children: [
         const Chip(label: 'В эфире', variant: ChipVariant.live),
-        Chip(label: 'MM Classic HD', variant: ChipVariant.brand, icon: const MMLogo(size: 14)),
+        if (channelName.isNotEmpty) Chip(label: channelName, variant: ChipVariant.brand, icon: const MMLogo(size: 14)),
         if (genre.isNotEmpty) Chip(label: genre),
         const Chip(label: 'HD · 5.1', variant: ChipVariant.ghost),
       ],
@@ -269,12 +281,14 @@ class _ActionRow extends StatelessWidget {
     required this.onWatch,
     required this.onEpg,
     required this.onFavourite,
+    this.onWatchFocusChanged,
   });
 
   final FocusNode watchFocusNode;
   final VoidCallback onWatch;
   final VoidCallback onEpg;
   final VoidCallback onFavourite;
+  final ValueChanged<bool>? onWatchFocusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +296,7 @@ class _ActionRow extends StatelessWidget {
       children: [
         Focus(
           focusNode: watchFocusNode,
+          onFocusChange: onWatchFocusChanged,
           child: Builder(
             builder: (ctx) {
               final focused = Focus.of(ctx).hasFocus;

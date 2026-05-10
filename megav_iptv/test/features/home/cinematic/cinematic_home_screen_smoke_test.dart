@@ -2,16 +2,17 @@ import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:megav_iptv/core/api/api_client.dart';
 import 'package:megav_iptv/core/playlist/models/now_playing.dart';
 import 'package:megav_iptv/core/providers/providers.dart';
 import 'package:megav_iptv/features/home/cinematic/cinematic_home_screen.dart';
 
 void main() {
   testWidgets(
-    'CinematicHomeScreen mounts without exception and exposes all 6 component keys',
+    'CinematicHomeScreen mounts without exception and exposes all component keys',
     (tester) async {
       // Pin to 1920×1080 so ScreenUtil initialises correctly and
-      // off-screen rail tiles are reachable via skipOffstage: false.
+      // off-screen items are reachable via skipOffstage: false.
       await tester.binding.setSurfaceSize(const Size(1920, 1080));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -33,7 +34,7 @@ void main() {
             overrides: [
               featuredNowPlayingProvider.overrideWith((_) async => mockFeatured),
               cinemaCategoriesProvider.overrideWith((_) async => const <CinemaCategory>[]),
-              moviesNotifierProvider.overrideWith((_) => _StubMoviesNotifier()),
+              moviesNotifierProvider.overrideWith((_) => MoviesNotifier(_StubApiClient())),
             ],
             child: ScreenUtilInit(
               designSize: const Size(1920, 1080),
@@ -50,35 +51,32 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(tester.takeException(), isNull);
+      // Root container key.
       expect(find.byKey(const Key('cinematic-home-root')), findsOneWidget);
+      // Genre tabs row.
       expect(find.byKey(const Key('cinematic-genre-tabs')), findsOneWidget);
+      // Hero block.
       expect(find.byKey(const Key('cinematic-hero')), findsOneWidget);
-      // Below-the-fold items may be offstage in a constrained viewport.
-      expect(find.byKey(const Key('cinematic-dual-rail-landscape'), skipOffstage: false), findsOneWidget);
+      // Live strip separator between hero and category rows.
       expect(find.byKey(const Key('cinematic-live-strip'), skipOffstage: false), findsOneWidget);
-      expect(find.byKey(const Key('cinematic-dual-rail-portrait'), skipOffstage: false), findsOneWidget);
+      // Remote hint footer at the bottom.
       expect(find.byKey(const Key('cinematic-remote-hint'), skipOffstage: false), findsOneWidget);
     },
   );
 }
 
 // ---------------------------------------------------------------------------
-// Stub notifiers — return empty data without hitting real HTTP.
+// Stub helpers — no real HTTP calls.
 // ---------------------------------------------------------------------------
 
-class _StubMoviesNotifier extends MoviesNotifier {
-  _StubMoviesNotifier() : super(_StubApiClient() as dynamic);
+/// [ApiClient] that returns empty collections for every method. Used to
+/// satisfy [MoviesNotifier]'s constructor so no real HTTP is attempted.
+class _StubApiClient extends ApiClient {
+  _StubApiClient() : super(baseUrl: 'http://localhost');
 
   @override
-  Future<void> waitForInit() async {
-    state = const AsyncValue.data([]);
-  }
-}
-
-// _StubApiClient is only used to satisfy the super constructor; waitForInit
-// overrides the actual loading behaviour above.
-class _StubApiClient {
-  @override
-  // ignore: avoid_dynamic_calls
-  dynamic noSuchMethod(Invocation i) => null;
+  Future<({List<NowPlayingItem> items, int total})> getMoviesNowPlaying({
+    int limit = 20,
+    int offset = 0,
+  }) async => (items: <NowPlayingItem>[], total: 0);
 }
