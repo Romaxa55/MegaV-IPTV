@@ -120,18 +120,22 @@ void main() {
         await tester.pump(GridTokens.scrollAnimation + const Duration(milliseconds: 50));
       }
 
-      // Expected offset is `5 * (cardW + gap)`. Since `tile0Width = cardW + gap`,
-      // expected = 5 * tile0Width.
-      final expected = 5 * tile0Width;
+      // home-grid-stability-pass: scroll formula is now
+      //   (index - GridTokens.pinnedSlotIdx) * (cardW + gap)
+      // with pinnedSlotIdx = 1 (Pinned-Slot Invariant — focused tile sits
+      // in slot 1, not slot 0). So focusing tile 5 lands at
+      //   (5 - 1) * tile0Width = 4 * tile0Width.
+      final expected = (5 - GridTokens.pinnedSlotIdx) * tile0Width;
       final actual = scrollableState.position.pixels;
 
       // Allow ±2 px tolerance for floating-point + clamping.
       expect(
         actual,
         closeTo(expected, 2.0),
-        reason: 'After focusing tile 5, the leading-edge scroll offset should be '
-            '5 * (cardW + gap) = $expected px (±2). Got $actual. '
-            '(tile0Width = $tile0Width)',
+        reason: 'After focusing tile 5, the pinned-slot scroll offset should be '
+            '(5 - pinnedSlotIdx) * (cardW + gap) = $expected px (±2). Got '
+            '$actual. (tile0Width = $tile0Width, pinnedSlotIdx = '
+            '${GridTokens.pinnedSlotIdx})',
       );
 
       externalNode.dispose();

@@ -141,7 +141,7 @@
 
 - [ ] 6. Проверить обоих потребителей CinemaRow (CinematicHomeScreen + legacy HomeScreen)
 
-- [ ] 6.1 Прогнать smoke-тесты обоих главных экранов
+- [x] 6.1 Прогнать smoke-тесты обоих главных экранов
   - Запустить `flutter test test/features/home/` целиком на ветке
     спека.
   - Зафиксировать список упавших тестов; разделить на две группы:
@@ -157,7 +157,7 @@
   - _Boundary: home tests_
   - _Depends: 3.1, 3.2, 4.1, 4.2, 5.1_
 
-- [ ] 6.2 Обновить числовые ожидания в существующих widget-тестах
+- [x] 6.2 Обновить числовые ожидания в существующих widget-тестах
   - Для каждого теста из группы (a) из 6.1: заменить literal
     числовые значения (height, scale, metadata height) на новые
     значения из `GridTokens.cardHeightDp` / `metadataReservedHeightDp` /
