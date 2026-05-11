@@ -120,7 +120,7 @@
   - _Boundary: ReportRenderer_
   - _Depends: 2.1_
 
-- [ ] 5.2 Реализация `bin/diff.js`
+- [x] 5.2 Реализация `bin/diff.js`
   - CLI: `--run-dir <ts>` (обязательный), `--baseline-dir <path>` (default `.kiro/screenshots/baselines/`)
   - Прочитать `<run-dir>/manifest.json`; для каждой пары `(screen, state)` — найти baseline `<baseline-dir>/<screen>.png` (state не учитывается в имени baseline для v1; baseline — это `idle`-эквивалент)
   - Если baseline отсутствует — пометить пару как `non_determinism: false, verdict: 'WARNING'` с reason `missing_baseline` и продолжить

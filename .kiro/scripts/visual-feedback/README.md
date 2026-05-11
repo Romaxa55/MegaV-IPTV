@@ -74,6 +74,16 @@ defaults are `pass_threshold: 2.0%`, `fail_threshold: 5.0%`.
 - **`window.__rendererError`** is set to a slug describing what went wrong
   (`unknown_screen:…`, `component_missing:…`, `render_failed:…`). Snapshot
   scripts should treat any non-null value as a baseline failure.
+- **`serve` redirect query-string drop**: do NOT use
+  `/jsx-renderer/index.html?screen=epg` — `serve` 301-redirects to strip
+  `.html` and loses the query string, so the renderer sees `?screen=null`
+  and falls back to `cinematic-home`. Always use the trailing-slash form
+  `/jsx-renderer/?screen=epg` (snapshot-jsx.js does this correctly).
+- **JSX-baseline data dependencies**: some screens (notably `epg`, `player`
+  in v2) reference props like `channels`/`pool`/`item` that the renderer
+  bootstrap does not synthesise. These render as a black canvas. This is
+  a JSX-handoff limitation, not a pipeline bug — track follow-up via
+  Implementation Notes in `.kiro/specs/visual-feedback-pipeline/tasks.md`.
 
 ## Documentation
 

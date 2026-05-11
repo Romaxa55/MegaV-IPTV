@@ -67,8 +67,12 @@ function parseArgs(argv) {
 }
 
 function screenUrl(port, slug) {
+  // IMPORTANT: must NOT use /index.html in the path — `serve` strips .html
+  // and produces a 301 chain that drops the query string, so the renderer
+  // sees ?screen=null and falls back to its default (cinematic-home).
+  // The trailing slash makes serve return index.html directly, query intact.
   return (
-    `http://localhost:${port}/.kiro/scripts/visual-feedback/jsx-renderer/index.html` +
+    `http://localhost:${port}/.kiro/scripts/visual-feedback/jsx-renderer/` +
     `?screen=${encodeURIComponent(slug)}`
   );
 }
@@ -79,6 +83,17 @@ function screenUrl(port, slug) {
  */
 async function captureOne({ page, port, slug, outDir }) {
   const url = screenUrl(port, slug);
+
+  // Go to about:blank first to fully drop the previous document. Without this
+  // step, when the renderer fast-loads from disk cache it can race and we end
+  // up screenshotting the previous screen because window.__rendererReady is
+  // still true from the prior navigation by the time we evaluate it.
+  try {
+    await page.goto('about:blank', { waitUntil: 'load', timeout: 10000 });
+  } catch (_) {
+    // best-effort
+  }
+
   try {
     await page.goto(url, { waitUntil: 'load', timeout: 30000 });
   } catch (e) {
@@ -86,7 +101,8 @@ async function captureOne({ page, port, slug, outDir }) {
   }
 
   // Wait for the renderer's readiness flag. In-browser Babel transpile makes
-  // this 3-5s on a cold cache.
+  // this 3-5s on a cold cache. Because we go through about:blank first,
+  // window.__rendererReady is guaranteed to be set freshly by THIS document.
   try {
     await page.waitForFunction(
       () => window.__rendererReady === true,
