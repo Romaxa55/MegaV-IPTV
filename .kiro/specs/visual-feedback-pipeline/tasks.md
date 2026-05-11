@@ -201,7 +201,7 @@
   - _Boundary: FileStructurePlan_
 
 - [ ] 9. Validation: golden run end-to-end
-- [ ] 9.1 Initial baseline capture
+- [x] 9.1 Initial baseline capture
   - Запустить `node bin/snapshot-jsx.js --all` — получить 8-9 PNG в `.kiro/screenshots/baselines/`
   - Закоммитить baselines в git (не LFS)
   - Observable completion: `git log --stat` показывает добавленные PNG в `.kiro/screenshots/baselines/`; общий размер коммита ≤ 10 MB
