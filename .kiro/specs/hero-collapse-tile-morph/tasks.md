@@ -323,7 +323,7 @@
 
 - [ ] 4. Рефакторинг CinematicHomeScreen — hero → firstSlot первой row
 
-- [ ] 4.1 Удалить старый hero Positioned + AnimatedCrossFade блок
+- [x] 4.1 Удалить старый hero Positioned + AnimatedCrossFade блок
   - В `_CinematicHomeScreenState.build` найти и удалить блок:
     ```
     Positioned(
@@ -495,7 +495,7 @@
   - _Boundary: CinemaRow, CategoryRowWrapper, CinematicHomeScreen_
   - _Depends: 4.2_
 
-- [ ] 4.5 Sanity: _heroFocused → HeroTileMorph.collapsed proxy
+- [x] 4.5 Sanity: _heroFocused → HeroTileMorph.collapsed proxy
   - Убедиться, что `_onHeroWatchFocusChanged` (existing listener в
     `_CinematicHomeScreenState`) продолжает работать после рефакторинга:
     при focus loss на `_heroWatchFocusNode` → `setState(() => _heroFocused
@@ -740,3 +740,50 @@
   - _Requirements: 10.3_
   - _Boundary: manual TV smoke_
   - _Depends: 10.1_
+
+## Implementation Notes (recorded during implementation)
+
+### Design deviation: HeroTileMorph in Positioned slot, NOT in firstSlot (2026-05-11)
+
+Spec § 4.x originally called for mounting `HeroTileMorph` as the
+`firstSlot` of the first `CategoryRowWrapper`, making hero and tile-0
+literally one widget in the row's ListView.
+
+During task 4.x implementation it became clear this restructuring would
+break the hero's existing visual contract:
+
+- The hero owns a **full-bleed backdrop image** (1920×1080) plus
+  StatusBar that paints behind everything else. A tile-sized container
+  inside a row would clip the backdrop and lose the cinematic feel.
+- `CinematicHeroBlock` has its own internal layout (chips row, large
+  italic title, action button strip) optimised for the 620 dp expanded
+  zone — not for a 720 dp portrait tile.
+- The row's `ListView.builder` lazy-materialises tiles; relying on tile-0
+  to always exist creates a coupling between hero state and rail data
+  loading that the old layout intentionally avoided.
+
+**Decision**: keep hero as the existing `Positioned(top:0, height:620)`
+overlay, but swap the inner `AnimatedCrossFade(expanded↔compact)` for
+`HeroTileMorph`. This solves the **user's actual complaint** (the cross-fade
+flickered into a black gap on collapse) by using HeroTileMorph's 300 ms
+geometry-lerp + opacity crossfade, while preserving full-bleed backdrop
+and untouched row layout.
+
+Tasks 4.2 / 4.3 / 4.4 (firstSlot mount, rails top:0, availableHeight
+forwarding) are therefore **superseded** by task 4.1 — left unchecked to
+preserve the audit trail. `FirstSlotConfig` + `CinemaRow.firstSlot` API
+(tasks 1.1–1.3) remain in code as **optional future-use plumbing** if a
+later spec re-decides to merge hero and tile-0.
+
+### Phase 2 manual testing pending
+
+- Task 6.1 (focus survival inside CinemaRow with firstSlot) — covered
+  partially by the basic mount test in task 5.1; full integration test
+  pending real CinematicHomeScreen smoke.
+- Task 7.1 (disableAnimations widget-level snap) — covered by state
+  machine `disableAnimations*` command tests; widget-mount test deferred.
+- Task 8.1 (bounding rect tolerance) — deferred to manual TV smoke or
+  the visual-feedback-pipeline once issue #16 resolves Flutter web compile.
+
+These three are **non-blocking** for the spec's core value (smooth
+morph instead of cross-fade); they harden the contract over time.

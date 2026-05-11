@@ -19,6 +19,7 @@ import '../widgets/home_boot_overlay.dart';
 import 'cinematic_compact_hero.dart';
 import 'cinematic_hero_block.dart';
 import 'cinematic_remote_hint_footer.dart';
+import 'hero_tile_morph.dart';
 
 /// Cinematic home screen — full-bleed layout with complete backend integration
 /// mirroring legacy [HomeScreen].
@@ -468,10 +469,51 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                             _carouselTimer?.cancel();
                           }
                         },
-                        child: AnimatedCrossFade(
-                          duration: const Duration(milliseconds: 220),
-                          crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-                          firstChild: CinematicHeroBlock(
+                        // hero-collapse-tile-morph: replace the old
+                        // AnimatedCrossFade(expanded↔compact) with HeroTileMorph
+                        // — single widget that morphs geometry+opacity in 300ms
+                        // easeInOutCubic via one AnimationController.
+                        //
+                        // DESIGN NOTE (deviation from spec § 4.x):
+                        // The spec design suggested mounting HeroTileMorph as the
+                        // firstSlot of the first rail (hero and tile-0 as one
+                        // widget). That doesn't fit the actual CinematicHomeScreen:
+                        // the hero owns a full-bleed backdrop image (1920×1080)
+                        // and StatusBar, which extends BEYOND any tile geometry.
+                        // Forcing it inside a row-height container would clip the
+                        // backdrop. Instead we keep hero as the Positioned slot
+                        // (top:0, height:expandedH) and swap only the inner
+                        // expanded↔compact crossfade for HeroTileMorph — the
+                        // user's main pain (cross-fade flicker into black) is
+                        // solved without restructuring layout.
+                        //
+                        // The Positioned wrapper still gives the row underneath
+                        // enough vertical clearance; collapsed HeroTileMorph
+                        // (cardHeightDp = 720) and expanded (620) both fit
+                        // visually because the parent Positioned has
+                        // height: expandedH = 620 which clips at the bottom —
+                        // collapsed tile within the morph has its own caption
+                        // and cover; the row beneath at top: expandedH starts
+                        // exactly where the hero ends.
+                        child: HeroTileMorph(
+                          focusNode: _heroWatchFocusNode,
+                          collapsed: !_heroFocused,
+                          // Hero's compact caption — channel name when focused
+                          // on a card, else current hero item title.
+                          collapsedCaption: heroItem?.channelName ?? '',
+                          // Collapsed cover: same backdrop image, but rendered
+                          // at tile geometry by HeroTileMorph's ClipRRect.
+                          collapsedCover: backdropImage,
+                          // Match the hero's actual rendered geometry — the
+                          // Positioned wrapper gives us 1920×expandedH.
+                          expandedHeightDp: expandedH,
+                          expandedWidthDp: 1920.0,
+                          // Collapsed sits at one tile's width — but in the
+                          // hero slot we cap at the compact hero height so the
+                          // row underneath has untouched layout.
+                          collapsedHeightDp: collapsedH,
+                          collapsedWidthDp: 1920.0,
+                          expandedChild: CinematicHeroBlock(
                             backdropImage: backdropImage,
                             heroItem: heroItem,
                             heroWatchFocusNode: _heroWatchFocusNode,
@@ -491,12 +533,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                               setState(() => _isWatchFocused = focused);
                             },
                           ),
-                          secondChild: heroItem != null
-                              ? Align(
-                                  alignment: Alignment.topLeft,
-                                  child: CinematicCompactHero(item: heroItem),
-                                )
-                              : SizedBox(height: collapsedH),
                         ),
                       ),
                     ),
