@@ -136,7 +136,7 @@
 
 - [ ] 3. Реализовать HeroTileMorph widget
 
-- [ ] 3.1 Создать HeroTileMorph public API (props + конструктор)
+- [x] 3.1 Создать HeroTileMorph public API (props + конструктор)
   - В `hero_tile_morph.dart` добавить `class HeroTileMorph extends
     StatefulWidget` с полями (см. design.md → HeroTileMorph public API):
     - `final NowPlayingItem? heroItem;`
@@ -160,7 +160,7 @@
   - _Boundary: HeroTileMorph_
   - _Depends: 2.1_
 
-- [ ] 3.2 Реализовать _HeroTileMorphState: AnimationController + state machine
+- [x] 3.2 Реализовать _HeroTileMorphState: AnimationController + state machine
   - `class _HeroTileMorphState extends State<HeroTileMorph> with
     SingleTickerProviderStateMixin`:
     - `late AnimationController _controller;`
@@ -199,7 +199,7 @@
   - _Boundary: HeroTileMorph state_
   - _Depends: 3.1_
 
-- [ ] 3.3 Реализовать didUpdateWidget + disableAnimations handling
+- [x] 3.3 Реализовать didUpdateWidget + disableAnimations handling
   - В `_HeroTileMorphState.didUpdateWidget(HeroTileMorph oldWidget)`:
     - `super.didUpdateWidget(oldWidget);`
     - Если `oldWidget.collapsed != widget.collapsed`:
@@ -231,7 +231,7 @@
   - _Boundary: HeroTileMorph state_
   - _Depends: 3.2_
 
-- [ ] 3.4 Реализовать build: geometry interpolation + Opacity TweenSequence
+- [x] 3.4 Реализовать build: geometry interpolation + Opacity TweenSequence
   - В `_HeroTileMorphState.build(BuildContext context)`:
     - Раннее `final collapsedH = widget.collapsedHeightDp > 0
       ? widget.collapsedHeightDp
