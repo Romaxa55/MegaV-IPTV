@@ -1,0 +1,20 @@
+# visual-feedback-pipeline transient artefacts.
+# Spec: .kiro/specs/visual-feedback-pipeline/ (req 8.5).
+#
+# We commit: baselines/, config.json, report-template.html, this file.
+# We ignore: any per-run timestamp directory under .kiro/screenshots/.
+#
+# Timestamp dirs are named YYYYMMDD-HHMMSS (snapshot-flutter, run-all).
+# A wildcard like `[0-9]*` covers them without accidentally hiding
+# `baselines/` (starts with `b`) or `config.json` (starts with `c`).
+
+[0-9]*/
+
+# Also ignore stray top-level PNGs (e.g. /tmp-copied artefacts left at root).
+# Baselines and per-run images live in subdirs so the root should stay clean.
+*.png
+!baselines/*.png
+
+# Smoke / scratch files used during pipeline development.
+smoke-*
+*.smoke.html

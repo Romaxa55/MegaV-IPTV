@@ -187,14 +187,14 @@
   - _Depends: 6.1_
 
 - [ ] 8. Integration: Steering doc + gitignore
-- [ ] 8.1 (P) Документация `.kiro/steering/visual-feedback.md`
+- [x] 8.1 (P) Документация `.kiro/steering/visual-feedback.md`
   - Файл на русском с секциями: Overview, Quickstart (`npm install`, `npx playwright install chromium`, `npm run …`), Configuration (`config.json` пороги), Limitations (явная фраза «pipeline проверяет визуальное соответствие layout/typography/colors относительно JSX-эталона и НЕ заменяет ручной smoke-тест на референсном Realtek `rtd2851a`»), Report format (описание `summary.json` и `report.html`), Baseline regeneration (`node bin/snapshot-jsx.js --all` плюс commit обновлённых PNG)
   - Описать выбор v2 версий JSX-прототипов где они есть (`cinematic-v2.jsx`, `mobile-v2.jsx`, `epg-v2.jsx`, `search-v2.jsx`, `player-v2.jsx`, `settings-v2.jsx`)
   - Observable completion: файл существует, содержит все 6 секций, фраза «web ≠ TV» / эквивалент присутствует
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
   - _Boundary: SteeringDoc_
 
-- [ ] 8.2 (P) `.kiro/screenshots/.gitignore`
+- [x] 8.2 (P) `.kiro/screenshots/.gitignore`
   - Создать `.kiro/screenshots/.gitignore` с содержимым: игнорировать любые директории вида `<timestamp>/` (`[0-9]*`); явно НЕ игнорировать `baselines/`, `config.json`, `report-template.html`, сам `.gitignore`
   - Observable completion: `cat .kiro/screenshots/.gitignore` показывает корректные правила; `git status` после dummy `mkdir .kiro/screenshots/20260511-120000` не показывает эту директорию как untracked
   - _Requirements: 8.5_
