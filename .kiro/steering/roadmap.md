@@ -106,9 +106,9 @@ hero коллапсирует в чёрную пустоту, сетка пли�
 контракты** (Pinned-Slot Invariant), не модификация closed `home-grid-optimization` /
 `home-grid-visual-polish`.
 
-- [ ] **home-grid-stability-pass** — финальная стабилизация сетки: focusedScale → 1.00, увеличенная высота плитки, fixed-height metadata, документированный Pinned-Slot Invariant + invariant test. Dependencies: none (все upstream закрыты). 📋 brief ready.
-- [ ] **visual-feedback-pipeline** — Full pipeline: Flutter web build + Playwright snapshot + pixelmatch diff против JSX-эталонов + HTML отчёт + новый skill `kiro-validate-visual`. Dependencies: none. 📋 brief ready.
-- [ ] **hero-collapse-tile-morph** — hero на CinematicHomeScreen коллапсирует не cross-fade, а slide+scale morph в плитку слота 0 первой полосы; обратный morph при возврате фокуса вверх. Dependencies: home-grid-stability-pass. 📋 brief ready.
+- [x] **home-grid-stability-pass** — финальная стабилизация сетки: focusedScale → 1.01, cardHeightDp = 720, fixed-height metadata, формализованный Pinned-Slot Invariant + verifiable test. ✅ implemented (15/17 sub-tasks; 2 pending manual TV smoke).
+- [x] **visual-feedback-pipeline** — Phase 1: JSX baseline pipeline + diff engine + report + kiro-validate-visual skill. ✅ implemented-phase-1 (18/23 sub-tasks; 5 blocked by upstream issue #16 media_kit web compile).
+- [x] **hero-collapse-tile-morph** — HeroTileMorph widget (300ms easeInOutCubic geometry+opacity morph) replaces AnimatedCrossFade in CinematicHomeScreen hero block. ✅ implemented (15/18 sub-tasks; design deviation §4.x recorded — hero stays in Positioned slot, NOT in firstSlot, full-bleed backdrop preserved).
 
 ## Pilot strategy
 
