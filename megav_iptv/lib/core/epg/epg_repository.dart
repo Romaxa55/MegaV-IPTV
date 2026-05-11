@@ -49,16 +49,28 @@ class EpgRepository {
   Future<Map<int, List<EpgProgram>>> _fanOut(DateTime from, DateTime to, List<int> channelIds) async {
     final futures = <int, Future<List<EpgProgram>>>{};
     for (final id in channelIds) {
-      futures[id] = _inFlight[id] ??= _api.getUpcomingPrograms(id).then((list) {
-        _inFlight.remove(id);
-        return list;
-      });
+      futures[id] = _inFlight[id] ??= _api
+          .getUpcomingPrograms(id)
+          .then(
+            (list) {
+              _inFlight.remove(id);
+              return list;
+            },
+            onError: (Object _, StackTrace _) {
+              _inFlight.remove(id);
+              return const <EpgProgram>[];
+            },
+          );
     }
 
     final result = <int, List<EpgProgram>>{};
     for (final entry in futures.entries) {
-      final list = await entry.value;
-      result[entry.key] = list.where((p) => !p.end.isBefore(from) && !p.start.isAfter(to)).toList();
+      try {
+        final list = await entry.value;
+        result[entry.key] = list.where((p) => !p.end.isBefore(from) && !p.start.isAfter(to)).toList();
+      } catch (_) {
+        result[entry.key] = const [];
+      }
     }
     return result;
   }

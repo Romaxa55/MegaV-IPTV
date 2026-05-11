@@ -248,16 +248,19 @@ class _CinemaRowState extends State<CinemaRow> {
     final screenW = MediaQuery.sizeOf(context).width;
     final layout = _gridLayoutFor(screenW);
     final gap = GridTokens.gapDp.w;
-    final targetOffset = index * (layout.cardW + gap);
+    // Netflix-style: keep the focused tile pinned to the 2nd visible slot
+    // so the user always sees one "previous" tile to the left, providing
+    // spatial context. The grid stays put while items animate through.
+    // Pin slot index = 1 (0 = leading edge → reverts to old behaviour).
+    const pinnedSlotIdx = 1;
+    final cardStride = layout.cardW + gap;
+    final targetOffset = (index - pinnedSlotIdx) * cardStride;
     final max = _scrollController.position.maxScrollExtent;
     final clamped = targetOffset.clamp(0.0, max);
     final current = _scrollController.offset;
 
-    // Req 2.4: при движении назад на плитку, которая уже видима ≤ leading edge,
-    // не двигаемся.
-    if (clamped <= current) {
-      return;
-    }
+    // Skip when target == current (already pinned correctly).
+    if ((clamped - current).abs() < 0.5) return;
     _scrollController.animateTo(clamped, duration: GridTokens.scrollAnimation, curve: GridTokens.scrollCurve);
   }
 

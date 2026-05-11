@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
@@ -78,6 +79,73 @@ final _router = GoRouter(
   ],
 );
 
+/// Wraps the app tree in a [ResponsiveScaledBox] whose virtual design
+/// width depends on the active breakpoint:
+/// * `4K`     → 1920 (TV native, no scaling)
+/// * `DESKTOP`→ 1280 (mid-density mid-window)
+/// * `TABLET` → 1024
+/// * `MOBILE` → no wrapping (native px so touch targets stay 48dp)
+///
+/// Reads [ResponsiveBreakpoints.of] which the parent
+/// [ResponsiveBreakpoints.builder] supplies. The atoms designed against
+/// the 1920×1080 spec stay pixel-perfect at every breakpoint without any
+/// per-widget LayoutBuilder.
+class _AdaptiveScaledRoot extends StatelessWidget {
+  const _AdaptiveScaledRoot({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bp = ResponsiveBreakpoints.of(context);
+    if (bp.isMobile) return child;
+    final double designWidth = bp.equals('4K')
+        ? 1920
+        : bp.equals(DESKTOP)
+        ? 1280
+        : 1024; // TABLET fallback
+    return ResponsiveScaledBox(width: designWidth, child: child);
+  }
+}
+
+class _DebugRouteSwitcher extends StatelessWidget {
+  const _DebugRouteSwitcher();
+
+  static const _routes = <(String, String)>[
+    ('/home', 'Legacy'),
+    ('/home-cinematic', 'Cinematic'),
+    ('/home-editorial', 'Editorial'),
+    ('/epg', 'EPG'),
+    ('/search', 'Search'),
+    ('/settings', 'Settings'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Wrap(
+          spacing: 4,
+          children: [
+            for (final (path, label) in _routes)
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  textStyle: const TextStyle(fontSize: 11),
+                ),
+                onPressed: () => _router.go(path),
+                child: Text(label),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class MegaVApp extends ConsumerWidget {
   const MegaVApp({super.key});
 
@@ -94,6 +162,33 @@ class MegaVApp extends ConsumerWidget {
           debugShowCheckedModeBanner: false,
           theme: appTheme(paletteName.palette),
           routerConfig: _router,
+          builder: (context, child) {
+            // Responsive auto-scaling: tree always renders as if viewport
+            // matches the breakpoint name's design width, then Flutter scales
+            // to the actual window. Atoms designed for 1920×1080 stay
+            // pixel-perfect on any size without manual LayoutBuilder.
+            return ResponsiveBreakpoints.builder(
+              breakpoints: const [
+                Breakpoint(start: 0, end: 599, name: MOBILE),
+                Breakpoint(start: 600, end: 1023, name: TABLET),
+                Breakpoint(start: 1024, end: 1919, name: DESKTOP),
+                Breakpoint(start: 1920, end: double.infinity, name: '4K'),
+              ],
+              // Legacy /home uses the default WidgetsApp focus traversal
+              // (no custom Shortcuts/Actions) and arrow-key navigation works
+              // correctly. Custom global Shortcuts overrode the
+              // FocusTraversalGroup behaviour inside `cinema_row` rails on
+              // the new screens, so we removed them.
+              child: _AdaptiveScaledRoot(
+                child: Stack(
+                  children: [
+                    ?child,
+                    const Positioned(top: 8, right: 8, child: _DebugRouteSwitcher()),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

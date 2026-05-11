@@ -252,24 +252,47 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   // Hover / preview
   // ──────────────────────────────────────────────────────────────────────────
 
+  /// Netflix-style hover behaviour:
+  ///   * When user moves through rail items, do NOT swap hero immediately —
+  ///     wait [_hoverSettleDelay] (≈600ms) so the hero only updates when
+  ///     focus actually settles on a card. Without this the backdrop
+  ///     "flickers" through every card during arrow-key sweeps.
+  ///   * On settle: precache thumbnail, swap hero, start preview-player
+  ///     timer 7s later.
+  ///   * On focus loss (item == null): keep current backdrop briefly
+  ///     (200ms debounce) to bridge the gap between cards / row transitions.
+  static const Duration _hoverSettleDelay = Duration(milliseconds: 600);
+
   void _onHoveredItemChanged(NowPlayingItem? item) {
-    _previewTimer?.cancel();
+    // Always cancel the in-flight settle timer so the user's most recent
+    // movement wins (rapid arrow-key sweep → only the last card matters).
     _hoveredClearDebounce?.cancel();
+    _previewTimer?.cancel();
 
     if (item != null) {
-      if (item.channelId != _hoveredItem?.channelId) _stopPreview();
+      // Precache thumbnail eagerly so once it lands the AnimatedSwitcher
+      // crossfade has the bitmap ready.
       if (mounted) {
         final thumb = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
         if (thumb != null && thumb.isNotEmpty) {
           unawaited(precacheImage(NetworkImage(thumb), context));
         }
       }
-      _carouselTimer?.cancel();
-      setState(() => _hoveredItem = item);
-      _previewTimer = Timer(const Duration(milliseconds: 7000), () {
-        if (mounted && _hoveredItem?.channelId == item.channelId) _startPreview(item);
+      // Settle delay: only swap hero / stop carousel after the user
+      // has actually rested on this card.
+      _hoveredClearDebounce = Timer(_hoverSettleDelay, () {
+        if (!mounted) return;
+        if (item.channelId != _hoveredItem?.channelId) _stopPreview();
+        _carouselTimer?.cancel();
+        setState(() => _hoveredItem = item);
+        _previewTimer = Timer(const Duration(milliseconds: 7000), () {
+          if (mounted && _hoveredItem?.channelId == item.channelId) _startPreview(item);
+        });
       });
     } else {
+      // Focus left a card — give 200ms grace before clearing hero so a
+      // quick row-transition (down arrow leaving and immediately re-entering
+      // a focusable) doesn't visibly reset the backdrop.
       _hoveredClearDebounce = Timer(const Duration(milliseconds: 200), () {
         if (!mounted) return;
         setState(() => _hoveredItem = null);
@@ -408,113 +431,110 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                   }
                   return KeyEventResult.ignored;
                 },
-                // FocusTraversalGroup гарантирует, что D-pad стрелки проходят
-                // через hero-кнопки → rails-карточки через WidgetOrderTraversalPolicy.
-                // Это тот же паттерн что в cinema_row.dart (там внутренний group
-                // для горизонтального ряда). Без этого Flutter traversal не знает
-                // порядка фокусируемых элементов в смешанном Stack-layout.
-                child: FocusTraversalGroup(
-                  policy: WidgetOrderTraversalPolicy(),
-                  child: Stack(
-                    children: [
-                      // ── Hero — first in children so WidgetOrderTraversalPolicy
-                      // visits hero-buttons BEFORE rails on Tab/D-pad ↓.
-                      // Z-order: hero renders below rails (Stack paints first=bottom),
-                      // but hero is Positioned(top:0, height:expandedH) and rails
-                      // are Positioned(top:expandedH) so they never overlap visually.
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: expandedH,
-                        child: FocusScope(
-                          onFocusChange: (focused) {
-                            // Hero re-expands as soon as ANY descendant gains
-                            // focus (D-pad ↑ from rail traversal lands on
-                            // whichever focusable is closest; not always the
-                            // Watch button). Mirrors Watch-only listener so
-                            // either path works.
-                            if (focused != _heroFocused) {
-                              setState(() => _heroFocused = focused);
-                              if (focused) {
-                                final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
-                                if (featured.isNotEmpty) _restartCarousel(featured);
-                              } else {
-                                _carouselTimer?.cancel();
-                              }
-                            }
-                          },
-                          child: AnimatedCrossFade(
-                            duration: const Duration(milliseconds: 220),
-                            crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-                            firstChild: CinematicHeroBlock(
-                              backdropImage: backdropImage,
-                              heroItem: heroItem,
-                              heroWatchFocusNode: _heroWatchFocusNode,
-                              isPreviewVideoReady: _isPreviewVideoReady,
-                              previewPlayer: _previewPlayer,
-                              clockTime: _clockTime,
-                              onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
-                              onEpg: heroItem != null
-                                  ? () => context.push(
-                                      '/channel/${heroItem.channelId}',
-                                      extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
-                                    )
-                                  : null,
-                              onFavourite: () {},
-                              onWatchFocusChanged: (focused) {
-                                if (!mounted) return;
-                                setState(() => _isWatchFocused = focused);
-                              },
-                            ),
-                            secondChild: heroItem != null
-                                ? Align(
-                                    alignment: Alignment.topLeft,
-                                    child: CinematicCompactHero(item: heroItem),
+                // Layout mirrors legacy `home_screen.dart` exactly: a plain
+                // Focus + Stack. Legacy does NOT use FocusTraversalGroup at
+                // root, only inside `cinema_row.dart` (horizontal traversal).
+                // Default Flutter directional traversal handles vertical
+                // movement between hero buttons and rail cards correctly.
+                child: Stack(
+                  children: [
+                    // ── Hero — first in children so WidgetOrderTraversalPolicy
+                    // visits hero-buttons BEFORE rails on Tab/D-pad ↓.
+                    // Z-order: hero renders below rails (Stack paints first=bottom),
+                    // but hero is Positioned(top:0, height:expandedH) and rails
+                    // are Positioned(top:expandedH) so they never overlap visually.
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: expandedH,
+                      // Hero expand/collapse: listen to focus changes in
+                      // the hero subtree via Focus(skipTraversal:true) +
+                      // onFocusChange. skipTraversal removes this node
+                      // from the traversal chain (no arrow-trap), but
+                      // onFocusChange still fires when any descendant
+                      // gains/loses focus. Works whether D-pad ↑ lands
+                      // on Watch button or any other focusable in hero.
+                      child: Focus(
+                        skipTraversal: true,
+                        canRequestFocus: false,
+                        onFocusChange: (focused) {
+                          if (focused == _heroFocused) return;
+                          setState(() => _heroFocused = focused);
+                          if (focused) {
+                            final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
+                            if (featured.isNotEmpty) _restartCarousel(featured);
+                          } else {
+                            _carouselTimer?.cancel();
+                          }
+                        },
+                        child: AnimatedCrossFade(
+                          duration: const Duration(milliseconds: 220),
+                          crossFadeState: _heroFocused ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                          firstChild: CinematicHeroBlock(
+                            backdropImage: backdropImage,
+                            heroItem: heroItem,
+                            heroWatchFocusNode: _heroWatchFocusNode,
+                            isPreviewVideoReady: _isPreviewVideoReady,
+                            previewPlayer: _previewPlayer,
+                            clockTime: _clockTime,
+                            onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
+                            onEpg: heroItem != null
+                                ? () => context.push(
+                                    '/channel/${heroItem.channelId}',
+                                    extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
                                   )
-                                : SizedBox(height: collapsedH),
+                                : null,
+                            onFavourite: () {},
+                            onWatchFocusChanged: (focused) {
+                              if (!mounted) return;
+                              setState(() => _isWatchFocused = focused);
+                            },
                           ),
+                          secondChild: heroItem != null
+                              ? Align(
+                                  alignment: Alignment.topLeft,
+                                  child: CinematicCompactHero(item: heroItem),
+                                )
+                              : SizedBox(height: collapsedH),
                         ),
                       ),
+                    ),
 
-                      // ── Rails list — positioned below hero (fixed offset) ──
-                      // Rails always start at expanded hero height. Hero collapse
-                      // animates only via crossfade — NOT via AnimatedPositioned
-                      // top change, because animating `top` reparents children
-                      // every frame and breaks ScrollController attachment.
-                      Positioned(
-                        top: expandedH,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: ListView.builder(
-                          clipBehavior: Clip.none,
-                          padding: EdgeInsets.zero,
-                          // +1 for the remote hint footer slot.
-                          itemCount: categories.length + 1,
-                          itemBuilder: (context, rowIdx) {
-                            if (rowIdx == categories.length) {
-                              return const Padding(
-                                padding: EdgeInsets.only(top: 8),
-                                child: CinematicRemoteHintFooter(),
-                              );
-                            }
-                            final cat = categories[rowIdx];
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
-                              child: CategoryRowWrapper(
-                                key: ValueKey('cinematic-row-${cat.id}'),
-                                category: cat,
-                                onItemTap: _playNowPlaying,
-                                onItemFocus: _onHoveredItemChanged,
-                              ),
-                            );
-                          },
-                        ),
+                    // ── Rails list — positioned below hero (fixed offset) ──
+                    // Rails always start at expanded hero height. Hero collapse
+                    // animates only via crossfade — NOT via AnimatedPositioned
+                    // top change, because animating `top` reparents children
+                    // every frame and breaks ScrollController attachment.
+                    Positioned(
+                      top: expandedH,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ListView.builder(
+                        clipBehavior: Clip.none,
+                        padding: EdgeInsets.zero,
+                        // +1 for the remote hint footer slot.
+                        itemCount: categories.length + 1,
+                        itemBuilder: (context, rowIdx) {
+                          if (rowIdx == categories.length) {
+                            return const Padding(padding: EdgeInsets.only(top: 8), child: CinematicRemoteHintFooter());
+                          }
+                          final cat = categories[rowIdx];
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
+                            child: CategoryRowWrapper(
+                              key: ValueKey('cinematic-row-${cat.id}'),
+                              category: cat,
+                              onItemTap: _playNowPlaying,
+                              onItemFocus: _onHoveredItemChanged,
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  ),
-                ), // FocusTraversalGroup
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
