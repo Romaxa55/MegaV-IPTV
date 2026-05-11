@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/player/player_engine.dart';
@@ -13,13 +12,11 @@ import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../detail/providers/detail_arguments.dart';
-import '../widgets/_grid_tokens.dart';
 import '../widgets/cinema_row.dart';
 import '../widgets/home_boot_overlay.dart';
-import 'cinematic_compact_hero.dart';
 import 'cinematic_hero_block.dart';
 import 'cinematic_remote_hint_footer.dart';
-import 'hero_tile_morph.dart';
+import 'unified_home_grid_scroller.dart';
 
 /// Cinematic home screen — full-bleed layout with complete backend integration
 /// mirroring legacy [HomeScreen].
@@ -124,6 +121,27 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     _heroWatchFocusNode.dispose();
     _bootUrlController.dispose();
     super.dispose();
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Hero focus (driven by UnifiedHomeGridScroller)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Called by `UnifiedHomeGridScroller.onHeroFocusChanged` when focus
+  /// crosses the hero ↔ rails boundary. Pauses / resumes the hero
+  /// carousel (отдельная hero-row не имеет своей anim — carousel timer
+  /// просто меняет `_carouselIndex`).
+  void _onHeroFocusChanged(bool focused) {
+    if (!mounted) return;
+    if (focused == _heroFocused) return;
+    setState(() => _heroFocused = focused);
+    if (focused) {
+      final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
+      if (featured.isNotEmpty) _restartCarousel(featured);
+    } else {
+      _carouselTimer?.cancel();
+      _carouselTimer = null;
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -372,9 +390,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
         ? NetworkImage(backdropUrl) as ImageProvider
         : null;
 
-    final collapsedH = CinematicCompactHero.kCompactHeroHeight;
-    const expandedH = 620.0;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
@@ -397,141 +412,45 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                 return KeyEventResult.ignored;
               },
               // TV-grade directional traversal: WidgetOrderTraversalPolicy
-              // traverses children in declaration order (hero first, rails
-              // second). On macOS the default ReadingOrderTraversalPolicy
-              // doesn't guarantee ↓ from hero hits the first rail; with this
-              // wrapper the ordering is deterministic across desktop and TV.
+              // traverses children in declaration order so D-pad ↓ from
+              // hero (row-0) consistently reaches the first rail (row-1)
+              // across macOS desktop and Android TV.
+              //
+              // home-unified-grid-scroll spec (Wave 5):
+              // Hero перестаёт быть отдельной Positioned-секцией и
+              // становится row-0 единого `UnifiedHomeGridScroller`.
+              // Vertical Pinned-Slot Invariant обеспечивает что фокус
+              // остаётся в screen-space строке `verticalPinnedSlotIdx`
+              // при D-pad ↑/↓.
               child: FocusTraversalGroup(
                 policy: WidgetOrderTraversalPolicy(),
-                child: Stack(
-                  children: [
-                    // ── Hero — first in children so WidgetOrderTraversalPolicy
-                    // visits hero-buttons BEFORE rails on Tab/D-pad ↓.
-                    // Z-order: hero renders below rails (Stack paints first=bottom),
-                    // but hero is Positioned(top:0, height:expandedH) and rails
-                    // are Positioned(top:expandedH) so they never overlap visually.
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: expandedH,
-                      // Hero expand/collapse: listen to focus changes in
-                      // the hero subtree via Focus(skipTraversal:true) +
-                      // onFocusChange. skipTraversal removes this node
-                      // from the traversal chain (no arrow-trap), but
-                      // onFocusChange still fires when any descendant
-                      // gains/loses focus. Works whether D-pad ↑ lands
-                      // on Watch button or any other focusable in hero.
-                      child: Focus(
-                        skipTraversal: true,
-                        canRequestFocus: false,
-                        onFocusChange: (focused) {
-                          if (focused == _heroFocused) return;
-                          setState(() => _heroFocused = focused);
-                          if (focused) {
-                            final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? const [];
-                            if (featured.isNotEmpty) _restartCarousel(featured);
-                          } else {
-                            _carouselTimer?.cancel();
-                          }
-                        },
-                        // hero-collapse-tile-morph: replace the old
-                        // AnimatedCrossFade(expanded↔compact) with HeroTileMorph
-                        // — single widget that morphs geometry+opacity in 300ms
-                        // easeInOutCubic via one AnimationController.
-                        //
-                        // DESIGN NOTE (deviation from spec § 4.x):
-                        // The spec design suggested mounting HeroTileMorph as the
-                        // firstSlot of the first rail (hero and tile-0 as one
-                        // widget). That doesn't fit the actual CinematicHomeScreen:
-                        // the hero owns a full-bleed backdrop image (1920×1080)
-                        // and StatusBar, which extends BEYOND any tile geometry.
-                        // Forcing it inside a row-height container would clip the
-                        // backdrop. Instead we keep hero as the Positioned slot
-                        // (top:0, height:expandedH) and swap only the inner
-                        // expanded↔compact crossfade for HeroTileMorph — the
-                        // user's main pain (cross-fade flicker into black) is
-                        // solved without restructuring layout.
-                        //
-                        // The Positioned wrapper still gives the row underneath
-                        // enough vertical clearance; collapsed HeroTileMorph
-                        // (cardHeightDp = 720) and expanded (620) both fit
-                        // visually because the parent Positioned has
-                        // height: expandedH = 620 which clips at the bottom —
-                        // collapsed tile within the morph has its own caption
-                        // and cover; the row beneath at top: expandedH starts
-                        // exactly where the hero ends.
-                        child: HeroTileMorph(
-                          focusNode: _heroWatchFocusNode,
-                          collapsed: !_heroFocused,
-                          // Hero's compact caption — channel name when focused
-                          // on a card, else current hero item title.
-                          collapsedCaption: heroItem?.channelName ?? '',
-                          // Collapsed cover: same backdrop image, but rendered
-                          // at tile geometry by HeroTileMorph's ClipRRect.
-                          collapsedCover: backdropImage,
-                          // Match the hero's actual rendered geometry — the
-                          // Positioned wrapper gives us 1920×expandedH.
-                          expandedHeightDp: expandedH,
-                          expandedWidthDp: 1920.0,
-                          // Collapsed sits at one tile's width — but in the
-                          // hero slot we cap at the compact hero height so the
-                          // row underneath has untouched layout.
-                          collapsedHeightDp: collapsedH,
-                          collapsedWidthDp: 1920.0,
-                          expandedChild: CinematicHeroBlock(
-                            backdropImage: backdropImage,
-                            heroItem: heroItem,
-                            heroWatchFocusNode: _heroWatchFocusNode,
-                            isPreviewVideoReady: _isPreviewVideoReady,
-                            previewPlayer: _previewPlayer,
-                            clockTime: _clockTime,
-                            onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
-                            onEpg: heroItem != null
-                                ? () => context.push(
-                                    '/channel/${heroItem.channelId}',
-                                    extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
-                                  )
-                                : null,
-                            onFavourite: () {},
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // ── Rails list — positioned below hero (fixed offset) ──
-                    // Rails always start at expanded hero height. Hero collapse
-                    // animates only via crossfade — NOT via AnimatedPositioned
-                    // top change, because animating `top` reparents children
-                    // every frame and breaks ScrollController attachment.
-                    Positioned(
-                      top: expandedH,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: ListView.builder(
-                        clipBehavior: Clip.none,
-                        padding: EdgeInsets.zero,
-                        // +1 for the remote hint footer slot.
-                        itemCount: categories.length + 1,
-                        itemBuilder: (context, rowIdx) {
-                          if (rowIdx == categories.length) {
-                            return const Padding(padding: EdgeInsets.only(top: 8), child: CinematicRemoteHintFooter());
-                          }
-                          final cat = categories[rowIdx];
-                          return Padding(
-                            padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
-                            child: CategoryRowWrapper(
-                              key: ValueKey('cinematic-row-${cat.id}'),
-                              category: cat,
-                              onItemTap: _playNowPlaying,
-                              onItemFocus: _onHoveredItemChanged,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                child: UnifiedHomeGridScroller(
+                  heroFocusNode: _heroWatchFocusNode,
+                  onHeroFocusChanged: _onHeroFocusChanged,
+                  heroBuilder: (_) => CinematicHeroBlock(
+                    backdropImage: backdropImage,
+                    heroItem: heroItem,
+                    heroWatchFocusNode: _heroWatchFocusNode,
+                    isPreviewVideoReady: _isPreviewVideoReady,
+                    previewPlayer: _previewPlayer,
+                    clockTime: _clockTime,
+                    onWatch: heroItem != null ? () => _playNowPlaying(heroItem) : null,
+                    onEpg: heroItem != null
+                        ? () => context.push(
+                            '/channel/${heroItem.channelId}',
+                            extra: DetailArgs(channelId: heroItem.channelId, preloadedNowPlaying: heroItem),
+                          )
+                        : null,
+                    onFavourite: () {},
+                  ),
+                  categories: categories,
+                  rowBuilder: (_, cat) => CategoryRowWrapper(
+                    key: ValueKey('cinematic-row-${cat.id}'),
+                    category: cat,
+                    onItemTap: _playNowPlaying,
+                    onItemFocus: _onHoveredItemChanged,
+                  ),
+                  footer: const Padding(padding: EdgeInsets.only(top: 8), child: CinematicRemoteHintFooter()),
                 ),
               ),
             ),

@@ -146,4 +146,59 @@ class GridTokens {
   /// активной плитки, усиливающее focus indication без геометрических
   /// сдвигов. Значение 0.92 — едва заметное, но измеримое.
   static const double unfocusedNeighbourOpacity = 0.92;
+
+  // --- v3 (home-unified-grid-scroll spec) ---
+  //
+  // Vertical Pinned-Slot Invariant — вертикальный аналог `pinnedSlotIdx`.
+  // Hero перестаёт быть отдельной Positioned-секцией и становится row-0
+  // единого вертикального ListView. Фокус намертво приколочен к
+  // screen-space строке `verticalPinnedSlotIdx`; стрелка ↑/↓ двигает
+  // grid под фокусом, а не сам фокус.
+
+  /// Индекс «зафиксированной» row на оси Y — куда clamp'ингом всегда
+  /// возвращается focused row при vertical traversal.
+  ///
+  /// Контракт (Req 1.5, 2.1, 2.2, 2.3, 2.4):
+  /// - middle traversal: для `focusedRowIdx ≥ verticalPinnedSlotIdx + 1`
+  ///   `_scrollController.offset = heroRowHeightDp + (focusedRowIdx - 2) * rowStrideDp`
+  ///   с tolerance ±1.0 dp.
+  /// - leading-edge clamp: для `focusedRowIdx ∈ {0, 1}` → `offset = 0`
+  ///   (hero полностью видна; ↑ из row-1 НЕ выходит за начало).
+  /// - trailing-edge clamp: последние строки прижимаются к
+  ///   `maxScrollExtent` (нельзя скроллить за конец списка).
+  ///
+  /// Значение 1 (вторая видимая строка) — выбрано чтобы при focused
+  /// row-1 hero оставалась полностью видна сверху, а D-pad ↓ из неё
+  /// аккуратно ставит row-2 в pinned slot, унося hero за viewport.
+  static const int verticalPinnedSlotIdx = 1;
+
+  /// Высота hero-row (row-0) в `UnifiedHomeGridScroller`. Совпадает с
+  /// прежним `expandedH = 620` в `CinematicHomeScreen` минус
+  /// gradient-overlap (20 dp), потому что hero теперь не имеет
+  /// собственной Positioned-зоны для overlay над rails.
+  ///
+  /// Используется через `GridTokens.heroRowHeightDp.h`.
+  /// Контракт (Req 1.3, 5.1, 5.5).
+  static const double heroRowHeightDp = 600;
+
+  /// Шаг вертикальной прокрутки (per row) — равен `cardHeightDp +
+  /// rowVerticalGapDp`. Hero row не входит в этот stride
+  /// (hero high ≠ cinemaRow height), поэтому math для vertical scroll
+  /// offset обрабатывает hero как **отдельное** смещение `heroRowHeightDp`,
+  /// а cinema rows — как `idx * rowStrideDp`. См. dartdoc у
+  /// `UnifiedHomeGridScroller`.
+  ///
+  /// Контракт (Req 2.1, 2.2, 2.4).
+  static const double rowStrideDp = cardHeightDp + rowVerticalGapDp;
+
+  /// Длительность анимации вертикального скролла между focused rows.
+  /// Совпадает с горизонтальной `scrollAnimation` по spec для consistent
+  /// feel — но семантически отдельная константа.
+  ///
+  /// Контракт (Req 8.1, 8.2): анимация ≤ 300 ms.
+  static const Duration verticalScrollAnimation = Duration(milliseconds: 250);
+
+  /// Кривая вертикального скролла. easeInOutCubic — symmetric, без
+  /// «отскока». Req 8.2.
+  static const Curve verticalScrollCurve = Curves.easeInOutCubic;
 }

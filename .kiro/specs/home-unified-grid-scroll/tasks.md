@@ -4,7 +4,7 @@
 
 ## 1. Foundation — Vertical pinned-slot tokens
 
-- [ ] 1.1 Расширить `GridTokens` константами вертикального pinned-slot инварианта
+- [x] 1.1 Расширить `GridTokens` константами вертикального pinned-slot инварианта
   - Добавить в `lib/features/home/widgets/_grid_tokens.dart`: `verticalPinnedSlotIdx = 1`, `heroRowHeightDp = 600`, `rowStrideDp = cardHeightDp`, `verticalScrollAnimation = Duration(milliseconds: 300)`, `verticalScrollCurve = Curves.easeInOutCubic`.
   - Сохранить файл без `flutter_screenutil` импортов (pure tokens).
   - Дописать dartdoc у каждой константы со ссылкой на Requirement IDs.
@@ -14,7 +14,7 @@
 
 ## 2. Core — Unified vertical scroller and hero wrapper
 
-- [ ] 2.1 (P) Реализовать `HeroAsRow` обёртку
+- [x] 2.1 (P) Реализовать `HeroAsRow` обёртку
   - Создать `lib/features/home/cinematic/hero_as_row.dart` со stateless-виджетом, который оборачивает произвольный child в `SizedBox(height: GridTokens.heroRowHeightDp.h, child: child)`.
   - Принимает только `Widget child` (без логики focus / state).
   - Дописать dartdoc: «hero как row-0 для `UnifiedHomeGridScroller`; ровно `heroRowHeightDp` высотой».
@@ -23,7 +23,7 @@
   - _Boundary: HeroAsRow_
   - _Depends: 1.1_
 
-- [ ] 2.2 Реализовать каркас `UnifiedHomeGridScroller` — вертикальный ListView и controller
+- [x] 2.2 Реализовать каркас `UnifiedHomeGridScroller` — вертикальный ListView и controller
   - Создать `lib/features/home/cinematic/unified_home_grid_scroller.dart` со `StatefulWidget` принимающим `heroBuilder`, `categories`, `rowBuilder`, опциональный `footer`, опциональный `heroFocusNode`, callback `onHeroFocusChanged`.
   - Внутри `State`: создать и dispose-ить `ScrollController _scrollController`, рендерить `ListView.builder(controller: _scrollController, itemCount: 1 + categories.length + (footer != null ? 1 : 0), cacheExtent: 1500.h, addAutomaticKeepAlives: true, addRepaintBoundaries: true, clipBehavior: Clip.none, itemBuilder: ...)`.
   - itemBuilder: idx=0 → `HeroAsRow(child: heroBuilder(ctx))`; idx 1..N → `rowBuilder(ctx, categories[idx-1])`; idx=N+1 → footer.
@@ -33,7 +33,7 @@
   - _Boundary: UnifiedHomeGridScroller_
   - _Depends: 1.1, 2.1_
 
-- [ ] 2.3 Добавить Vertical Pinned-Slot focus dispatch и clamping математику
+- [x] 2.3 Добавить Vertical Pinned-Slot focus dispatch и clamping математику
   - В `UnifiedHomeGridScroller` добавить `int _focusedRowIdx = 0`.
   - Обернуть каждую row (idx=0 hero и idx=1..N cinema rows) в `Focus(skipTraversal: true, onFocusChange: (focused) { if (focused) _onRowFocused(rowIdx); })`.
   - Реализовать `double _verticalOffsetForRow(int idx)`: `if (idx <= verticalPinnedSlotIdx) return 0; var off = heroRowHeightDp.h; if (idx >= 3) off += (idx - 2) * rowStrideDp.h; return off.clamp(0, _scrollController.position.maxScrollExtent);`.
@@ -44,7 +44,7 @@
   - _Boundary: UnifiedHomeGridScroller_
   - _Depends: 2.2_
 
-- [ ] 2.4 Зафиксировать формальный контракт Vertical Pinned-Slot Invariant в dartdoc
+- [x] 2.4 Зафиксировать формальный контракт Vertical Pinned-Slot Invariant в dartdoc
   - В верхней части `unified_home_grid_scroller.dart` добавить dartdoc-блок по образцу `CinemaRow:108–152`: формальные 4 клаузы (middle traversal Δ ≤ 1.0 dp на оси Y; leading-edge clamp; trailing-edge clamp; tolerance ±1.0 dp), ссылка на test-файл из задачи 5.1.
   - Наблюдаемое «done»: dartdoc виден в IDE при наведении на `UnifiedHomeGridScroller`; содержит ссылку на `unified_home_grid_scroller_test.dart` и `verticalPinnedSlotIdx`.
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
@@ -53,7 +53,7 @@
 
 ## 3. Integration — CinematicHomeScreen rewrite
 
-- [ ] 3.1 Заменить Stack(Positioned(hero) + Positioned(ListView)) на UnifiedHomeGridScroller
+- [x] 3.1 Заменить Stack(Positioned(hero) + Positioned(ListView)) на UnifiedHomeGridScroller
   - В `lib/features/home/cinematic/cinematic_home_screen.dart`:
     - Удалить локальный `_heroFocused` + связанный `Focus(skipTraversal:true).onFocusChange` блок (строки ~425–500 в текущей версии).
     - Удалить структуру `Stack { Positioned(top:0, height:expandedH, child: HeroTileMorph(...)) + Positioned(top:expandedH, child: ListView.builder(...)) }`.
@@ -66,7 +66,7 @@
   - _Boundary: CinematicHomeScreen_
   - _Depends: 2.3_
 
-- [ ] 3.2 Передавать фокус boot-overlay → hero как row-0 через `_heroWatchFocusNode`
+- [x] 3.2 Передавать фокус boot-overlay → hero как row-0 через `_heroWatchFocusNode`
   - Проверить что `_scheduleHeroWatchFocus` (post-frame callback) корректно вызывает `_heroWatchFocusNode.requestFocus()` после fade-out boot overlay.
   - Через `UnifiedHomeGridScroller.heroFocusNode` гарантировать что focus event от этого node триггерит `_onRowFocused(0)` — это можно реализовать через дополнительный `addListener` на `heroFocusNode` внутри scroller-а или просто полагаясь на `Focus(skipTraversal:true)`-обёртку вокруг hero row (родительский focus subtree уже его покроет).
   - Наблюдаемое «done»: после fade-out boot overlay (420 ms) фокус оказывается на кнопке «Смотреть» hero; vertical scrollOffset = 0; `_focusedRowIdx = 0`.
@@ -76,7 +76,7 @@
 
 ## 4. Cleanup — Remove HeroTileMorph and FirstSlotConfig
 
-- [ ] 4.1 Убрать FirstSlotConfig из CinemaRow и CategoryRowWrapper
+- [x] 4.1 Убрать FirstSlotConfig из CinemaRow и CategoryRowWrapper
   - В `lib/features/home/widgets/cinema_row.dart`:
     - Удалить параметр `FirstSlotConfig? firstSlot` из конструкторов `CategoryRowWrapper` и `CinemaRow`.
     - Удалить ветку `if (index == 0 && widget.firstSlot != null) { return Padding(...child: widget.firstSlot!.child); }` в `itemBuilder` (текущие строки 434–438).
@@ -87,7 +87,7 @@
   - _Boundary: CinemaRow_
   - _Depends: 3.1_
 
-- [ ] 4.2 Удалить hero_tile_morph.dart и его тесты
+- [x] 4.2 Удалить hero_tile_morph.dart и его тесты
   - Удалить `lib/features/home/cinematic/hero_tile_morph.dart`.
   - Удалить `test/features/home/cinematic/hero_tile_morph_test.dart` (если существует).
   - Проверить grep `grep -rn "HeroTileMorph\|hero_tile_morph" megav_iptv/` — нет references.
@@ -98,7 +98,7 @@
 
 ## 5. Validation — Vertical Pinned-Slot test and regression
 
-- [ ] 5.1 Реализовать widget-тест Vertical Pinned-Slot Invariant
+- [x] 5.1 Реализовать widget-тест Vertical Pinned-Slot Invariant
   - Создать `test/features/home/cinematic/unified_home_grid_scroller_test.dart`.
   - Harness повторяет стиль `cinema_row_pinned_slot_test.dart`: `MediaQuery(size: Size(1920, 1080)) + ScreenUtilInit + MaterialApp + Scaffold + Column(externalFocusNode + UnifiedHomeGridScroller(...))`.
   - Stub `heroBuilder` → `FocusableActionDetector`-обёртка с фиксированным `FocusNode`, `categories` → 7 dummy `CinemaCategory` объектов, `rowBuilder` → стаб-виджет с focusable плитками (можно использовать `CinemaRow` с фейковыми items).
@@ -111,7 +111,7 @@
   - _Boundary: unified_home_grid_scroller_test_
   - _Depends: 3.1, 4.2_
 
-- [ ] 5.2 Проверить регрессию горизонтального invariant и всего home-test suite
+- [x] 5.2 Проверить регрессию горизонтального invariant и всего home-test suite
   - Запустить `flutter test test/features/home/widgets/cinema_row_pinned_slot_test.dart` — должен быть 3/3 PASS.
   - Запустить полный `flutter test test/features/home/` — все тесты зелёные; число тестов после удаления `hero_tile_morph_test.dart` уменьшилось ровно на количество тестов в нём.
   - Запустить `flutter analyze` — 0 issues.
