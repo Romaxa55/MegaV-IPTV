@@ -152,7 +152,7 @@
   - _Depends: 5.2_
 
 - [ ] 6. Core: Orchestrator
-- [ ] 6.1 Реализация `bin/run-all.js`
+- [x] 6.1 Реализация `bin/run-all.js`
   - _Blocked-partial: шаги 2-6 (flutter build web + Flutter snapshot) — Req 9. Phase 1: реализовать только JSX-only ветку и MANUAL_VERIFY_REQUIRED для Flutter. Полная реализация — после upstream fix._
   - CLI: `--screen <name>` (обязательный), `--skip-build`, `--baseline-only`
   - Шаг 1: проверить prerequisites (`flutter --version`, `node --version >= 20`); при ошибке — exit с понятным сообщением
