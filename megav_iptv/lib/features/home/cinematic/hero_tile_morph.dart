@@ -279,19 +279,36 @@ class _HeroTileMorphState extends State<HeroTileMorph> with SingleTickerProvider
         final tsCollapsedOpacity = t < 0.5 ? 0.0 : (t - 0.5) * 2.0;
         final expandedOpacity = 1.0 - tsCollapsedOpacity;
 
+        // IMPORTANT: both subtrees stay mounted at all times so the
+        // hero's Focus(focusNode: ...) inside expandedChild never gets
+        // unmounted. Earlier code conditionally removed the expanded
+        // subtree once its opacity hit 0 — that detached
+        // _heroWatchFocusNode from the focus tree, so D-pad ↑ from
+        // rails could no longer return focus to the hero, and arrows
+        // appeared dead. Keeping the subtree mounted (even at
+        // opacity 0) leaves _heroWatchFocusNode as a re-entry target.
+        //
+        // ExcludeFocus(excluding: idleCollapsed) blocks traversal into
+        // the invisible expanded layer ONLY when the morph is fully
+        // settled in collapsed state — so the sibling buttons
+        // ("Программа", "В избранное") with their internal InkWell
+        // FocusNodes don't get focus while invisible. During the
+        // morphing transition focus inside expanded is still valid,
+        // which keeps the re-entry path open while the hero re-expands.
         return SizedBox(
           width: w,
           height: h,
           child: Stack(
             children: [
-              if (expandedOpacity > 0)
-                Positioned.fill(
+              Positioned.fill(
+                child: ExcludeFocus(
+                  excluding: _state == HeroMorphState.idleCollapsed,
                   child: Opacity(opacity: expandedOpacity, child: widget.expandedChild),
                 ),
-              if (tsCollapsedOpacity > 0)
-                Positioned.fill(
-                  child: Opacity(opacity: tsCollapsedOpacity, child: _buildCollapsedLayout(context)),
-                ),
+              ),
+              Positioned.fill(
+                child: Opacity(opacity: tsCollapsedOpacity, child: _buildCollapsedLayout(context)),
+              ),
             ],
           ),
         );
@@ -300,28 +317,47 @@ class _HeroTileMorphState extends State<HeroTileMorph> with SingleTickerProvider
   }
 
   Widget _buildCollapsedLayout(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16.r),
-            child: widget.collapsedCover != null
-                ? Image(image: widget.collapsedCover!, fit: BoxFit.cover)
-                : Container(color: const Color(0xFF14161C)),
-          ),
-        ),
-        Positioned(
-          bottom: 6.h,
-          left: 12.w,
-          right: 12.w,
-          child: Text(
-            widget.collapsedCaption,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.92)),
-          ),
-        ),
-      ],
+    // The collapsed tile owns ONE focusable so D-pad ↑ from rails has a
+    // re-entry target. Receiving focus here propagates up to the outer
+    // Focus(skipTraversal:true).onFocusChange in cinematic_home_screen.dart,
+    // which flips _heroFocused = true → hero re-expands. Note we use a
+    // fresh anonymous Focus (no FocusNode), not widget.focusNode —
+    // FocusNode can only be attached to one Focus at a time, and
+    // widget.focusNode is already attached to the "Смотреть" button
+    // inside expandedChild.
+    return Focus(
+      debugLabel: 'cinematicHeroCollapsedTile',
+      child: Builder(
+        builder: (ctx) {
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16.r),
+                  child: widget.collapsedCover != null
+                      ? Image(image: widget.collapsedCover!, fit: BoxFit.cover)
+                      : Container(color: const Color(0xFF14161C)),
+                ),
+              ),
+              Positioned(
+                bottom: 6.h,
+                left: 12.w,
+                right: 12.w,
+                child: Text(
+                  widget.collapsedCaption,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

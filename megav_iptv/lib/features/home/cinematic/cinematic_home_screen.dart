@@ -63,7 +63,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   static const Duration _carouselInterval = Duration(seconds: 8);
   int _carouselIndex = 0;
   Timer? _carouselTimer;
-  bool _isWatchFocused = false;
 
   // ── Hover / preview state ──────────────────────────────────────────────────
   NowPlayingItem? _hoveredItem;
@@ -103,8 +102,12 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _clockTime = _nowTime());
     });
-    // Detect when focus leaves/returns to hero watch button → collapse/expand.
-    _heroWatchFocusNode.addListener(_onHeroWatchFocusChanged);
+    // Hero collapse/expand is driven by Focus(skipTraversal:true).onFocusChange
+    // on the hero subtree (see build()) — single source of truth. We do NOT
+    // listen to _heroWatchFocusNode individually any more, because that
+    // listener fires when focus moves to sibling buttons ("Программа",
+    // "В избранное") INSIDE the hero, falsely collapsing the hero while
+    // focus is still in its subtree.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_runHomeBootstrap());
     });
@@ -112,7 +115,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
 
   @override
   void dispose() {
-    _heroWatchFocusNode.removeListener(_onHeroWatchFocusChanged);
     _previewTimer?.cancel();
     _hoveredClearDebounce?.cancel();
     _carouselTimer?.cancel();
@@ -125,26 +127,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Hero focus collapse / expand
-  // ──────────────────────────────────────────────────────────────────────────
-
-  void _onHeroWatchFocusChanged() {
-    if (!mounted) return;
-    final focused = _heroWatchFocusNode.hasFocus;
-    if (focused == _heroFocused) return;
-    setState(() => _heroFocused = focused);
-    if (!focused) {
-      // Pause carousel while hero is collapsed.
-      _carouselTimer?.cancel();
-      _carouselTimer = null;
-    } else {
-      // Resume carousel when hero re-expands.
-      final featured = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
-      _restartCarousel(featured);
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
   // Carousel
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -154,7 +136,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     if (_hoveredItem != null) return;
     if (featured.length < 2) return;
     _carouselTimer = Timer.periodic(_carouselInterval, (_) {
-      if (!mounted || _hoveredItem != null || _isWatchFocused || !_heroFocused) return;
+      if (!mounted || _hoveredItem != null || !_heroFocused) return;
       final list = ref.read(featuredNowPlayingProvider).valueOrNull ?? [];
       if (list.isEmpty) return;
       setState(() => _carouselIndex = (_carouselIndex + 1) % list.length);
@@ -221,31 +203,14 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   }
 
   /// Запрашивает фокус на кнопке «Смотреть» после того как boot overlay
-  /// полностью скрыт.
-  ///
-  /// Паттерн скопирован из legacy [HomeScreen._scheduleHeroWatchFocus].
-  /// Дополнительно: если после двух кадров context ещё null — повторяем
-  /// запрос через [WidgetsBinding.endOfFrame], чтобы перехватить кейс
-  /// когда AnimatedCrossFade ещё не завершил монтирование firstChild.
+  /// скрыт. Один post-frame callback — этого достаточно: к моменту его
+  /// вызова rebuild после `setState(_showBootOverlay = false)` уже
+  /// произошёл, `ExcludeFocus(excluding: false)` снят, и контекст
+  /// _heroWatchFocusNode гарантированно есть.
   void _scheduleHeroWatchFocus() {
-    void request() {
-      if (!mounted || _showBootOverlay) return;
-      if (_heroWatchFocusNode.context == null) return;
-      _heroWatchFocusNode.requestFocus();
-    }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      request();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        request();
-        // Третий шанс — ждём полного конца кадра (endOfFrame), нужен если
-        // AnimatedCrossFade всё ещё строит firstChild в этом же кадре.
-        if (mounted && _heroWatchFocusNode.context == null) {
-          WidgetsBinding.instance.endOfFrame.then((_) {
-            if (mounted) request();
-          });
-        }
-      });
+      if (!mounted) return;
+      _heroWatchFocusNode.requestFocus();
     });
   }
 
@@ -417,26 +382,27 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
         children: [
           ExcludeFocus(
             excluding: _showBootOverlay,
-            child: LayoutBuilder(
-              builder: (context, _) => Focus(
-                key: const Key('cinematic-home-root'),
-                focusNode: _focusNode,
-                canRequestFocus: false,
-                onKeyEvent: (_, event) {
-                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                  if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
-                    if (_isPreviewPlaying) {
-                      _stopPreview();
-                      return KeyEventResult.handled;
-                    }
+            child: Focus(
+              key: const Key('cinematic-home-root'),
+              focusNode: _focusNode,
+              canRequestFocus: false,
+              onKeyEvent: (_, event) {
+                if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                if (event.logicalKey == LogicalKeyboardKey.escape || event.logicalKey == LogicalKeyboardKey.goBack) {
+                  if (_isPreviewPlaying) {
+                    _stopPreview();
+                    return KeyEventResult.handled;
                   }
-                  return KeyEventResult.ignored;
-                },
-                // Layout mirrors legacy `home_screen.dart` exactly: a plain
-                // Focus + Stack. Legacy does NOT use FocusTraversalGroup at
-                // root, only inside `cinema_row.dart` (horizontal traversal).
-                // Default Flutter directional traversal handles vertical
-                // movement between hero buttons and rail cards correctly.
+                }
+                return KeyEventResult.ignored;
+              },
+              // TV-grade directional traversal: WidgetOrderTraversalPolicy
+              // traverses children in declaration order (hero first, rails
+              // second). On macOS the default ReadingOrderTraversalPolicy
+              // doesn't guarantee ↓ from hero hits the first rail; with this
+              // wrapper the ordering is deterministic across desktop and TV.
+              child: FocusTraversalGroup(
+                policy: WidgetOrderTraversalPolicy(),
                 child: Stack(
                   children: [
                     // ── Hero — first in children so WidgetOrderTraversalPolicy
@@ -528,10 +494,6 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                                   )
                                 : null,
                             onFavourite: () {},
-                            onWatchFocusChanged: (focused) {
-                              if (!mounted) return;
-                              setState(() => _isWatchFocused = focused);
-                            },
                           ),
                         ),
                       ),

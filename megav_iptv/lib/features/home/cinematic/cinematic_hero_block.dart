@@ -25,7 +25,6 @@ class CinematicHeroBlock extends StatelessWidget {
     required this.onWatch,
     required this.onEpg,
     required this.onFavourite,
-    required this.onWatchFocusChanged,
   });
 
   final ImageProvider? backdropImage;
@@ -37,11 +36,6 @@ class CinematicHeroBlock extends StatelessWidget {
   final VoidCallback? onWatch;
   final VoidCallback? onEpg;
   final VoidCallback onFavourite;
-
-  /// Called when the "Смотреть" button gains / loses focus — used to pause
-  /// the carousel while the user is focused on the CTA (mirrors legacy
-  /// HeroSection._isWatchFocused guard).
-  final ValueChanged<bool> onWatchFocusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +102,6 @@ class CinematicHeroBlock extends StatelessWidget {
               onWatch: onWatch ?? () {},
               onEpg: onEpg ?? () {},
               onFavourite: onFavourite,
-              onWatchFocusChanged: onWatchFocusChanged,
             )
           else
             const Positioned(
