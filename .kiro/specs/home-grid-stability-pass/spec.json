@@ -1,9 +1,9 @@
 {
   "feature_name": "home-grid-stability-pass",
   "created_at": "2026-05-11T01:14:06Z",
-  "updated_at": "2026-05-11T01:23:27Z",
+  "updated_at": "2026-05-11T04:55:00Z",
   "language": "ru",
-  "phase": "tasks-generated",
+  "phase": "implemented",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -18,5 +18,12 @@
       "approved": true
     }
   },
-  "ready_for_implementation": true
+  "ready_for_implementation": true,
+  "implementation_complete": true,
+  "pending_manual_smoke": ["8.2 — manual TV smoke on rtd2851a", "8.3 — manual smoke on legacy /home"],
+  "boundary_invariants": [
+    "Does NOT open closed home-grid-optimization, home-grid-visual-polish, home-cinematic-redesign specs",
+    "Only ADDS to GridTokens (no constants removed)",
+    "Adds Pinned-Slot Invariant as formalised dartdoc + verifiable test, does NOT rewrite _scrollFocusedTileToLeadingEdge algorithm"
+  ]
 }
