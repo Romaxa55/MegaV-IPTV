@@ -160,6 +160,50 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
   }
 }
 
+/// Horizontal carousel-row widget for the home screen tile grid.
+///
+/// ## Pinned-Slot Invariant (home-grid-stability-pass spec)
+///
+/// The row implements a strict Netflix/Apple-TV-style focus pattern: the
+/// **focused tile's screen-space horizontal position stays constant** as
+/// the user sweeps D-pad ←/→, with tolerance ±1.0 dp. Conceptually the
+/// grid "stands still" and the items slide through it, instead of the
+/// focused tile chasing the focus across the screen.
+///
+/// Formally:
+///
+/// 1. **Middle traversal** — for every index `i` such that
+///    `GridTokens.pinnedSlotIdx ≤ i ≤ N - (visibleCount - pinnedSlotIdx)`,
+///    when the focused index transitions `i → i+1` or `i → i-1`, the
+///    screen-space `localToGlobal(Offset.zero)` of the focused tile
+///    differs from the previous step by `≤ 1.0` dp on the X axis.
+///
+/// 2. **Leading-edge clamp** — for `i ∈ [0, pinnedSlotIdx]` the
+///    `ScrollController.offset` is forced to `0` (the row does not scroll
+///    into negative offsets). The focused tile moves freely in screen
+///    space until the user crosses `pinnedSlotIdx`.
+///
+/// 3. **Trailing-edge clamp** — for the last `(visibleCount - pinnedSlotIdx)`
+///    tiles the `ScrollController.offset` is forced to `maxScrollExtent`
+///    (the row does not over-scroll past the rightmost tile). The focused
+///    tile resumes moving in screen space toward the right edge.
+///
+/// 4. **Tolerance** — ±1.0 dp on all measured offsets; this absorbs
+///    rounding from `flutter_screenutil`'s `.w/.h` density conversion.
+///
+/// Implemented by `_scrollFocusedTileToLeadingEdge` which clamps
+/// `(index - GridTokens.pinnedSlotIdx) * cardStride` to
+/// `[0, maxScrollExtent]`.
+///
+/// Verifiable contract: `test/features/home/widgets/cinema_row_pinned_slot_test.dart`
+/// (three test cases corresponding to clauses 1, 2, 3 above).
+///
+/// ## Boundary
+///
+/// This dartdoc was introduced by spec `home-grid-stability-pass` (not
+/// `home-grid-optimization`, which owns the algorithm itself). The
+/// stability pass does NOT modify `_scrollFocusedTileToLeadingEdge` —
+/// it only formalises and tests the invariant that was already emerging.
 class CinemaRow extends StatefulWidget {
   final String title;
   final List<NowPlayingItem> items;
@@ -248,13 +292,13 @@ class _CinemaRowState extends State<CinemaRow> {
     final screenW = MediaQuery.sizeOf(context).width;
     final layout = _gridLayoutFor(screenW);
     final gap = GridTokens.gapDp.w;
-    // Netflix-style: keep the focused tile pinned to the 2nd visible slot
-    // so the user always sees one "previous" tile to the left, providing
-    // spatial context. The grid stays put while items animate through.
-    // Pin slot index = 1 (0 = leading edge → reverts to old behaviour).
-    const pinnedSlotIdx = 1;
+    // Netflix-style: keep the focused tile pinned to slot GridTokens.pinnedSlotIdx
+    // (currently 1) so the user always sees one "previous" tile to the left,
+    // providing spatial context. The grid stays put while items animate
+    // through it. See the "Pinned-Slot Invariant" dartdoc on `CinemaRow`
+    // for the formal contract this code implements.
     final cardStride = layout.cardW + gap;
-    final targetOffset = (index - pinnedSlotIdx) * cardStride;
+    final targetOffset = (index - GridTokens.pinnedSlotIdx) * cardStride;
     final max = _scrollController.position.maxScrollExtent;
     final clamped = targetOffset.clamp(0.0, max);
     final current = _scrollController.offset;

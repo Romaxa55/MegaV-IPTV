@@ -29,7 +29,7 @@
 
 - [ ] 2. Закрепить Pinned-Slot Invariant в CinemaRow
 
-- [ ] 2.1 Заменить локальную magic-number `pinnedSlotIdx = 1` на токен
+- [x] 2.1 Заменить локальную magic-number `pinnedSlotIdx = 1` на токен
   - В `_scrollFocusedTileToLeadingEdge` (`cinema_row.dart`, метод около
     строки 244) удалить локальную `const pinnedSlotIdx = 1`.
   - Заменить использование на `GridTokens.pinnedSlotIdx` (импорт уже
@@ -41,7 +41,7 @@
   - _Requirements: 1.5, 4.4_
   - _Boundary: CinemaRow_
 
-- [ ] 2.2 Добавить dartdoc «Pinned-Slot Invariant» на класс CinemaRow
+- [x] 2.2 Добавить dartdoc «Pinned-Slot Invariant» на класс CinemaRow
   - Над `class CinemaRow extends StatefulWidget` добавить dartdoc-блок,
     описывающий Pinned-Slot Invariant: формальное определение
     стабильности screen-space позиции фокусной плитки, leading-edge clamp
