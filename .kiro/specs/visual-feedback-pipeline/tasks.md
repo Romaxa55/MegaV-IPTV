@@ -170,7 +170,7 @@
   - _Depends: 1.2, 3.2, 4.2, 5.2_
 
 - [ ] 7. Integration: kiro-validate-visual skill
-- [ ] 7.1 Создание `.claude/skills/kiro-validate-visual/SKILL.md`
+- [x] 7.1 Создание `.claude/skills/kiro-validate-visual/SKILL.md`
   - Создать каталог `.claude/skills/kiro-validate-visual/`
   - Создать `SKILL.md` с frontmatter: `name: kiro-validate-visual`, `description: Validate UI feature visual fidelity against JSX baselines via Flutter web snapshot + pixelmatch diff.`, `allowed-tools: Read, Bash`, `argument-hint: <feature-name>`
   - Тело: execution steps по образцу `kiro-validate-impl/SKILL.md`:
