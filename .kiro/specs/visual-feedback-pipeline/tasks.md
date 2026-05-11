@@ -134,7 +134,7 @@
   - _Boundary: DiffEngine_
   - _Depends: 2.3, 2.4, 5.1_
 
-- [ ] 5.3 Конфигурация `screenshots/config.json` и интеграция с DiffEngine
+- [x] 5.3 Конфигурация `screenshots/config.json` и интеграция с DiffEngine
   - Создать `.kiro/screenshots/config.json` с `{ "pass_threshold": 2.0, "fail_threshold": 5.0 }` (commited в git)
   - Убедиться что `bin/diff.js` использует `lib/thresholds.js.loadThresholds()`, читающий этот файл
   - Если файл отсутствует — diff.js использует defaults и логирует это в stderr
@@ -143,7 +143,7 @@
   - _Boundary: Thresholds, DiffEngine_
   - _Depends: 2.4, 5.2_
 
-- [ ] 5.4 Non-determinism detection в DiffEngine
+- [x] 5.4 Non-determinism detection в DiffEngine
   - В `bin/diff.js`: если pair имеет `delta_percent > 0` и в предыдущем `summary.json` (находится в самом свежем sibling `<ts>/`-директории) та же пара имела `delta_percent == 0` — пометить `non_determinism: true` в текущем summary
   - Если предыдущий summary не найден — пропустить проверку (это первый запуск)
   - Observable completion: после двух последовательных одинаковых run-ов на неизменном коде, второй summary.json содержит только пары с `non_determinism: false`; если намеренно поменять content между run-ами и delta вырастет с 0 до >0 — `non_determinism: true` появляется в соответствующей паре

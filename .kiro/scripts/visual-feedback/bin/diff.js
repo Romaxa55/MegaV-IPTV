@@ -96,6 +96,46 @@ function diffOnePair({ baselinePath, currentPath, diffPath }) {
   };
 }
 
+/**
+ * Find the most recently modified sibling run-dir of `runDir` (any sibling
+ * directory that contains a summary.json), parse its summary.json, and return
+ * it. Returns null on any error or if no sibling exists. Best-effort.
+ *
+ * Req 6.5: enables detecting non-determinism — a pair whose delta jumped
+ * from 0% in the prior run to >0% with no code change is suspicious.
+ */
+function loadPreviousSummary(runDir) {
+  try {
+    const parent = path.dirname(path.resolve(runDir));
+    const siblings = fs.readdirSync(parent, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && path.join(parent, e.name) !== path.resolve(runDir))
+      .map((e) => path.join(parent, e.name))
+      .filter((p) => fs.existsSync(path.join(p, 'summary.json')))
+      .map((p) => ({ p, mtime: fs.statSync(path.join(p, 'summary.json')).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+    if (siblings.length === 0) return null;
+    const summaryRaw = fs.readFileSync(path.join(siblings[0].p, 'summary.json'), 'utf8');
+    return JSON.parse(summaryRaw);
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Returns true iff the prior summary had this (screen, state) pair at exactly
+ * delta_percent === 0 and the current run has it at >0. That is suspicious
+ * because the source code did not change between the two runs.
+ */
+function detectNonDeterminism(prevSummary, screen, state, currentDelta) {
+  if (!prevSummary || !Array.isArray(prevSummary.pairs)) return false;
+  if (typeof currentDelta !== 'number' || currentDelta <= 0) return false;
+  const prior = prevSummary.pairs.find(
+    (p) => p && p.screen === screen && p.state === state,
+  );
+  if (!prior) return false;
+  return prior.delta_percent === 0 && currentDelta > 0;
+}
+
 function main() {
   const args = parseArgs(process.argv);
   const manifestPath = path.join(args.runDir, 'manifest.json');
@@ -110,6 +150,11 @@ function main() {
   }
 
   const thresholds = loadThresholds(args.config);
+
+  // Non-determinism detection (Req 6.5): try to find the most-recent sibling
+  // run-dir under <parent>/, load its summary.json, and use it to flag pairs
+  // whose delta jumped from 0 to >0 with no code change. Best-effort only.
+  const prevSummary = loadPreviousSummary(args.runDir);
 
   const pairs = [];
   for (const entry of manifest) {
@@ -159,6 +204,7 @@ function main() {
       continue;
     }
     const verdict = classify(result.delta_percent, thresholds);
+    const nonDeterminism = detectNonDeterminism(prevSummary, screen, state || 'idle', result.delta_percent);
     pairs.push({
       screen, state: state || 'idle',
       current_path: currentPath,
@@ -166,9 +212,11 @@ function main() {
       diff_path: diffPath,
       delta_percent: result.delta_percent,
       verdict,
+      non_determinism: nonDeterminism,
     });
+    const ndMark = nonDeterminism ? ' [non-determinism]' : '';
     process.stderr.write(
-      `[diff] ${screen}/${state || 'idle'}: ${verdict} (${result.delta_percent.toFixed(3)}%)\n`,
+      `[diff] ${screen}/${state || 'idle'}: ${verdict} (${result.delta_percent.toFixed(3)}%)${ndMark}\n`,
     );
   }
 

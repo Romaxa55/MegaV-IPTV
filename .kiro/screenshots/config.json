@@ -1,0 +1,6 @@
+{
+  "_doc": "Thresholds for visual-feedback-pipeline (.kiro/specs/visual-feedback-pipeline/, req 4.3).",
+  "_units": "Per-pair pixel delta as a percentage of total pixels (0-100).",
+  "pass_threshold": 2.0,
+  "fail_threshold": 5.0
+}
