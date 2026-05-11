@@ -9,6 +9,8 @@ import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/ui/utils/fast_scroll_detector.dart';
+import '../cinematic/hero_tile_morph.dart' show FirstSlotConfig;
+import '_cinema_row_loading.dart';
 import '_grid_tokens.dart';
 import 'cinema_card.dart';
 
@@ -26,7 +28,16 @@ class CategoryRowWrapper extends ConsumerStatefulWidget {
   final void Function(NowPlayingItem item) onItemTap;
   final void Function(NowPlayingItem? item)? onItemFocus;
 
-  const CategoryRowWrapper({super.key, required this.category, required this.onItemTap, this.onItemFocus});
+  /// Optional slot-0 override (see [FirstSlotConfig]).
+  final FirstSlotConfig? firstSlot;
+
+  const CategoryRowWrapper({
+    super.key,
+    required this.category,
+    required this.onItemTap,
+    this.onItemFocus,
+    this.firstSlot,
+  });
 
   @override
   ConsumerState<CategoryRowWrapper> createState() => _CategoryRowWrapperState();
@@ -68,7 +79,7 @@ class _CategoryRowWrapperState extends ConsumerState<CategoryRowWrapper> {
     }
 
     if (asyncData.isLoading && !asyncData.hasValue) {
-      return _CinemaRowLoadingPlaceholder(title: widget.category.name);
+      return CinemaRowLoadingPlaceholder(title: widget.category.name);
     }
 
     if (items.isEmpty && asyncData.hasError) {
@@ -90,78 +101,7 @@ class _CategoryRowWrapperState extends ConsumerState<CategoryRowWrapper> {
           : () => ref.read(categoryNotifierProvider(widget.category.name).notifier).loadMore(),
       onItemTap: widget.onItemTap,
       onItemFocus: widget.onItemFocus,
-    );
-  }
-}
-
-/// Same vertical space as a loaded row — avoids layout jump; greys instead of empty flash.
-///
-/// Number of silhouettes matches `pickColumns(screenW)` so that, when real data
-/// loads, the number of tiles already shown is identical and no layout jump
-/// occurs (Req 11.1, 11.2, 11.5).
-class _CinemaRowLoadingPlaceholder extends StatelessWidget {
-  final String title;
-  const _CinemaRowLoadingPlaceholder({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final screenW = MediaQuery.sizeOf(context).width;
-    final n = pickColumns(screenW);
-    final pad = GridTokens.horizontalPaddingDp.w;
-    final gap = GridTokens.gapDp.w;
-    final usable = screenW - 2 * pad - (n - 1) * gap;
-    final cardW = usable > 0 ? usable / n : 200.0;
-
-    // home-grid-stability-pass: harmonise placeholder geometry with the
-    // new GridTokens.cardHeightDp = 720. Reserve a fixed 60 dp for the
-    // title strip, leave the rest for tile silhouettes. Skeleton tiles
-    // share the same outer SizedBox height as the row, minus the title
-    // band — that way the loading→loaded transition is jump-free.
-    final tileBandHeight = GridTokens.cardHeightDp.h - 60.h;
-    return SizedBox(
-      height: GridTokens.cardHeightDp.h,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 60.h,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(40.w, 16.h, 40.w, 12.h),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(
-            height: tileBandHeight,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: pad),
-              child: Row(
-                children: List.generate(
-                  n,
-                  (i) => Padding(
-                    padding: EdgeInsets.only(right: i == n - 1 ? 0 : gap),
-                    child: Container(
-                      width: cardW,
-                      height: tileBandHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      firstSlot: widget.firstSlot,
     );
   }
 }
@@ -222,6 +162,10 @@ class CinemaRow extends StatefulWidget {
   final VoidCallback? onLoadMore;
   final bool wrapAround;
 
+  /// Optional override for slot-0 rendering (see [FirstSlotConfig]).
+  /// Owned by hero-collapse-tile-morph spec; null = regular rendering.
+  final FirstSlotConfig? firstSlot;
+
   const CinemaRow({
     super.key,
     required this.title,
@@ -231,6 +175,7 @@ class CinemaRow extends StatefulWidget {
     this.availableHeight,
     this.onLoadMore,
     this.wrapAround = false,
+    this.firstSlot,
   });
 
   @override

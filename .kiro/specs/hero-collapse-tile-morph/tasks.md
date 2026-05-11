@@ -4,7 +4,7 @@
 
 - [ ] 1. Расширить CinemaRow опциональным firstSlot API
 
-- [ ] 1.1 Добавить FirstSlotConfig value-class и параметр в CinemaRow
+- [x] 1.1 Добавить FirstSlotConfig value-class и параметр в CinemaRow
   - Создать `FirstSlotConfig` value-class в новом файле
     `megav_iptv/lib/features/home/cinematic/hero_tile_morph.dart`
     (на этом шаге создаётся только `FirstSlotConfig` — HeroTileMorph
