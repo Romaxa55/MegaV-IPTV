@@ -112,8 +112,14 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
     final usable = screenW - 2 * pad - (n - 1) * gap;
     final cardW = usable > 0 ? usable / n : 200.0;
 
+    // home-grid-stability-pass: harmonise placeholder geometry with the
+    // new GridTokens.cardHeightDp = 720. Reserve a fixed 60 dp for the
+    // title strip, leave the rest for tile silhouettes. Skeleton tiles
+    // share the same outer SizedBox height as the row, minus the title
+    // band — that way the loading→loaded transition is jump-free.
+    final tileBandHeight = GridTokens.cardHeightDp.h - 60.h;
     return SizedBox(
-      height: 450.h,
+      height: GridTokens.cardHeightDp.h,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -132,7 +138,7 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 336.h,
+            height: tileBandHeight,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: pad),
               child: Row(
@@ -142,7 +148,7 @@ class _CinemaRowLoadingPlaceholder extends StatelessWidget {
                     padding: EdgeInsets.only(right: i == n - 1 ? 0 : gap),
                     child: Container(
                       width: cardW,
-                      height: 336.h,
+                      height: tileBandHeight,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16.r),
@@ -338,7 +344,7 @@ class _CinemaRowState extends State<CinemaRow> {
 
     return AnimatedContainer(
       duration: GridTokens.focusAnimation,
-      height: widget.availableHeight ?? 450.h,
+      height: widget.availableHeight ?? GridTokens.cardHeightDp.h,
       color: isRowFocused ? Colors.white.withValues(alpha: 0.018) : Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

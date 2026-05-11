@@ -58,7 +58,7 @@
 
 - [ ] 3. Применить новую высоту плитки в CinemaRow
 
-- [ ] 3.1 Заменить default availableHeight 450.h на GridTokens.cardHeightDp.h
+- [x] 3.1 Заменить default availableHeight 450.h на GridTokens.cardHeightDp.h
   - В `CinemaRow.build`, строка `AnimatedContainer(height: widget.availableHeight ?? 450.h)`
     — заменить literal `450.h` на `GridTokens.cardHeightDp.h`.
   - Сохранить override через `widget.availableHeight` (текущие
@@ -71,7 +71,7 @@
   - _Requirements: 3.1, 3.2, 4.4_
   - _Boundary: CinemaRow_
 
-- [ ] 3.2 Привести loading placeholder к согласованной геометрии
+- [x] 3.2 Привести loading placeholder к согласованной геометрии
   - В `_CinemaRowLoadingPlaceholder.build` заменить
     `SizedBox(height: 450.h, ...)` на `SizedBox(height: GridTokens.cardHeightDp.h, ...)`.
   - Заменить `height: 336.h` у плиток-силуэтов на согласованное значение,
