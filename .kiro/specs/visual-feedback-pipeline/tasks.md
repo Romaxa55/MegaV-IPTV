@@ -40,7 +40,7 @@
   - _Requirements: 8.1_
   - _Boundary: NodeDependencyLayer_
 
-- [ ] 2.2 Реализация `lib/playwright-config.js`
+- [x] 2.2 Реализация `lib/playwright-config.js`
   - Экспортировать `createBrowserContext()` — возвращает `{ browser, context, page }` с viewport 1920×1080, `deviceScaleFactor: 1`, `headless: true`
   - Передавать Chromium args: `--force-prefers-reduced-motion`, `--disable-renderer-backgrounding`, `--disable-background-timer-throttling`
   - Экспортировать `closeBrowserContext({ browser })` для cleanup
@@ -49,7 +49,7 @@
   - _Boundary: PlaywrightConfig_
   - _Depends: 2.1_
 
-- [ ] 2.3 (P) Реализация `lib/png-utils.js`
+- [x] 2.3 (P) Реализация `lib/png-utils.js`
   - Функция `loadPng(path)` — возвращает декодированный pngjs PNG object
   - Функция `savePng(path, png)` — сохраняет PNG на диск
   - Функция `assertDimensions(png, width, height)` — бросает Error если размеры не совпадают
@@ -58,7 +58,7 @@
   - _Boundary: PngUtils_
   - _Depends: 2.1_
 
-- [ ] 2.4 (P) Реализация `lib/thresholds.js`
+- [x] 2.4 (P) Реализация `lib/thresholds.js`
   - Функция `loadThresholds(configPath)` — читает `.kiro/screenshots/config.json` если есть, иначе возвращает defaults `{ pass: 2.0, fail: 5.0 }`
   - При fallback логировать в stderr факт использования defaults
   - Функция `classify(deltaPercent, thresholds)` — возвращает `'PASS' | 'WARNING' | 'FAIL'`
