@@ -538,7 +538,7 @@
 
 - [ ] 5. State machine unit tests
 
-- [ ] 5.1 (P) Создать тестовый файл hero_tile_morph_test.dart + state-machine группа
+- [x] 5.1 (P) Создать тестовый файл hero_tile_morph_test.dart + state-machine группа
   - Создать
     `megav_iptv/test/features/home/cinematic/hero_tile_morph_test.dart`.
   - Импорты: `package:flutter_test/flutter_test.dart`,
