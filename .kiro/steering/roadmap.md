@@ -86,13 +86,29 @@ Existing issue #3 (PlayerManager retry) — out of scope этого roadmap (net
 
 ### Wave 2 — Big new screens (sequential, требует backend extensions)
 
-- [ ] **epg-screen** — time-grid programme guide. Issue #9. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/epg/*` data layer**. 📋 spec ready_for_implementation.
-- [ ] **search-screen** — TV-grade поиск с 6×6 кириллической клавиатурой. Issue #10. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/api/api_client.dart`** (`searchChannels`). 📋 spec ready_for_implementation.
+- [x] **epg-screen** — time-grid programme guide. Issue #9. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/epg/*` data layer**. ✅ implemented + GO.
+- [x] **search-screen** — TV-grade поиск с 6×6 кириллической клавиатурой. Issue #10. Dependencies: design-system-foundation, perf-safe-widgets, design-system-atoms; **may extend `lib/core/api/api_client.dart`** (`searchChannels`). ✅ implemented + GO.
 
 ### Wave 3 — Optional / lower-priority
 
-- [ ] **home-editorial-redesign** — Editorial B (bento grid). Issue #6. Dependencies: home-cinematic-redesign (sibling); user не сделал explicit выбор Editorial vs Cinematic. 📋 spec ready_for_implementation.
-- [ ] **mobile-adaptive-layout** — 3 mobile screens + tabbar. Issue #12. Dependencies: home-cinematic-redesign, detail-screen-fullbleed, player-cinematic-redesign (нужны TV equivalents). 📋 spec ready_for_implementation.
+- [x] **home-editorial-redesign** — Editorial B (bento grid). Issue #6. Dependencies: home-cinematic-redesign (sibling). ✅ implemented + GO.
+- [x] **mobile-adaptive-layout** — 3 mobile screens + tabbar. Issue #12. Dependencies: home-cinematic-redesign, detail-screen-fullbleed, player-cinematic-redesign. ✅ implemented + GO.
+
+### Wave 4 — Polish Cycle 2026 (re-entry, post-Cinematic feedback)
+
+Появилась после ручного тестирования закрытых спеков Wave 1–3. User feedback: главный экран
+визуально близок к Netflix, но 3 разнородных проблемы мешают «переплюнуть» его:
+hero коллапсирует в чёрную пустоту, сетка плиток ощутимо нестабильна при focus traversal,
+и отсутствует автоматический визуальный feedback loop между Claude и реальным runtime.
+
+Все 3 спека этой волны — **новые boundary**, существующие закрытые спеки **не открываются**.
+Правки в `_grid_tokens.dart` и `cinema_row.dart` оформляются как **новые константы и новые
+контракты** (Pinned-Slot Invariant), не модификация closed `home-grid-optimization` /
+`home-grid-visual-polish`.
+
+- [ ] **home-grid-stability-pass** — финальная стабилизация сетки: focusedScale → 1.00, увеличенная высота плитки, fixed-height metadata, документированный Pinned-Slot Invariant + invariant test. Dependencies: none (все upstream закрыты). 📋 brief ready.
+- [ ] **visual-feedback-pipeline** — Full pipeline: Flutter web build + Playwright snapshot + pixelmatch diff против JSX-эталонов + HTML отчёт + новый skill `kiro-validate-visual`. Dependencies: none. 📋 brief ready.
+- [ ] **hero-collapse-tile-morph** — hero на CinematicHomeScreen коллапсирует не cross-fade, а slide+scale morph в плитку слота 0 первой полосы; обратный morph при возврате фокуса вверх. Dependencies: home-grid-stability-pass. 📋 brief ready.
 
 ## Pilot strategy
 
@@ -103,3 +119,16 @@ Existing issue #3 (PlayerManager retry) — out of scope этого roadmap (net
 - Effort: **M** (2-3 дня).
 
 После pilot foundation готов — Wave 1 batch может стартовать параллельно.
+
+## Polish Cycle 2026 — execution order
+
+- **Wave 4a** (parallel): `home-grid-stability-pass`, `visual-feedback-pipeline` —
+  независимы. Pipeline можно подключить как validator для grid-stability сразу
+  по готовности.
+- **Wave 4b** (sequential): `hero-collapse-tile-morph` — ждёт финальные tile dimensions
+  из grid-stability-pass. После готовности — валидируется через pipeline (если он уже
+  собран).
+
+Рекомендую `/kiro-spec-batch` — он автоматически развернёт эту волну с правильным
+dependency ordering: первая параллельная волна = (grid-stability + pipeline),
+вторая волна = (tile-morph) после grid-stability.

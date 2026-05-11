@@ -1,0 +1,39 @@
+{
+  "feature_name": "hero-collapse-tile-morph",
+  "created_at": "2026-05-11T01:26:03Z",
+  "updated_at": "2026-05-11T01:26:03Z",
+  "language": "ru",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "dependencies": [
+    "home-grid-stability-pass",
+    "home-cinematic-redesign",
+    "perf-safe-widgets",
+    "design-system-foundation"
+  ],
+  "boundary_invariants": [
+    "Single-source widget contract: hero и первая плитка слота 0 первой полосы — это ОДИН и тот же widget (HeroTileMorph) в двух layout-режимах. На любом промежуточном кадре morph в дереве нет двух параллельных hero-деревьев.",
+    "Closed specs (home-cinematic-redesign, home-grid-optimization, home-grid-visual-polish, player-cinematic-redesign) НЕ ОТКРЫВАЮТСЯ. Все правки оформляются как новый widget + точечная интеграция в site-of-use.",
+    "Upstream contract от home-grid-stability-pass (cardHeightDp, pinnedSlotIdx, focusedScale, Pinned-Slot Invariant, metadataReservedHeightDp) — read-only.",
+    "Legacy /home (HomeScreen) не затрагивается — morph применяется только в /home-cinematic.",
+    "TV-perf rules из flutter-tv-perf.md соблюдены: ЗАПРЕЩЕНО BackdropFilter, ShaderMask, AnimatedContainer.width, BoxShadow.blurRadius>12, ImageFilter.blur; РАЗРЕШЕНО Transform.scale, AnimatedPositioned, Opacity, AnimatedBuilder.",
+    "Анимация фиксирована: длительность 300ms, кривая Curves.easeInOutCubic, без spring physics.",
+    "Focus survives morph через persistent FocusNode на hero-tile widget; ни один кадр morph не теряет фокус.",
+    "MediaQuery.disableAnimations honoring: при включённом флаге morph мгновенно snap'ится в целевое состояние без анимации.",
+    "Carousel timer, preview player lifecycle, baseUrl boot prompt в CinematicHomeScreen — preserved через рефакторинг (не теряются при перемещении hero в firstSlot)."
+  ]
+}
