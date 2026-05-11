@@ -1,0 +1,35 @@
+{
+  "screen": "detail",
+  "route": "/channel/1",
+  "_doc": "Detail / card screen. Hero-style fullbleed; focus moves between action buttons.",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "First focusable action button (Watch / Resume).",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "focused-third-row",
+      "_doc": "Walk down to related-content rail.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}

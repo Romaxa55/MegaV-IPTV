@@ -1,0 +1,33 @@
+{
+  "screen": "editorial-home",
+  "route": "/home-editorial",
+  "_doc": "Editorial bento layout — no hero collapse semantics, so only idle + focused states.",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "focused-third-row",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}

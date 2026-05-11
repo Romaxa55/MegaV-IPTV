@@ -1,0 +1,22 @@
+{
+  "screen": "mobile",
+  "route": "/home",
+  "_doc": "Mobile layout (touch-first, but tested in same web viewport for layout fidelity).",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "Tab to first focusable — proxy for first touch target.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "Tab" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}

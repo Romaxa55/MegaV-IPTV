@@ -1,0 +1,56 @@
+{
+  "screen": "cinematic-home",
+  "route": "/home-cinematic",
+  "_doc": "Cinematic home — full set of 5 D-pad states per vfp spec req 3.1.",
+  "states": [
+    {
+      "name": "idle",
+      "_doc": "No focus moves yet. App just booted; hero is expanded.",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "Focus moved down once — leaves hero, lands on first tile of first row. Hero should be collapsed.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "focused-third-row",
+      "_doc": "Walk down through three rails of tiles. Verifies row scroll and metadata stability.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "hero-collapsed",
+      "_doc": "Same as focused-first-tile but the test asserts the hero collapse state explicitly.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 700 }
+      ]
+    },
+    {
+      "name": "hero-expanded",
+      "_doc": "Move down, then back up — hero must re-expand on return (Wave 4 polish target).",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowUp" },
+        { "wait": 700 }
+      ]
+    }
+  ]
+}

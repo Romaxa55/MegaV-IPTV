@@ -1,0 +1,22 @@
+{
+  "screen": "player",
+  "route": "/player",
+  "_doc": "Player screen. Idle = OSD hidden; focused-first-tile = top bar shown (any key wakes overlay).",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 1500 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "Wake OSD via ArrowDown; player should show inline controls.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}

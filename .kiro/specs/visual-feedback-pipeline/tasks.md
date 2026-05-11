@@ -88,7 +88,7 @@
   - _Depends: 2.2, 2.3, 3.1_
 
 - [ ] 4. Core: Flutter snapshot capture
-- [ ] 4.1 D-pad scenarios JSON для всех экранов
+- [x] 4.1 D-pad scenarios JSON для всех экранов
   - Создать `scenarios/cinematic-home.json` с 5 состояниями: `idle`, `focused-first-tile`, `focused-third-row`, `hero-collapsed`, `hero-expanded` (каждое — последовательность key+delayMs)
   - Создать `scenarios/{detail,player,epg,search,settings,editorial-home,mobile}.json` с применимыми состояниями (для экранов без hero опускать соответствующие state)
   - Каждый JSON содержит поля `screen`, `route`, `states[]` с `name` и `actions[]`

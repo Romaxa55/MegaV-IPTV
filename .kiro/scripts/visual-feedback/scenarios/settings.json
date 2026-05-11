@@ -1,0 +1,35 @@
+{
+  "screen": "settings",
+  "route": "/settings",
+  "_doc": "Settings sidebar nav + sections.",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "Right once — first sidebar item highlighted with section preview.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowRight" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "focused-third-row",
+      "_doc": "Walk down three sidebar items.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}

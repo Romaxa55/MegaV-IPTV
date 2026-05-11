@@ -1,0 +1,35 @@
+{
+  "screen": "search",
+  "route": "/search",
+  "_doc": "Search with 6x6 cyrillic keyboard. Idle = input empty + keyboard visible.",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "First letter selected on keyboard.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "focused-third-row",
+      "_doc": "Two more downs — different keyboard row, shows focus reticule consistency.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}

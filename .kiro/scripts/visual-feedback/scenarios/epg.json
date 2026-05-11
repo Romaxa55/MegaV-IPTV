@@ -1,0 +1,35 @@
+{
+  "screen": "epg",
+  "route": "/epg",
+  "_doc": "EPG time-grid. Idle = first channel focused; right/down moves through programmes.",
+  "states": [
+    {
+      "name": "idle",
+      "actions": [
+        { "wait": 800 }
+      ]
+    },
+    {
+      "name": "focused-first-tile",
+      "_doc": "Right once — focus on first programme of current channel.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowRight" },
+        { "wait": 500 }
+      ]
+    },
+    {
+      "name": "focused-third-row",
+      "_doc": "Down three times — third channel row, with preview strip update.",
+      "actions": [
+        { "wait": 600 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 300 },
+        { "key": "ArrowDown" },
+        { "wait": 500 }
+      ]
+    }
+  ]
+}
