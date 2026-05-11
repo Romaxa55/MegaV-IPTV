@@ -203,9 +203,20 @@ class _CinemaCardState extends State<CinemaCard> {
           children: [
             if (showLive) _liveBadge(context),
             const Spacer(),
-            Padding(
-              padding: EdgeInsets.only(bottom: 6.h),
-              child: _buildBottomChannelLine(),
+            // home-grid-stability-pass req 3.3, 3.4, 3.6: bottom metadata
+            // zone has a FIXED reserved height so the baseline of the
+            // channel-line is identical between focused and unfocused
+            // tiles. Without this wrapper the line jitters by a few dp
+            // when overlay opacity changes.
+            SizedBox(
+              height: GridTokens.metadataReservedHeightDp.h,
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 6.h),
+                  child: _buildBottomChannelLine(),
+                ),
+              ),
             ),
           ],
         ),
@@ -286,9 +297,13 @@ class _CinemaCardState extends State<CinemaCard> {
           SizedBox(height: 4.h),
           if (prog?.isNow == true) ...[_buildProgressSection(prog!), SizedBox(height: 6.h)],
           _buildProgrammeInfo(prog),
-          // Резерв высоты под compact channel-line, чтобы full overlay не залезал
-          // на имя канала. Compact-line ≈ 18.w иконка + 14.sp текст ≈ 22.h.
-          SizedBox(height: 22.h + 4.h),
+          // home-grid-stability-pass req 3.3, 3.4, 3.6: reserve the SAME
+          // bottom metadata height the compact overlay uses, so the
+          // full-overlay full-overlay → compact-overlay fade-crossover does
+          // not visually pull the programme info up/down. Previously this
+          // was the magic literal `22.h + 4.h` (icon row + 4 dp); now
+          // both overlays draw from the same GridTokens constant.
+          SizedBox(height: GridTokens.metadataReservedHeightDp.h),
         ],
       ),
     );

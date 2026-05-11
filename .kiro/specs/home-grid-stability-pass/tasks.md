@@ -90,7 +90,7 @@
 
 - [ ] 4. (P) Применить fixed-height metadata wrapper в CinemaCard
 
-- [ ] 4.1 (P) Обернуть compact-overlay channel-line в SizedBox с metadataReservedHeightDp
+- [x] 4.1 (P) Обернуть compact-overlay channel-line в SizedBox с metadataReservedHeightDp
   - В `_buildCompactOverlay` (`cinema_card.dart`, около строки 194),
     вместо `Padding(EdgeInsets.only(bottom: 6.h), child: _buildBottomChannelLine())`
     использовать
@@ -108,7 +108,7 @@
   - _Boundary: CinemaCard_
   - _Depends: 1.1_
 
-- [ ] 4.2 Синхронизировать резерв в full-overlay'е
+- [x] 4.2 Синхронизировать резерв в full-overlay'е
   - В `_buildFullOverlay` (`cinema_card.dart`, около строки 275),
     заменить `SizedBox(height: 22.h + 4.h)` (последняя строка Column)
     на `SizedBox(height: GridTokens.metadataReservedHeightDp.h)`.
