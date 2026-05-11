@@ -112,7 +112,7 @@
   - _Depends: 2.2, 2.3, 4.1_
 
 - [ ] 5. Core: Diff engine
-- [ ] 5.1 (P) Реализация `lib/report.js`
+- [x] 5.1 (P) Реализация `lib/report.js`
   - Функция `renderReport(summary, templatePath, outputPath)` — читает `.kiro/screenshots/report-template.html`, подставляет данные пар (baseline path, current path, diff path, delta, verdict) через простой `replace` или mustache-стиль templating
   - Создать `.kiro/screenshots/report-template.html` с HTML-структурой: header, таблица или сетка карточек с triple-image (baseline | current | diff), цветовая индикация verdict (PASS green, WARNING amber, FAIL red)
   - Observable completion: тест-вызов с фиксированным summary создаёт `report.html` валидный HTML (открывается в браузере без ошибок), отображаются 3 изображения для тестовой пары

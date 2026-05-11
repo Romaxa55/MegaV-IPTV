@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>{{title}}</title>
+<style>
+  :root {
+    --bg: #0d0e12;
+    --fg: #e7e9ee;
+    --muted: #888c97;
+    --card: #14161c;
+    --border: #232631;
+    --pass: #43c97a;
+    --warning: #e3b341;
+    --fail: #ef5d5d;
+    --accent: #6ea7ff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 48px; background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 14px; line-height: 1.5; }
+  h1 { margin: 0 0 8px; font-weight: 600; font-size: 24px; }
+  .meta { color: var(--muted); margin-bottom: 28px; font-family: var(--mono); font-size: 12px; }
+  .meta span { margin-right: 24px; }
+  .verdict-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .verdict-pill.PASS    { background: rgba(67,201,122,0.15);  color: var(--pass);    border: 1px solid rgba(67,201,122,0.4); }
+  .verdict-pill.WARNING { background: rgba(227,179,65,0.15);  color: var(--warning); border: 1px solid rgba(227,179,65,0.4); }
+  .verdict-pill.FAIL    { background: rgba(239,93,93,0.15);   color: var(--fail);    border: 1px solid rgba(239,93,93,0.4); }
+  .summary-bar { display: flex; gap: 16px; margin-bottom: 32px; padding: 16px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; align-items: center; }
+  .summary-bar .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--mono); }
+  .summary-bar .value { font-weight: 600; font-size: 18px; }
+  .pair { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+  .pair-header { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .pair-header .name { font-weight: 600; font-size: 16px; }
+  .pair-header .state { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .pair-header .delta { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .pair-header .delta .num { color: var(--fg); font-weight: 600; }
+  .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .triple figure { margin: 0; }
+  .triple figcaption { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .triple img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; display: block; background: #000; }
+  .triple .missing { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; background: #1a1c24; border: 1px dashed var(--border); border-radius: 6px; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .footer { color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<h1>{{title}}</h1>
+<div class="meta">
+  <span>generated: <strong>{{generated_at}}</strong></span>
+  <span>run dir: <strong>{{run_dir}}</strong></span>
+  <span>thresholds: pass &lt; <strong>{{pass_threshold}}%</strong> · fail &gt; <strong>{{fail_threshold}}%</strong></span>
+</div>
+
+<div class="summary-bar">
+  <div>
+    <div class="label">aggregate</div>
+    <div class="value"><span class="verdict-pill {{aggregate_verdict}}">{{aggregate_verdict}}</span></div>
+  </div>
+  <div>
+    <div class="label">pairs</div>
+    <div class="value">{{pair_count}}</div>
+  </div>
+  <div>
+    <div class="label">pass</div>
+    <div class="value" style="color: var(--pass)">{{pass_count}}</div>
+  </div>
+  <div>
+    <div class="label">warning</div>
+    <div class="value" style="color: var(--warning)">{{warning_count}}</div>
+  </div>
+  <div>
+    <div class="label">fail</div>
+    <div class="value" style="color: var(--fail)">{{fail_count}}</div>
+  </div>
+</div>
+
+<div id="pairs">
+{{pairs_html}}
+</div>
+
+<div class="footer">
+  Visual feedback pipeline — visual-feedback-pipeline spec (.kiro/specs/visual-feedback-pipeline/). Phase 1 (JSX-only).
+  Source: <strong>{{source_label}}</strong>.
+</div>
+</body>
+</html>
