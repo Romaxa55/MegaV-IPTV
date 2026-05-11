@@ -109,3 +109,18 @@
 3. The Visual Feedback Pipeline shall НЕ изменять существующие skills в `.claude/skills/kiro-impl/`, `.claude/skills/kiro-validate-impl/` и других директориях `kiro-*` (кроме создания нового каталога `kiro-validate-visual/`).
 4. The Visual Feedback Pipeline shall разрешать модификации в `megav_iptv/pubspec.yaml` и `megav_iptv/web/` только в той части, которую генерирует `flutter create --platforms=web`; ручные правки UI-логики в этих файлах не допускаются.
 5. The Visual Feedback Pipeline shall обеспечивать `.gitignore` в `.kiro/screenshots/`, который исключает временные директории `<timestamp>/` из коммита и оставляет в git только `baselines/`, `config.json`, `report-template.html` и сам `.gitignore`.
+
+
+### Requirement 9: Phased rollout с учётом media_kit web-несовместимости
+**Objective:** Как владелец проекта, я хочу разворачивать pipeline поэтапно, чтобы JSX-baseline и diff-инфраструктура были полезны прямо сейчас, даже пока Flutter web-сборка не компилируется из-за upstream-зависимости.
+
+#### Контекст
+Task 1.2 показал, что `flutter build web` падает на `lib/core/player/media_kit_engine.dart:82`: `NativePlayer.setProperty()` отсутствует на web stub пакета `media_kit 1.2.6`. Этот файл принадлежит закрытому спеку `player-cinematic-redesign`. Исправление — отдельное upstream-issue вне границ vfp.
+
+#### Acceptance Criteria
+
+1. The Visual Feedback Pipeline shall поддерживать режим работы «JSX-only»: захват и diff JSX-эталонов без сборки Flutter-приложения.
+2. While Flutter web-сборка недоступна, the Visual Feedback Pipeline shall возвращать корректный `MANUAL_VERIFY_REQUIRED` для команд, требующих Flutter-снимков, с явной ссылкой на upstream-issue, а не падать без объяснения.
+3. The Visual Feedback Pipeline shall фиксировать в `.kiro/steering/visual-feedback.md` отдельную секцию «Phase 1: JSX-only operation», объясняющую текущие ограничения и план их снятия.
+4. When upstream-исправление media_kit web compile становится доступным, the Visual Feedback Pipeline shall активировать Flutter snapshot без дополнительных правок в pipeline-скриптах (только обновление документации и снятие BLOCKED-меток в tasks.md).
+5. The Visual Feedback Pipeline shall иметь связанный GitHub-issue в репозитории `Romaxa55/MegaV-IPTV` с описанием media_kit web compile проблемы и приёмочного критерия «`cd megav_iptv && flutter build web --release` завершается exit 0». — GitHub issue [#16](https://github.com/Romaxa55/MegaV-IPTV/issues/16) (filed 2026-05-11).

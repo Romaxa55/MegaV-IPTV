@@ -12,6 +12,11 @@ Thumbs.db
 docs/
 .vscode/
 scripts/
+# but DO track kiro pipeline scripts (visual-feedback infrastructure, etc.)
+!.kiro/scripts/
+!.kiro/scripts/**
+# yet still ignore Node deps inside them
+.kiro/scripts/**/node_modules/
 
 
 # Flutter / Dart

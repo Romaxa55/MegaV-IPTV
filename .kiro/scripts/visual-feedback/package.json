@@ -1,0 +1,23 @@
+{
+  "name": "megav-visual-feedback",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual feedback pipeline for MegaV IPTV: Playwright snapshot + pixelmatch diff against JSX baselines. Spec: .kiro/specs/visual-feedback-pipeline/",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "snapshot:jsx": "node bin/snapshot-jsx.js",
+    "snapshot:flutter": "node bin/snapshot-flutter.js",
+    "diff": "node bin/diff.js",
+    "run": "node bin/run-all.js",
+    "baseline:update": "node bin/snapshot-jsx.js --all"
+  },
+  "dependencies": {
+    "pixelmatch": "^6.0.0",
+    "playwright": "^1.46.0",
+    "pngjs": "^7.0.0",
+    "serve": "^14.2.0"
+  }
+}

@@ -2,6 +2,11 @@
 
 > Spec: `.kiro/specs/visual-feedback-pipeline/`
 > Boundary: pipeline инфраструктура. UI-код (`megav_iptv/lib/**`), существующие skills (`.claude/skills/kiro-*`) — read-only.
+>
+> **Phase 1 (JSX-only)** — задачи, требующие compile-able Flutter web,
+> заблокированы Req 9 / upstream issue по `media_kit_engine.dart`. Реализуем
+> JSX baseline + diff + skill в `MANUAL_VERIFY_REQUIRED` режиме для Flutter
+> snapshot. После landing upstream fix — снимаем `_Blocked:_` маркеры.
 
 ## Tasks
 
@@ -14,7 +19,7 @@
   - _Requirements: 1.1, 1.2, 6.2, 8.4_
   - _Boundary: FlutterWebTarget_
 
-- [ ] 1.2 Верификация целостности нативной сборки после Flutter web init
+- [x] 1.2 Верификация целостности нативной сборки после Flutter web init
   - Запустить `flutter test` в `megav_iptv/` — все существующие тесты должны проходить
   - Запустить `flutter build apk --debug` (или `--profile`) — нативная сборка должна оставаться зелёной
   - Запустить `flutter build web --web-renderer canvaskit --release` — артефакт должен оказаться в `megav_iptv/build/web/`
@@ -25,7 +30,7 @@
   - _Depends: 1.1_
 
 - [ ] 2. Foundation: Node.js dependency layer
-- [ ] 2.1 Скаффолд `.kiro/scripts/visual-feedback/` с `package.json`
+- [x] 2.1 Скаффолд `.kiro/scripts/visual-feedback/` с `package.json`
   - Создать директорию `.kiro/scripts/visual-feedback/` со вложенными `bin/`, `lib/`, `scenarios/`, `jsx-renderer/`
   - Создать `package.json` с зависимостями: `playwright` (pin major ≥ 1.46), `pixelmatch` (≥ 6.0), `pngjs` (≥ 7), `serve` (≥ 14); engines: `"node": ">=20"`; type: `"module"` или `"commonjs"` (выбрать в зависимости от стиля скриптов)
   - Прописать npm scripts: `snapshot:jsx`, `snapshot:flutter`, `diff`, `run`, `baseline:update`
@@ -92,6 +97,7 @@
   - _Boundary: Scenarios_
 
 - [ ] 4.2 Реализация `bin/snapshot-flutter.js`
+  - _Blocked: media_kit web compile (Req 9 / upstream player-cinematic-redesign). Pipeline должен в этом режиме возвращать MANUAL_VERIFY_REQUIRED. Снять блокер после landing upstream fix._
   - CLI: `--screen <name>` (обязательный), `--out-dir <ts>` (если нет — генерировать `YYYYMMDD-HHMMSS`), `--port 8765`
   - Прочитать `scenarios/<screen>.json`; если файла нет — exit 2
   - Открыть `http://localhost:<port>/#<route>` в Playwright (или `/<route>` зависит от Flutter routing config — проверить и выбрать корректную форму)
@@ -147,6 +153,7 @@
 
 - [ ] 6. Core: Orchestrator
 - [ ] 6.1 Реализация `bin/run-all.js`
+  - _Blocked-partial: шаги 2-6 (flutter build web + Flutter snapshot) — Req 9. Phase 1: реализовать только JSX-only ветку и MANUAL_VERIFY_REQUIRED для Flutter. Полная реализация — после upstream fix._
   - CLI: `--screen <name>` (обязательный), `--skip-build`, `--baseline-only`
   - Шаг 1: проверить prerequisites (`flutter --version`, `node --version >= 20`); при ошибке — exit с понятным сообщением
   - Шаг 2 (если не `--skip-build`): `flutter build web --web-renderer canvaskit --release` в `megav_iptv/`; exit 1 при failure
@@ -203,6 +210,7 @@
   - _Depends: 3.2_
 
 - [ ] 9.2 Golden run end-to-end (GR-1)
+  - _Blocked: требует flutter build web. Phase 1: skip. Снять после upstream fix._
   - Запустить `node bin/run-all.js --screen cinematic-home` от чистого checkout
   - Проверить: `flutter build web` exit 0; `<ts>/cinematic-home-idle.png` существует с размером 1920×1080; `<ts>/summary.json` валиден и содержит `aggregate_verdict`; `<ts>/report.html` открывается в браузере без JS-ошибок
   - Observable completion: все 4 проверки пройдены; aggregate_verdict определён (PASS/WARNING/FAIL — любой из трёх в зависимости от текущего расхождения Flutter UI vs JSX baseline)
@@ -211,6 +219,7 @@
   - _Depends: 6.1, 9.1_
 
 - [ ] 9.3 Determinism check (GR-2)
+  - _Blocked: depends on 9.2 (flutter build web)._
   - Запустить `node bin/run-all.js --screen cinematic-home` дважды подряд на неизменном коде
   - Проверить: `summary.json` второго запуска показывает все пары с `delta_percent` совпадающей с первым запуском с допуском ±0.05%; `non_determinism: false` для всех пар
   - Если шум превышает 0.05% — задокументировать в `.kiro/steering/visual-feedback.md` как известное ограничение (например, font cache cold start)
@@ -220,6 +229,7 @@
   - _Depends: 9.2_
 
 - [ ] 9.4 Skill integration test (GR-5)
+  - _Blocked-partial: full GR-5 требует Flutter snapshot. Phase 1: тестируем только JSX-only ветку и MANUAL_VERIFY_REQUIRED handling._
   - Из текущего Claude-сессии или через `/kiro-validate-visual cinematic-home` запустить skill
   - Проверить: skill возвращает структурированный markdown с DECISION, HTML_REPORT-path, PAIRS, AGGREGATE_VERDICT
   - При aggregate FAIL — skill возвращает DECISION: NO-GO + REMEDIATION (Req 5.4)
