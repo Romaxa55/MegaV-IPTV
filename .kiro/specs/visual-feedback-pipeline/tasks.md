@@ -6,7 +6,7 @@
 ## Tasks
 
 - [ ] 1. Foundation: Flutter web target
-- [ ] 1.1 Инициализация Flutter web platform в `megav_iptv/`
+- [x] 1.1 Инициализация Flutter web platform в `megav_iptv/`
   - Выполнить `flutter create --platforms=web .` в `megav_iptv/` (создаёт `web/` директорию)
   - Зафиксировать сгенерированные файлы `web/index.html`, `web/manifest.json`, `web/favicon.png`, `web/flutter_bootstrap.js`, `web/icons/*` в git
   - Сконфигурировать `web/index.html` на принудительное использование CanvasKit-рендерера (через `flutterConfiguration` в bootstrap либо через CLI-флаг сборки)
