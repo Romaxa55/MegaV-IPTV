@@ -122,7 +122,7 @@
 
 - [ ] 5. Опциональный neighbour-opacity wrap в CinemaRow
 
-- [ ] 5.1 Обернуть нефокусные плитки активного ряда в Opacity
+- [x] 5.1 Обернуть нефокусные плитки активного ряда в Opacity
   - В `CinemaRow.itemBuilder` (`cinema_row.dart`, около строки 382),
     в самом внешнем визуальном wrapper'е (внутри `Padding(EdgeInsets.only(right: ...))`)
     добавить условную обёртку:

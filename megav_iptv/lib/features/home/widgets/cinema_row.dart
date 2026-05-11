@@ -497,15 +497,29 @@ class _CinemaRowState extends State<CinemaRow> {
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final rowH = constraints.maxHeight;
-                                  return Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: CinemaCard(
-                                      key: ValueKey('card_${widget.items[index].channelId}_$index'),
-                                      item: widget.items[index],
-                                      isFocused: isFocused,
-                                      cardWidth: layout.cardW,
-                                      cardHeight: rowH,
-                                      onTap: () => widget.onItemTap(widget.items[index]),
+                                  // home-grid-stability-pass req 2.2, 2.5, 6.1:
+                                  // soft-damp the unfocused neighbours WITHIN
+                                  // the active row only. When the row has no
+                                  // focus at all (_focusedIndex == -1) every
+                                  // tile renders at full opacity so adjacent
+                                  // rows look untouched. Opacity is TV-perf
+                                  // safe under Impeller (single blend pass).
+                                  final isRowActiveAndUnfocused = isRowFocused && !isFocused;
+                                  final tileOpacity = isRowActiveAndUnfocused
+                                      ? GridTokens.unfocusedNeighbourOpacity
+                                      : 1.0;
+                                  return Opacity(
+                                    opacity: tileOpacity,
+                                    child: Align(
+                                      alignment: Alignment.bottomCenter,
+                                      child: CinemaCard(
+                                        key: ValueKey('card_${widget.items[index].channelId}_$index'),
+                                        item: widget.items[index],
+                                        isFocused: isFocused,
+                                        cardWidth: layout.cardW,
+                                        cardHeight: rowH,
+                                        onTap: () => widget.onItemTap(widget.items[index]),
+                                      ),
                                     ),
                                   );
                                 },
