@@ -68,7 +68,7 @@
   - _Depends: 2.1_
 
 - [ ] 3. Core: JSX baseline capture
-- [ ] 3.1 JSX-renderer bootstrap (`jsx-renderer/index.html` + `render-screen.js`)
+- [x] 3.1 JSX-renderer bootstrap (`jsx-renderer/index.html` + `render-screen.js`)
   - `index.html` подключает React + ReactDOM (через unpkg или встроенный bundle), парсит query-param `?screen=<name>`, динамически импортирует `.kiro/design/megav-iptv-handoff/project/screens/<name>.jsx`
   - Подключает общий `.kiro/design/megav-iptv-handoff/project/styles.css` и `themes.css`
   - Размер canvas/body фиксируется 1920×1080 через CSS (`html, body { width: 1920px; height: 1080px; }`)

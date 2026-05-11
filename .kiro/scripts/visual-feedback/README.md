@@ -61,6 +61,20 @@ npm run diff -- --run-dir .kiro/screenshots/<timestamp>
 Pass/fail thresholds live in `.kiro/screenshots/config.json`. If absent,
 defaults are `pass_threshold: 2.0%`, `fail_threshold: 5.0%`.
 
+## Known gotchas
+
+- **`serve` MUST run without `-s` (SPA mode)**. With `-s`, `serve` strips
+  the `.html` extension from URLs and produces a 301 redirect chain that
+  ends in a directory listing instead of `index.html`. Use plain
+  `npx serve -l <port> <root>` and address `index.html` explicitly.
+- **In-browser Babel is slow** — first paint of the JSX renderer can take
+  3-5 seconds. Snapshot scripts must wait for `window.__rendererReady ===
+  true` (set by the renderer after `requestAnimationFrame` × 2), not just
+  `domcontentloaded`.
+- **`window.__rendererError`** is set to a slug describing what went wrong
+  (`unknown_screen:…`, `component_missing:…`, `render_failed:…`). Snapshot
+  scripts should treat any non-null value as a baseline failure.
+
 ## Documentation
 
 Full design rationale, web ≠ TV caveats, and update procedure:

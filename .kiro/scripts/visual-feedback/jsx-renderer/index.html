@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>MegaV JSX Renderer</title>
+<meta name="viewport" content="width=1920,initial-scale=1"/>
+
+<!-- Google Fonts used across all JSX screens — same as design handoff html. -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Bitter:ital,wght@0,400;0,600;1,400;1,600&family=Onest:wght@400;500;600;700&family=Unbounded:wght@400;500;700&family=Manrope:wght@400;500;600;700&family=Geologica:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+<!-- Design handoff stylesheets (relative paths require dev-server serving from megav_iptv project root, see jsx-renderer/README). -->
+<link rel="stylesheet" href="/.kiro/design/megav-iptv-handoff/project/styles.css"/>
+<link rel="stylesheet" href="/.kiro/design/megav-iptv-handoff/project/themes.css"/>
+
+<style>
+  /* Force fixed 1920x1080 canvas for deterministic snapshots. */
+  html, body { margin: 0; padding: 0; width: 1920px; height: 1080px; overflow: hidden; background: #06060a; }
+  #root { width: 1920px; min-height: 1080px; font-family: var(--font-ui, "DM Sans"), -apple-system, system-ui; }
+  /* Disable transitions/animations for byte-identical snapshots (Req 2.3, 6.3). */
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+  .renderer-error {
+    color: #f88; padding: 24px; font-family: monospace; font-size: 14px;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React 18 UMD + Babel standalone for in-browser JSX transpile (mirrors handoff bundle). -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<!--
+  Always-loaded scaffolding the screen components need (atoms, catalog, data).
+  These define helpers like Chip, Header, MMLogo, TITLES, buildBackdrop(), etc.
+  Order matters: data → atoms → helpers → catalog → tweaks → screen.
+-->
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/data.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/atoms.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/detail-helpers.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/catalog.jsx"></script>
+
+<!--
+  Per-screen scripts. We load ALL of them (cheap, browser caches), then the
+  bootstrap below renders whichever one was requested via ?screen=<name>.
+-->
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/home-cinematic.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/home-editorial.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/detail.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/detail-variants.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/player.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/player-v2.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/epg.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/epg-v2.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/search.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/search-v2.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/settings.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/settings-v2.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/mobile.jsx"></script>
+<script type="text/babel" src="/.kiro/design/megav-iptv-handoff/project/screens/mobile-v2.jsx"></script>
+
+<!-- Bootstrap: pick a screen by URL query param and render it. -->
+<script type="text/babel">
+  // Map screen-name slug → component function name. Prefer v2 variants where
+  // they exist (newer, closer to Cinematic design language).
+  const SCREEN_MAP = {
+    "cinematic-home":  "HomeCinematic",
+    "editorial-home":  "HomeEditorial",
+    "detail":          "ScreenDetail",
+    "player":          "PlayerScreen",     // from player-v2.jsx
+    "epg":             "ScreenEPGv2",
+    "search":          "ScreenSearchV2",
+    "settings":        "ScreenSettingsV2",
+    "mobile":          "MobileHome",       // from mobile-v2.jsx
+  };
+
+  function showError(text) {
+    const root = document.getElementById("root");
+    root.replaceChildren();
+    const div = document.createElement("div");
+    div.className = "renderer-error";
+    div.textContent = text;
+    root.appendChild(div);
+  }
+
+  function bootstrap() {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("screen") || "cinematic-home";
+
+    const compName = SCREEN_MAP[slug];
+    if (!compName) {
+      showError(
+        "Unknown screen: " + slug +
+        "\nAvailable: " + Object.keys(SCREEN_MAP).join(", ")
+      );
+      window.__rendererReady = true;
+      window.__rendererError = "unknown_screen:" + slug;
+      return;
+    }
+    const Comp = window[compName];
+    if (!Comp) {
+      showError(
+        "Component " + compName + " not found (JSX may have failed to load). " +
+        "Check console for babel errors."
+      );
+      window.__rendererReady = true;
+      window.__rendererError = "component_missing:" + compName;
+      return;
+    }
+    try {
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(Comp));
+      // Signal readiness for Playwright after first paint has committed.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.__rendererReady = true;
+        });
+      });
+    } catch (e) {
+      window.__rendererReady = true;
+      window.__rendererError = "render_failed:" + (e && e.message);
+      showError("Render failed: " + (e && e.message));
+      console.error("Renderer failed:", e);
+    }
+  }
+
+  // text/babel scripts run sequentially but slightly async. Defer one tick.
+  setTimeout(bootstrap, 50);
+</script>
+
+</body>
+</html>
