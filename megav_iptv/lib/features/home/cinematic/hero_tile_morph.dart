@@ -42,3 +42,61 @@ class FirstSlotConfig {
 
   const FirstSlotConfig({required this.child, this.focusNode, this.onMounted});
 }
+
+// ---------------------------------------------------------------------------
+// HeroMorphState + computeNextState (hctm task 2.1)
+// ---------------------------------------------------------------------------
+
+/// The four observable states of the hero ↔ first-tile morph.
+///
+/// State machine (single transition table — pure function below):
+///
+///   idleExpanded       —— collapse         ▶ morphingCollapsing
+///   morphingCollapsing —— tickerCompleted  ▶ idleCollapsed
+///   morphingCollapsing —— expand           ▶ morphingExpanding (reverse mid-flight)
+///   idleCollapsed      —— expand           ▶ morphingExpanding
+///   morphingExpanding  —— tickerDismissed  ▶ idleExpanded
+///   morphingExpanding  —— collapse         ▶ morphingCollapsing (reverse mid-flight)
+///
+/// `disableAnimationsCollapse` / `disableAnimationsExpand` are the
+/// instant-snap commands fired when `MediaQuery.disableAnimations` is true.
+enum HeroMorphState { idleExpanded, morphingCollapsing, idleCollapsed, morphingExpanding }
+
+/// Internal "command" alphabet for the state machine.
+@visibleForTesting
+enum HeroMorphCommand {
+  collapse,
+  expand,
+  tickerCompleted,
+  tickerDismissed,
+  disableAnimationsCollapse,
+  disableAnimationsExpand,
+}
+
+/// Pure transition function: `(current, cmd) → next`. The current state is
+/// returned unchanged for any command that has no transition out of that
+/// state (idempotent / no-op edges).
+@visibleForTesting
+HeroMorphState computeNextHeroMorphState(HeroMorphState current, HeroMorphCommand cmd) {
+  switch ((current, cmd)) {
+    case (HeroMorphState.idleExpanded, HeroMorphCommand.collapse):
+      return HeroMorphState.morphingCollapsing;
+    case (HeroMorphState.morphingCollapsing, HeroMorphCommand.tickerCompleted):
+      return HeroMorphState.idleCollapsed;
+    case (HeroMorphState.morphingCollapsing, HeroMorphCommand.expand):
+      return HeroMorphState.morphingExpanding;
+    case (HeroMorphState.idleCollapsed, HeroMorphCommand.expand):
+      return HeroMorphState.morphingExpanding;
+    case (HeroMorphState.morphingExpanding, HeroMorphCommand.tickerDismissed):
+      return HeroMorphState.idleExpanded;
+    case (HeroMorphState.morphingExpanding, HeroMorphCommand.collapse):
+      return HeroMorphState.morphingCollapsing;
+    // disableAnimations: instant snap.
+    case (_, HeroMorphCommand.disableAnimationsCollapse):
+      return HeroMorphState.idleCollapsed;
+    case (_, HeroMorphCommand.disableAnimationsExpand):
+      return HeroMorphState.idleExpanded;
+    default:
+      return current;
+  }
+}

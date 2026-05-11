@@ -32,7 +32,7 @@
   - _Requirements: 3.2, 9.3_
   - _Boundary: CinemaRow, CategoryRowWrapper, FirstSlotConfig_
 
-- [ ] 1.2 Подключить firstSlot.focusNode listener в _CinemaRowState
+- [x] 1.2 Подключить firstSlot.focusNode listener в _CinemaRowState
   - В `_CinemaRowState` добавить private метод
     `_onFirstSlotFocusChange()`:
     ```
@@ -76,7 +76,7 @@
   - _Boundary: CinemaRow_
   - _Depends: 1.1_
 
-- [ ] 1.3 Подменить slot-0 rendering в itemBuilder
+- [x] 1.3 Подменить slot-0 rendering в itemBuilder
   - В `_CinemaRowState.build → ListView.builder → itemBuilder`,
     при `index == 0 && widget.firstSlot != null`:
     - Не возвращать существующий `Focus(...) → MouseRegion → Padding →
@@ -106,7 +106,7 @@
 
 - [ ] 2. Реализовать HeroMorphState enum + computeNextState pure-function
 
-- [ ] 2.1 (P) Создать HeroMorphState enum и computeNextState
+- [x] 2.1 (P) Создать HeroMorphState enum и computeNextState
   - В `megav_iptv/lib/features/home/cinematic/hero_tile_morph.dart`
     (тот же файл, что FirstSlotConfig) добавить:
     - `enum HeroMorphState { idleExpanded, morphingCollapsing,

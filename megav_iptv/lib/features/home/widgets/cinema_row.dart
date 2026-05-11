@@ -197,6 +197,53 @@ class _CinemaRowState extends State<CinemaRow> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+
+    // hero-collapse-tile-morph: listen on the optional firstSlot
+    // focus node so a focus change inside the custom widget drives
+    // the same pinned-slot scroll math the regular tiles use.
+    final fsNode = widget.firstSlot?.focusNode;
+    if (fsNode != null) {
+      fsNode.addListener(_onFirstSlotFocusChange);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.firstSlot?.onMounted?.call();
+      // If the node already has focus before we mounted (e.g. the hero
+      // received focus during a boot fade-out), drive the same code
+      // path now so _focusedIndex syncs to 0.
+      if (fsNode != null && fsNode.hasFocus) {
+        _onFirstSlotFocusChange();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(CinemaRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldNode = oldWidget.firstSlot?.focusNode;
+    final newNode = widget.firstSlot?.focusNode;
+    if (oldNode != newNode) {
+      oldNode?.removeListener(_onFirstSlotFocusChange);
+      newNode?.addListener(_onFirstSlotFocusChange);
+    }
+  }
+
+  void _onFirstSlotFocusChange() {
+    final node = widget.firstSlot?.focusNode;
+    if (node == null || !mounted) return;
+    if (node.hasFocus) {
+      FastScrollDetector().onEvent();
+      setState(() => _focusedIndex = 0);
+      _scheduleStableFocus(0);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _focusedIndex != 0) return;
+        _scrollFocusedTileToLeadingEdge(0);
+      });
+    } else if (_focusedIndex == 0) {
+      _focusStableTimer?.cancel();
+      setState(() => _focusedIndex = -1);
+      widget.onItemFocus?.call(null);
+    }
   }
 
   void _onScroll() {
@@ -276,6 +323,7 @@ class _CinemaRowState extends State<CinemaRow> {
   void dispose() {
     _focusStableTimer?.cancel();
     _scrollController.dispose();
+    widget.firstSlot?.focusNode?.removeListener(_onFirstSlotFocusChange);
     super.dispose();
   }
 
@@ -377,6 +425,18 @@ class _CinemaRowState extends State<CinemaRow> {
                       itemBuilder: (context, index) {
                         final isFocused = _focusedIndex == index;
                         final isLast = index == widget.items.length - 1;
+
+                        // hero-collapse-tile-morph: slot-0 override.
+                        // When firstSlot is supplied, render the custom
+                        // widget verbatim — no Focus/MouseRegion wrap;
+                        // the supplied widget is expected to provide its
+                        // own focus surface (HeroTileMorph does).
+                        if (index == 0 && widget.firstSlot != null) {
+                          return Padding(
+                            padding: EdgeInsets.only(right: isLast ? 0 : GridTokens.gapDp.w),
+                            child: widget.firstSlot!.child,
+                          );
+                        }
 
                         return Focus(
                           key: ValueKey('${widget.items[index].channelId}_$index'),
