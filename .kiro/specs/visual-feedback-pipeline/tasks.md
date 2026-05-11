@@ -76,7 +76,7 @@
   - _Requirements: 2.1, 6.1_
   - _Boundary: JSXRendererBootstrap_
 
-- [ ] 3.2 Реализация `bin/snapshot-jsx.js`
+- [x] 3.2 Реализация `bin/snapshot-jsx.js`
   - CLI с аргументами `--screen <name>` или `--all`
   - Для каждого screen из 9 (`cinematic-home`, `editorial-home`, `detail`, `player`, `epg`, `search`, `settings`, `mobile`) — открыть `jsx-renderer/index.html?screen=<name>` через Playwright, дождаться `document.fonts.ready`, выждать стабилизацию 500 мс, снять PNG
   - Записать в `.kiro/screenshots/baselines/<screen>.png`
