@@ -64,9 +64,13 @@ class GridTokens {
   ///
   /// Netflix-style: минимальный scale чтобы сетка не "плясала". Основной
   /// focus-индикатор — яркая рамка + лёгкая тень (blurRadius=12).
-  /// Значение 1.02 визуально незаметно для соседних плиток, но даёт лёгкое
-  /// тактильное ощущение подъёма на фокусированной карточке.
-  static const double focusedScale = 1.02;
+  ///
+  /// Снижен в stability pass (`home-grid-stability-pass` spec): с 1.02 до 1.01.
+  /// На пиксельной сетке 1920×1080 разница между 1.0 и 1.01 визуально
+  /// неотличима, но всё ещё триггерит `AnimatedScale` rebuild для focus
+  /// indication. Это убирает остаточный «push» соседних плиток при focus
+  /// traversal, который наблюдался при 1.02.
+  static const double focusedScale = 1.01;
 
   /// Толщина рамки фокуса. Req 3.3.
   static const double focusBorderWidth = 3.0;
@@ -89,4 +93,57 @@ class GridTokens {
   /// Доля ширины ряда, занимаемая правым fade-edge gradient. 0.05 = 5%
   /// (Netflix/Leanback `lb_browse_rows_fading_edge` эталон).
   static const double fadeEdgeFraction = 0.05;
+
+  // --- v2 (stability pass — home-grid-stability-pass spec) ---
+  //
+  // Эти константы добавлены без удаления существующих API. Все потребители
+  // постепенно переходят с magic-number'ов на эти токены. Семантика
+  // Pinned-Slot Invariant'а — см. dartdoc у `CinemaRow`.
+
+  /// Netflix-style индекс «зафиксированного» слота: куда clamping'ом всегда
+  /// приводится фокусная плитка в активном ряду.
+  ///
+  /// Контракт (Req 1.5): screen-space позиция плитки в слоте `pinnedSlotIdx`
+  /// стабильна по horizontal axis между нажатиями D-pad ↔ (с tolerance ±1.0 dp),
+  /// при условиях leading-edge clamp (для tiles 0..pinnedSlotIdx) и
+  /// trailing-edge clamp (для последних tiles). Используется
+  /// `_scrollFocusedTileToLeadingEdge` в `CinemaRow`.
+  ///
+  /// Значение 1 (второй слот, 0-индексированный) — соответствует Apple TV /
+  /// Netflix визуальной идиоме: первая плитка имеет «дыхание» слева, фокус
+  /// останавливается на втором слоте.
+  static const int pinnedSlotIdx = 1;
+
+  /// Целевая высота плитки в logical pixels (используется как
+  /// `GridTokens.cardHeightDp.h` через flutter_screenutil).
+  ///
+  /// Контракт (Req 3.1): на reference TV-resolution 1920×1080 и при
+  /// `pickColumns(1920) == 4`, `cardW ≈ 444 dp` → `cardH/cardW ≈ 1.62`.
+  /// Это попадает в целевой диапазон 1.6–1.7 (вертикальный постер-формат
+  /// типа Apple TV / Netflix), который stability pass требует от плитки.
+  ///
+  /// Используется в `CinemaRow.build` как default `availableHeight`.
+  static const double cardHeightDp = 720;
+
+  /// Зарезервированная высота нижней metadata-зоны плитки (название
+  /// канала + жанр), используется как `GridTokens.metadataReservedHeightDp.h`.
+  ///
+  /// Контракт (Req 3.3, 3.4): высота metadata-зоны фиксирована независимо
+  /// от длины текста названия. Длинные названия эллипсятся (`maxLines: 2,
+  /// overflow: TextOverflow.ellipsis`). Это убирает визуальный сдвиг
+  /// baseline между фокусной и нефокусной плиткой, который наблюдался,
+  /// когда `Text` мог расти/сжиматься.
+  ///
+  /// 46 dp = ~2 строки 16sp текста + 14 dp padding снизу.
+  static const double metadataReservedHeightDp = 46;
+
+  /// Opacity, применяемая к нефокусным плиткам **активного** ряда (того,
+  /// где `_focusedIndex >= 0`). Соседние ряды (где `_focusedIndex == -1`)
+  /// остаются полностью видимыми (opacity 1.0).
+  ///
+  /// Контракт (Req 2.2, 2.5, 6.1): TV-perf safe — `Opacity` в Flutter
+  /// Impeller дёшев (один blend pass). Эффект — лёгкое затухание соседей
+  /// активной плитки, усиливающее focus indication без геометрических
+  /// сдвигов. Значение 0.92 — едва заметное, но измеримое.
+  static const double unfocusedNeighbourOpacity = 0.92;
 }
