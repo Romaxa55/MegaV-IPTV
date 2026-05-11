@@ -108,7 +108,22 @@ hero коллапсирует в чёрную пустоту, сетка пли�
 
 - [x] **home-grid-stability-pass** — финальная стабилизация сетки: focusedScale → 1.01, cardHeightDp = 720, fixed-height metadata, формализованный Pinned-Slot Invariant + verifiable test. ✅ implemented (15/17 sub-tasks; 2 pending manual TV smoke).
 - [x] **visual-feedback-pipeline** — Phase 1: JSX baseline pipeline + diff engine + report + kiro-validate-visual skill. ✅ implemented-phase-1 (18/23 sub-tasks; 5 blocked by upstream issue #16 media_kit web compile).
-- [x] **hero-collapse-tile-morph** — HeroTileMorph widget (300ms easeInOutCubic geometry+opacity morph) replaces AnimatedCrossFade in CinematicHomeScreen hero block. ✅ implemented (15/18 sub-tasks; design deviation §4.x recorded — hero stays in Positioned slot, NOT in firstSlot, full-bleed backdrop preserved).
+- [x] **hero-collapse-tile-morph** — HeroTileMorph widget (300ms easeInOutCubic geometry+opacity morph) replaces AnimatedCrossFade in CinematicHomeScreen hero block. ✅ implemented (15/18 sub-tasks; design deviation §4.x recorded). ⚠ **superseded by Wave 5 `home-unified-grid-scroll` (2026-05-11)** — UX-модель изменена пользователем: hero перестаёт коллапсироваться в плитку и становится row-0 единого скроллящегося грида. `HeroTileMorph` будет удалён в Wave 5.
+
+### Wave 5 — Unified grid scroll (post-Polish Cycle user reframing, 2026-05-11)
+
+Появилась после ручного smoke-теста Polish Cycle 2026. Пользователь увидел
+Cinematic с focus-фиксом стрелок (commit `d626edc`) и переформулировал
+требования к layout: вместо «hero ↔ tile morph» — единый 4-колоночный grid,
+где hero = row-0 шириной 1×4, фокус намертво в slot (row=2, col=1), всё
+скроллится под ним. Это **новый boundary**, не правка `hero-collapse-tile-morph`.
+
+- [ ] **home-unified-grid-scroll** — Главный экран как единый scroll-grid с
+  vertical pinned slot. Hero = row-0 (1×4 full-bleed). Удаляет
+  `hero_tile_morph.dart`, упрощает `cinematic_home_screen.dart`,
+  расширяет Pinned-Slot Invariant на вертикальную ось. Dependencies:
+  home-grid-stability-pass, home-cinematic-redesign, perf-safe-widgets,
+  design-system-foundation. Supersedes hero-collapse-tile-morph.
 
 ## Pilot strategy
 
