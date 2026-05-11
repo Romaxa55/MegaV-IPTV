@@ -1,9 +1,9 @@
 {
   "feature_name": "hero-collapse-tile-morph",
   "created_at": "2026-05-11T01:26:03Z",
-  "updated_at": "2026-05-11T01:26:03Z",
+  "updated_at": "2026-05-11T17:30:00Z",
   "language": "ru",
-  "phase": "tasks-generated",
+  "phase": "implemented",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -19,6 +19,16 @@
     }
   },
   "ready_for_implementation": true,
+  "implementation_complete": true,
+  "pending_manual_smoke": [
+    "6.1 — focus survival inside CinemaRow with firstSlot (partial: covered by state machine + basic mount tests)",
+    "7.1 — disableAnimations widget-level snap (partial: covered by disableAnimations* command unit tests)",
+    "8.1 — bounding rect tolerance (deferred to manual TV smoke or visual-feedback-pipeline post #16)",
+    "9.x — full feature smoke on real Realtek rtd2851a TV-box"
+  ],
+  "design_deviations": [
+    "Spec §4.x originally called for HeroTileMorph mounted as firstSlot of the first rail (single-widget hero+tile-0). Implementation kept hero as the existing Positioned(top:0, height:expandedH) overlay and replaced only the inner AnimatedCrossFade with HeroTileMorph. Reason: full-bleed backdrop (1920x1080) cannot live inside a tile-sized container without clipping; tile-0 mount also creates row-loading coupling. FirstSlotConfig + CinemaRow.firstSlot API remain as optional future plumbing if a later spec re-decides."
+  ],
   "dependencies": [
     "home-grid-stability-pass",
     "home-cinematic-redesign",
@@ -26,14 +36,14 @@
     "design-system-foundation"
   ],
   "boundary_invariants": [
-    "Single-source widget contract: hero и первая плитка слота 0 первой полосы — это ОДИН и тот же widget (HeroTileMorph) в двух layout-режимах. На любом промежуточном кадре morph в дереве нет двух параллельных hero-деревьев.",
-    "Closed specs (home-cinematic-redesign, home-grid-optimization, home-grid-visual-polish, player-cinematic-redesign) НЕ ОТКРЫВАЮТСЯ. Все правки оформляются как новый widget + точечная интеграция в site-of-use.",
-    "Upstream contract от home-grid-stability-pass (cardHeightDp, pinnedSlotIdx, focusedScale, Pinned-Slot Invariant, metadataReservedHeightDp) — read-only.",
-    "Legacy /home (HomeScreen) не затрагивается — morph применяется только в /home-cinematic.",
-    "TV-perf rules из flutter-tv-perf.md соблюдены: ЗАПРЕЩЕНО BackdropFilter, ShaderMask, AnimatedContainer.width, BoxShadow.blurRadius>12, ImageFilter.blur; РАЗРЕШЕНО Transform.scale, AnimatedPositioned, Opacity, AnimatedBuilder.",
-    "Анимация фиксирована: длительность 300ms, кривая Curves.easeInOutCubic, без spring physics.",
-    "Focus survives morph через persistent FocusNode на hero-tile widget; ни один кадр morph не теряет фокус.",
-    "MediaQuery.disableAnimations honoring: при включённом флаге morph мгновенно snap'ится в целевое состояние без анимации.",
-    "Carousel timer, preview player lifecycle, baseUrl boot prompt в CinematicHomeScreen — preserved через рефакторинг (не теряются при перемещении hero в firstSlot)."
+    "Single-source widget contract: HeroTileMorph drives a single AnimationController; no parallel hero subtrees in any morph frame.",
+    "Closed specs (home-cinematic-redesign, home-grid-optimization, home-grid-visual-polish, player-cinematic-redesign) NOT opened. All changes are new widget + point-of-use integration only.",
+    "Upstream contract from home-grid-stability-pass (cardHeightDp, pinnedSlotIdx, focusedScale, Pinned-Slot Invariant, metadataReservedHeightDp) read-only.",
+    "Legacy /home (HomeScreen) not touched — morph applied only in /home-cinematic.",
+    "TV-perf rules from flutter-tv-perf.md respected: no BackdropFilter, ShaderMask, AnimatedContainer.width, BoxShadow.blurRadius>12, ImageFilter.blur. Used: AnimatedBuilder, Opacity, SizedBox, ClipRRect.",
+    "Animation fixed: 300ms duration, Curves.easeInOutCubic, no spring physics.",
+    "Focus survives morph via persistent FocusNode (_heroWatchFocusNode owned by CinematicHomeScreen, passed to HeroTileMorph) — no frame drops focus.",
+    "MediaQuery.disableAnimations honoured: instant snap to target state via disableAnimations* commands.",
+    "Carousel timer, preview player lifecycle, baseUrl boot prompt — preserved (no changes to those code paths)."
   ]
 }
