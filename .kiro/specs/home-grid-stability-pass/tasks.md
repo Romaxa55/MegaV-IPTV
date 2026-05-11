@@ -178,7 +178,7 @@
 
 - [ ] 7. Добавить Pinned-Slot Invariant widget-тест
 
-- [ ] 7.1 Создать тестовый файл и фикстуру
+- [x] 7.1 Создать тестовый файл и фикстуру
   - Создать
     `megav_iptv/test/features/home/widgets/cinema_row_pinned_slot_test.dart`.
   - Определить helper-функцию `List<NowPlayingItem> _makeFixture(int n)`,
@@ -192,7 +192,7 @@
   - _Requirements: 5.1_
   - _Boundary: cinema_row_pinned_slot_test_
 
-- [ ] 7.2 Реализовать middle-traversal assertion (Δ screen-space ≤ 1.0 dp)
+- [x] 7.2 Реализовать middle-traversal assertion (Δ screen-space ≤ 1.0 dp)
   - Тест-кейс: «focus stays in slot 1 while D-pad sweeps tiles 2..6».
   - Шаги:
     1. `tester.pumpWidget(CinemaRow(items: _makeFixture(10), ...))`
@@ -215,7 +215,7 @@
   - _Boundary: cinema_row_pinned_slot_test_
   - _Depends: 7.1_
 
-- [ ] 7.3 Реализовать leading-edge clamp assertion
+- [x] 7.3 Реализовать leading-edge clamp assertion
   - Тест-кейс: «focused tile 0 → scroll offset stays at 0».
   - Шаги: запросить фокус на плитке index=0, `pumpAndSettle`, получить
     `ScrollController.offset` через `Scrollable.of(context).position.pixels`
@@ -230,7 +230,7 @@
   - _Boundary: cinema_row_pinned_slot_test_
   - _Depends: 7.1_
 
-- [ ] 7.4 Реализовать trailing-edge clamp assertion
+- [x] 7.4 Реализовать trailing-edge clamp assertion
   - Тест-кейс: «focused tile N-1 → scroll offset = maxScrollExtent».
   - Шаги: запросить фокус на последней плитке, `pumpAndSettle`,
     получить `ScrollController.offset` и `maxScrollExtent`,
@@ -245,7 +245,7 @@
 
 - [ ] 8. Финальная валидация на TV-target
 
-- [ ] 8.1 Прогнать full test suite (`flutter test`)
+- [x] 8.1 Прогнать full test suite (`flutter test`)
   - Запустить `flutter test` на корне `megav_iptv/`.
   - Все тесты включая новый `cinema_row_pinned_slot_test.dart` зелёные.
   - Никаких новых warning'ов от `flutter analyze` на изменённые файлы.
