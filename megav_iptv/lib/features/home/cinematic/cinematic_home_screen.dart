@@ -379,18 +379,36 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     }
   }
 
+  /// OK / Enter / tap по плитке → fast-path в `/player`.
+  ///
+  /// Если preview уже играет этот канал — НЕ останавливаем engine,
+  /// PlayerScreen._openChannel сам увидит совпадающий URL через
+  /// `_playerManager.currentUrl == streamUrl` и переиспользует
+  /// running stream (hot-handoff, нет видимой перезагрузки).
+  ///
+  /// DetailScreen теперь доступен только через явный gesture
+  /// (info / long-press) — TODO в отдельной итерации.
   void _playNowPlaying(NowPlayingItem item) {
     _previewTimer?.cancel();
-    if (_isPreviewPlaying && _previewingItem?.channelId == item.channelId) {
-      ref.read(currentChannelProvider.notifier).state = _channelFrom(item);
-      ref.read(currentChannelIndexProvider.notifier).state = 0;
+    final isHotHandoff = _isPreviewPlaying && _previewingItem?.channelId == item.channelId;
+    if (!isHotHandoff) {
+      _stopPreview();
+    } else {
+      // Preview engine продолжает играть — PlayerScreen подхватит его как
+      // существующий stream. Очищаем только локальный preview-state в
+      // home, чтоб back-возврат с player не подумал что preview ещё активен.
       setState(() => _isPreviewPlaying = false);
-      context.push(
-        '/channel/${item.channelId}',
-        extra: DetailArgs(channelId: item.channelId, preloadedNowPlaying: item),
-      );
-      return;
     }
+    ref.read(currentChannelProvider.notifier).state = _channelFrom(item);
+    ref.read(currentChannelIndexProvider.notifier).state = 0;
+    context.push('/player');
+  }
+
+  /// Long-press / Info / future: открыть DetailScreen для канала.
+  /// Сейчас не вызывается из UI, но оставляю как готовый hook.
+  // ignore: unused_element
+  void _openDetail(NowPlayingItem item) {
+    _previewTimer?.cancel();
     _stopPreview();
     ref.read(currentChannelProvider.notifier).state = _channelFrom(item);
     ref.read(currentChannelIndexProvider.notifier).state = 0;
