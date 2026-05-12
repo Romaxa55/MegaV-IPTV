@@ -486,18 +486,44 @@ class _LoadingErrorIndicator extends ConsumerWidget {
         builder: (context, snapshot) {
           final state = snapshot.data ?? PlayerState.idle;
           if (state == PlayerState.loading) {
-            return Center(child: CircularProgressIndicator(color: AppColors.primary));
-          }
-          if (state == PlayerState.error) {
+            // player-cinematic-redux follow-up: «загрузка» — мягкий
+            // спиннер + подпись, чтобы юзер понимал что идёт
+            // соединение/восстановление (а не просто крутится без
+            // объяснения). PlayerManager сейчас входит в state=loading
+            // каждый раз когда retry-backoff делает .open(), так что
+            // эта же ветка покрывает и initial play, и reconnect.
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline, color: AppColors.error, size: 48.sp),
+                  CircularProgressIndicator(color: AppColors.primary),
+                  SizedBox(height: 14.h),
+                  Text(
+                    'Подключение…',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 15.sp),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (state == PlayerState.error) {
+            // Error отображается между attempts (~1-60 сек backoff).
+            // Текст явно говорит что ретрай идёт автоматически, чтобы
+            // юзер не паниковал и не перезапускал канал руками.
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.signal_wifi_statusbar_connected_no_internet_4, color: AppColors.error, size: 48.sp),
                   SizedBox(height: 12.h),
                   Text(
-                    'Playback error. Retrying...',
-                    style: TextStyle(color: AppColors.error, fontSize: 16.sp),
+                    'Восстанавливаю соединение…',
+                    style: TextStyle(color: AppColors.error, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    'Канал автоматически продолжит, когда сеть вернётся',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13.sp),
                   ),
                 ],
               ),
