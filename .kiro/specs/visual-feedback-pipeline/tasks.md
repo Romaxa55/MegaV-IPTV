@@ -97,7 +97,7 @@
   - _Boundary: Scenarios_
 
 - [ ] 4.2 Реализация `bin/snapshot-flutter.js`
-  - _Blocked: media_kit web compile (Req 9 / upstream player-cinematic-redesign). Pipeline должен в этом режиме возвращать MANUAL_VERIFY_REQUIRED. Снять блокер после landing upstream fix._
+  - _Unblocked 2026-05-12: media_kit web compile fix landed (commit ac6d5f8, GH #16 closed). `flutter build web` now succeeds. Phase 2 implementation actionable — run pipeline against real Flutter web build and capture Cinematic baselines. Pending follow-up iteration._
   - CLI: `--screen <name>` (обязательный), `--out-dir <ts>` (если нет — генерировать `YYYYMMDD-HHMMSS`), `--port 8765`
   - Прочитать `scenarios/<screen>.json`; если файла нет — exit 2
   - Открыть `http://localhost:<port>/#<route>` в Playwright (или `/<route>` зависит от Flutter routing config — проверить и выбрать корректную форму)
@@ -153,7 +153,7 @@
 
 - [ ] 6. Core: Orchestrator
 - [x] 6.1 Реализация `bin/run-all.js`
-  - _Blocked-partial: шаги 2-6 (flutter build web + Flutter snapshot) — Req 9. Phase 1: реализовать только JSX-only ветку и MANUAL_VERIFY_REQUIRED для Flutter. Полная реализация — после upstream fix._
+  - _Unblocked 2026-05-12 (GH #16 closed, commit ac6d5f8): Phase 1 currently still returns MANUAL_VERIFY_REQUIRED for Flutter — Phase 2 needs to land Flutter snapshot integration in a follow-up iteration._
   - CLI: `--screen <name>` (обязательный), `--skip-build`, `--baseline-only`
   - Шаг 1: проверить prerequisites (`flutter --version`, `node --version >= 20`); при ошибке — exit с понятным сообщением
   - Шаг 2 (если не `--skip-build`): `flutter build web --web-renderer canvaskit --release` в `megav_iptv/`; exit 1 при failure
@@ -210,7 +210,7 @@
   - _Depends: 3.2_
 
 - [ ] 9.2 Golden run end-to-end (GR-1)
-  - _Blocked: требует flutter build web. Phase 1: skip. Снять после upstream fix._
+  - _Unblocked 2026-05-12 (GH #16 closed, commit ac6d5f8): `flutter build web --release` now exits 0. Task moves from blocked to actionable pending follow-up iteration._
   - Запустить `node bin/run-all.js --screen cinematic-home` от чистого checkout
   - Проверить: `flutter build web` exit 0; `<ts>/cinematic-home-idle.png` существует с размером 1920×1080; `<ts>/summary.json` валиден и содержит `aggregate_verdict`; `<ts>/report.html` открывается в браузере без JS-ошибок
   - Observable completion: все 4 проверки пройдены; aggregate_verdict определён (PASS/WARNING/FAIL — любой из трёх в зависимости от текущего расхождения Flutter UI vs JSX baseline)
@@ -219,7 +219,7 @@
   - _Depends: 6.1, 9.1_
 
 - [ ] 9.3 Determinism check (GR-2)
-  - _Blocked: depends on 9.2 (flutter build web)._
+  - _Unblocked 2026-05-12 by 9.2 (GH #16 closed)._
   - Запустить `node bin/run-all.js --screen cinematic-home` дважды подряд на неизменном коде
   - Проверить: `summary.json` второго запуска показывает все пары с `delta_percent` совпадающей с первым запуском с допуском ±0.05%; `non_determinism: false` для всех пар
   - Если шум превышает 0.05% — задокументировать в `.kiro/steering/visual-feedback.md` как известное ограничение (например, font cache cold start)
@@ -229,7 +229,7 @@
   - _Depends: 9.2_
 
 - [ ] 9.4 Skill integration test (GR-5)
-  - _Blocked-partial: full GR-5 требует Flutter snapshot. Phase 1: тестируем только JSX-only ветку и MANUAL_VERIFY_REQUIRED handling._
+  - _Unblocked 2026-05-12 (GH #16 closed). Full GR-5 with Flutter snapshot pending follow-up iteration; Phase 1 JSX-only branch already tested._
   - Из текущего Claude-сессии или через `/kiro-validate-visual cinematic-home` запустить skill
   - Проверить: skill возвращает структурированный markdown с DECISION, HTML_REPORT-path, PAIRS, AGGREGATE_VERDICT
   - При aggregate FAIL — skill возвращает DECISION: NO-GO + REMEDIATION (Req 5.4)

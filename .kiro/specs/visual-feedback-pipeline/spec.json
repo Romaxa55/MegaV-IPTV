@@ -1,9 +1,9 @@
 {
   "feature_name": "visual-feedback-pipeline",
   "created_at": "2026-05-11T01:15:54Z",
-  "updated_at": "2026-05-11T04:35:00Z",
+  "updated_at": "2026-05-12T21:10:00Z",
   "language": "ru",
-  "phase": "implemented-phase-1",
+  "phase": "phase-1-implemented-phase-2-unblocked",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -21,7 +21,10 @@
   "ready_for_implementation": true,
   "implementation_complete": "phase-1-partial",
   "phase_1_complete": true,
-  "phase_2_blocked_by": "https://github.com/Romaxa55/MegaV-IPTV/issues/16",
+  "phase_2_blocked_by": null,
+  "phase_2_unblocked_at": "2026-05-12T21:10:00Z",
+  "phase_2_unblocked_by_commit": "ac6d5f8",
+  "phase_2_unblocked_resolves": "https://github.com/Romaxa55/MegaV-IPTV/issues/16",
   "boundary_invariants": [
     "Does NOT modify megav_iptv/lib/**",
     "Does NOT modify megav_iptv/test/**",
