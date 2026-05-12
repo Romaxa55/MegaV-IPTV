@@ -104,7 +104,7 @@ void main() {
           as LinearGradient;
       final firstColor = dec.colors.first;
       expect(
-        firstColor.alpha,
+        (firstColor.a * 255.0).round().clamp(0, 255),
         0,
         reason: 'Fade-edge gradient must start at transparent so the strip '
             'does not visually clip the visible tiles to its left (Req 1.3).',

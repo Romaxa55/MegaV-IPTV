@@ -22,25 +22,39 @@ import 'cinematic_hero_block.dart';
 import 'cinematic_remote_hint_footer.dart';
 import 'unified_home_grid_scroller.dart';
 
-/// Cinematic home screen — full-bleed layout with complete backend integration
-/// mirroring legacy [HomeScreen].
+/// Cinematic home screen — default main screen since Wave 5
+/// (home-unified-grid-scroll). Legacy `HomeScreen` widget deleted;
+/// `/home` route redirects here.
 ///
-/// Data flow is identical to [HomeScreen]:
+/// Data flow (Riverpod, unchanged from Wave 1):
 ///   - [featuredNowPlayingProvider] → hero + backdrop + carousel.
 ///   - [moviesNotifierProvider] → "Фильмы в эфире" row.
 ///   - [cinemaCategoriesProvider] + [categoryNotifierProvider] → genre rows.
 ///   - [apiClientProvider] → stream URL for preview player.
-///   - [baseUrlProvider] → retry / URL prompt in boot overlay.
+///   - [baseUrlProvider] → retry / URL prompt in error-only boot overlay.
 ///
-/// Layout structure (mirrors legacy [HomeScreen]):
+/// Layout (Wave 5 architecture):
 ///   Stack {
-///     Positioned(below hero) → ListView.builder([rails…, footer])
-///     AnimatedPositioned(top) → AnimatedCrossFade(expanded↔compact hero)
+///     Focus(escape handler) →
+///       FocusTraversalGroup(WidgetOrderTraversalPolicy) →
+///         UnifiedHomeGridScroller {
+///           heroBuilder      → CinematicHeroBlock (row-0)
+///           rows             → CategoryRowWrapper × N
+///           footer           → CinematicRemoteHintFooter
+///         }
+///     if (bootError)   → HomeBootOverlay
+///     if (!onboarding) → OnboardingOverlay (first-run)
 ///   }
 ///
-/// TV-standard hero collapse: D-pad ↓ to first rail → hero shrinks to
-/// [CinematicCompactHero] (~110px). D-pad ↑ back to hero → re-expands
-/// to full 620px. Carousel pauses while collapsed.
+/// Vertical Pinned-Slot Invariant from `UnifiedHomeGridScroller`
+/// guarantees the focused row stays at screen-Y of
+/// [GridTokens.verticalPinnedSlotIdx]; D-pad ↑/↓ moves the grid under
+/// the focus, never the focus. Hero scrolls off the top when the user
+/// goes below row-1.
+///
+/// Boot UX (Wave 6 home-skeleton-placeholders): no full-screen
+/// loading gate — `_HeroSkeletonContent` and `CinemaRowLoadingPlaceholder`
+/// surface immediately; boot overlay raises only on error.
 ///
 /// Keys preserved for smoke tests:
 ///   cinematic-home-root, cinematic-hero, cinematic-remote-hint.
