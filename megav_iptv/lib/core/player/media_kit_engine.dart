@@ -75,10 +75,23 @@ class MediaKitEngine extends PlayerEngine {
     });
   }
 
+  // GH issue #16: `NativePlayer.setProperty` exists only on native
+  // platforms; on web `NativePlayer` is a stub from
+  // `package:media_kit/src/player/native/player/stub.dart` and lacks
+  // the method, which makes dart2js fail to compile even though the
+  // `is NativePlayer` guard would skip the branch at runtime.
+  //
+  // Fix: keep the runtime guard (it still ensures we only touch mpv
+  // on platforms that actually have it), but invoke setProperty via
+  // `dynamic` so dart2js doesn't have to resolve the method on the
+  // stub type at compile-time. Native callers still hit the real
+  // `NativePlayer.setProperty` — no runtime behaviour change on
+  // Android / iOS / macOS / Windows / Linux.
   Future<void> _applyMpvProperties() async {
     if (_player.platform is NativePlayer) {
-      final np = _player.platform as NativePlayer;
+      final dynamic np = _player.platform;
       for (final entry in config.mpvProperties.entries) {
+        // ignore: avoid_dynamic_calls
         await np.setProperty(entry.key, entry.value);
       }
     }
@@ -86,8 +99,9 @@ class MediaKitEngine extends PlayerEngine {
 
   Future<void> updateConfig(DecoderConfig newConfig) async {
     if (_player.platform is NativePlayer) {
-      final np = _player.platform as NativePlayer;
+      final dynamic np = _player.platform;
       for (final entry in newConfig.mpvProperties.entries) {
+        // ignore: avoid_dynamic_calls
         await np.setProperty(entry.key, entry.value);
       }
     }
