@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Chip;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/player/player_engine.dart';
@@ -12,6 +13,7 @@ import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../detail/providers/detail_arguments.dart';
+import '../widgets/_grid_tokens.dart';
 import '../widgets/cinema_row.dart';
 import '../widgets/home_boot_overlay.dart';
 import 'cinematic_hero_block.dart';
@@ -449,6 +451,7 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                     category: cat,
                     onItemTap: _playNowPlaying,
                     onItemFocus: _onHoveredItemChanged,
+                    availableHeight: GridTokens.unifiedRowHeightDp.h,
                   ),
                   footer: const Padding(padding: EdgeInsets.only(top: 8), child: CinematicRemoteHintFooter()),
                 ),

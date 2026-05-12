@@ -172,24 +172,40 @@ class GridTokens {
   /// аккуратно ставит row-2 в pinned slot, унося hero за viewport.
   static const int verticalPinnedSlotIdx = 1;
 
-  /// Высота hero-row (row-0) в `UnifiedHomeGridScroller`. Совпадает с
-  /// прежним `expandedH = 620` в `CinematicHomeScreen` минус
-  /// gradient-overlap (20 dp), потому что hero теперь не имеет
-  /// собственной Positioned-зоны для overlay над rails.
+  /// Высота hero-row (row-0) в `UnifiedHomeGridScroller`.
+  ///
+  /// Дизайн-цель «3×4 сетка»: в viewport 1080 dp одновременно видна
+  /// hero сверху + 2 строки плиток снизу. Hero выше обычной row на
+  /// 25%, чтобы визуально читался как баннер (1×4 формат — одна
+  /// строка шириной во всю экранную ширину), не как ещё одна плитка.
   ///
   /// Используется через `GridTokens.heroRowHeightDp.h`.
   /// Контракт (Req 1.3, 5.1, 5.5).
-  static const double heroRowHeightDp = 600;
+  static const double heroRowHeightDp = 400;
 
-  /// Шаг вертикальной прокрутки (per row) — равен `cardHeightDp +
-  /// rowVerticalGapDp`. Hero row не входит в этот stride
-  /// (hero high ≠ cinemaRow height), поэтому math для vertical scroll
-  /// offset обрабатывает hero как **отдельное** смещение `heroRowHeightDp`,
-  /// а cinema rows — как `idx * rowStrideDp`. См. dartdoc у
-  /// `UnifiedHomeGridScroller`.
+  /// Высота cinema-row в `UnifiedHomeGridScroller` (НЕ в legacy
+  /// `home-grid-stability-pass`, где cardHeightDp=720 для постер-формата
+  /// отдельной экран-страницы). Здесь плитки компактнее, чтобы в
+  /// viewport 1080 dp помещалось hero (400) + 2 строки (640) = 1040.
+  ///
+  /// Когда hero уехала — на экране видно 3 строки × 320 = 960 dp
+  /// плюс часть 4-й, что соответствует пользовательской модели
+  /// «сетка 3×4 видна одновременно».
+  ///
+  /// `cardHeightDp` НЕ изменён (он owned by closed spec). Этот
+  /// override-токен — только для unified scroller.
+  /// Контракт (Req 1.1, 1.2, 1.3).
+  static const double unifiedRowHeightDp = 320;
+
+  /// Шаг вертикальной прокрутки между cinema rows (per row) —
+  /// `unifiedRowHeightDp + rowVerticalGapDp`. Hero row имеет
+  /// **отдельную** высоту `heroRowHeightDp`, поэтому math для vertical
+  /// scroll offset рассчитывает hero как одно фиксированное смещение,
+  /// а cinema rows — последовательностью `idx * rowStrideDp`.
+  /// См. dartdoc у `UnifiedHomeGridScroller._verticalOffsetForRow`.
   ///
   /// Контракт (Req 2.1, 2.2, 2.4).
-  static const double rowStrideDp = cardHeightDp + rowVerticalGapDp;
+  static const double rowStrideDp = unifiedRowHeightDp + rowVerticalGapDp;
 
   /// Длительность анимации вертикального скролла между focused rows.
   /// Совпадает с горизонтальной `scrollAnimation` по spec для consistent

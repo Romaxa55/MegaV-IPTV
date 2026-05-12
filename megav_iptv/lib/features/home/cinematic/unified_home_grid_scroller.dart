@@ -189,6 +189,10 @@ class _UnifiedHomeGridScrollerState extends State<UnifiedHomeGridScroller> {
           rowChild = HeroAsRow(child: widget.heroBuilder(ctx));
         } else if (idx <= widget.categories.length) {
           final cat = widget.categories[idx - 1];
+          // Compact-row height задаётся caller'ом через rowBuilder →
+          // CategoryRowWrapper(availableHeight: unifiedRowHeightDp.h).
+          // Scroller сам не навязывает height — это позволяет caller'у
+          // подобрать высоту под другой формат (например legacy постер).
           rowChild = Padding(
             padding: EdgeInsets.only(bottom: GridTokens.rowVerticalGapDp.h),
             child: widget.rowBuilder(ctx, cat),

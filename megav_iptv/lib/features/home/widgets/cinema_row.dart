@@ -27,7 +27,19 @@ class CategoryRowWrapper extends ConsumerStatefulWidget {
   final void Function(NowPlayingItem item) onItemTap;
   final void Function(NowPlayingItem? item)? onItemFocus;
 
-  const CategoryRowWrapper({super.key, required this.category, required this.onItemTap, this.onItemFocus});
+  /// Опциональная высота row для compact-layout в
+  /// `UnifiedHomeGridScroller` (модель «сетка 3×4», home-unified-grid-scroll).
+  /// `null` = используется default `GridTokens.cardHeightDp` (legacy
+  /// постер-формат, home-grid-stability-pass).
+  final double? availableHeight;
+
+  const CategoryRowWrapper({
+    super.key,
+    required this.category,
+    required this.onItemTap,
+    this.onItemFocus,
+    this.availableHeight,
+  });
 
   @override
   ConsumerState<CategoryRowWrapper> createState() => _CategoryRowWrapperState();
@@ -91,6 +103,7 @@ class _CategoryRowWrapperState extends ConsumerState<CategoryRowWrapper> {
           : () => ref.read(categoryNotifierProvider(widget.category.name).notifier).loadMore(),
       onItemTap: widget.onItemTap,
       onItemFocus: widget.onItemFocus,
+      availableHeight: widget.availableHeight,
     );
   }
 }

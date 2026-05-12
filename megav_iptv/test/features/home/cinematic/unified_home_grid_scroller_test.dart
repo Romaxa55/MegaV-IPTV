@@ -47,7 +47,7 @@ Widget _harness({required FocusNode heroNode, required List<FocusNode> rowNodes}
             categories: List.generate(rowNodes.length, (i) => CinemaCategory(id: 'cat-$i', name: 'Cat $i')),
             rowBuilder: (_, cat) {
               final idx = int.parse(cat.id.split('-').last);
-              return _StubRowTile(focusNode: rowNodes[idx], height: GridTokens.cardHeightDp.h);
+              return _StubRowTile(focusNode: rowNodes[idx], height: GridTokens.unifiedRowHeightDp.h);
             },
           ),
         ),
