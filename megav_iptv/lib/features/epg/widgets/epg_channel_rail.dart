@@ -88,9 +88,13 @@ class _EpgChannelRailState extends ConsumerState<EpgChannelRail> {
           final focused = widget.focusedChannelIndex == i;
           return SizedBox(
             key: Key('epg-channel-cell-${channel.id}'),
-            // JSX: CH_W = 240, ROW_H = 88.
+            // JSX: CH_W = 240, ROW_H = 88. Bumped to 92 dp на 4px
+            // выше JSX-эталона чтобы вместить Roboto-метрики без
+            // RenderFlex overflow (closes GH issue #15). Visual
+            // impact микроскопический (<5% от cell-height) и
+            // совпадает с любым другим Roboto-системным fallback'ом.
             width: 240,
-            height: 88,
+            height: 92,
             child: Focus(
               onFocusChange: (hasFocus) {
                 if (hasFocus) widget.onFocusChanged(i);

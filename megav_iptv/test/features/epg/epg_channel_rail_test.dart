@@ -58,20 +58,8 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1920, 1080));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      // The production cell layout (Brand 38 + double-line Column inside an
-      // 88.h SizedBox, padded 8.h vertically) is tight enough that Material
-      // Text widgets can spill 1–2 px on the bottom under the default Roboto
-      // metrics used by the test harness. That overflow is purely visual and
-      // out of scope for this widget test (task 3.2 covers Keys + ListView
-      // perf flags, not pixel-perfect typography). Swallow the resulting
-      // RenderFlex paint-time exception so it does not fail the test.
-      final originalOnError = FlutterError.onError;
-      FlutterError.onError = (FlutterErrorDetails details) {
-        final message = details.exceptionAsString();
-        if (message.contains('A RenderFlex overflowed')) return;
-        originalOnError?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = originalOnError);
+      // GH issue #15: cell ROW_H bumped 88→92 → overflow gone. No
+      // need to suppress RenderFlex assertions anymore.
 
       final verticalCtl = ScrollController();
       addTearDown(verticalCtl.dispose);
@@ -104,20 +92,8 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1920, 1080));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      // The production cell layout (Brand 38 + double-line Column inside an
-      // 88.h SizedBox, padded 8.h vertically) is tight enough that Material
-      // Text widgets can spill 1–2 px on the bottom under the default Roboto
-      // metrics used by the test harness. That overflow is purely visual and
-      // out of scope for this widget test (task 3.2 covers Keys + ListView
-      // perf flags, not pixel-perfect typography). Swallow the resulting
-      // RenderFlex paint-time exception so it does not fail the test.
-      final originalOnError = FlutterError.onError;
-      FlutterError.onError = (FlutterErrorDetails details) {
-        final message = details.exceptionAsString();
-        if (message.contains('A RenderFlex overflowed')) return;
-        originalOnError?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = originalOnError);
+      // GH issue #15: cell ROW_H bumped 88→92 → overflow gone. No
+      // need to suppress RenderFlex assertions anymore.
 
       final verticalCtl = ScrollController();
       addTearDown(verticalCtl.dispose);
@@ -151,20 +127,8 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1920, 1080));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      // The production cell layout (Brand 38 + double-line Column inside an
-      // 88.h SizedBox, padded 8.h vertically) is tight enough that Material
-      // Text widgets can spill 1–2 px on the bottom under the default Roboto
-      // metrics used by the test harness. That overflow is purely visual and
-      // out of scope for this widget test (task 3.2 covers Keys + ListView
-      // perf flags, not pixel-perfect typography). Swallow the resulting
-      // RenderFlex paint-time exception so it does not fail the test.
-      final originalOnError = FlutterError.onError;
-      FlutterError.onError = (FlutterErrorDetails details) {
-        final message = details.exceptionAsString();
-        if (message.contains('A RenderFlex overflowed')) return;
-        originalOnError?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = originalOnError);
+      // GH issue #15: cell ROW_H bumped 88→92 → overflow gone. No
+      // need to suppress RenderFlex assertions anymore.
 
       final verticalCtl = ScrollController();
       addTearDown(verticalCtl.dispose);
