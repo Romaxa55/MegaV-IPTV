@@ -291,18 +291,21 @@ class _CinemaCardState extends State<CinemaCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top: ONLY rating chip — single floating element. age+genre
+          // переехали в нижнюю meta-row чтобы плитка не выглядела
+          // «загруженной» (см. user feedback 2026-05-12).
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [_ratingBadge()]),
           const Spacer(),
-          if (prog != null) _buildAgeAndGenre(prog),
-          SizedBox(height: 4.h),
+          // Bottom group — связные блоки одной информ-зоны:
+          //   1. thin progress bar (when live)
+          //   2. programme title (1 line)
+          //   3. compact meta row: year · category · age · genre
           if (prog?.isNow == true) ...[_buildProgressSection(prog!), SizedBox(height: 6.h)],
           _buildProgrammeInfo(prog),
           // home-grid-stability-pass req 3.3, 3.4, 3.6: reserve the SAME
           // bottom metadata height the compact overlay uses, so the
-          // full-overlay full-overlay → compact-overlay fade-crossover does
-          // not visually pull the programme info up/down. Previously this
-          // was the magic literal `22.h + 4.h` (icon row + 4 dp); now
-          // both overlays draw from the same GridTokens constant.
+          // full↔compact overlay fade-crossover does not visually pull
+          // the programme info up/down.
           SizedBox(height: GridTokens.metadataReservedHeightDp.h),
         ],
       ),
@@ -374,39 +377,6 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  Widget _buildAgeAndGenre(EpgProgram prog) {
-    return Row(
-      children: [
-        Container(
-          key: const Key('age-rating'),
-          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-          decoration: BoxDecoration(
-            color: const Color(0xFF08080F).withValues(alpha: 0.80),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.19)),
-          ),
-          child: Text(
-            _ageRatingCached,
-            style: TextStyle(fontSize: 14.sp, color: const Color(0xFFF97316)),
-          ),
-        ),
-        const Spacer(),
-        Container(
-          key: const Key('genre-emoji'),
-          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.40),
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          child: Text(
-            _genreEmojiCached,
-            style: TextStyle(fontSize: 16.sp, color: Colors.white.withValues(alpha: 0.50)),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildProgressSection(EpgProgram prog) {
     return Column(
       key: const Key('progress-section'),
@@ -449,8 +419,18 @@ class _CinemaCardState extends State<CinemaCard> {
     );
   }
 
-  /// Часть `_buildBottomInfo` без channel-line (она в compact'е).
+  /// Bottom info group — title в одну строку + inline meta row.
+  /// Все мелкие индикаторы (year, category, age, genre) живут в одной
+  /// linear row под title, не как floating chips поверх плитки.
   Widget _buildProgrammeInfo(EpgProgram? prog) {
+    final metaColor = Colors.white.withValues(alpha: 0.55);
+    final metaStyle = TextStyle(fontSize: 13.sp, color: metaColor);
+
+    final hasYear = prog?.parsedYear != null;
+    final hasCategory = prog?.category != null;
+    final hasAge = _ageRatingCached.isNotEmpty;
+    final hasGenre = _genreEmojiCached.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -459,33 +439,40 @@ class _CinemaCardState extends State<CinemaCard> {
           key: const Key('programme-title'),
           style: TextStyle(
             fontSize: 16.sp,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w500,
             color: Colors.white,
-            height: 1.5,
+            height: 1.3,
             shadows: [const Shadow(color: Colors.black, blurRadius: 8)],
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         SizedBox(height: 4.h),
+        // Single horizontal meta strip: year · category · age · genre.
+        // Чипы не floating — это inline-текст с разделителями.
         Row(
           children: [
-            if (prog?.parsedYear != null) ...[
-              Text(
-                prog!.parsedYear!,
-                style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.50)),
-              ),
-              if (prog.category != null) _dot(),
-            ],
-            if (prog?.category != null)
+            if (hasYear) ...[Text(prog!.parsedYear!, style: metaStyle), if (hasCategory || hasAge || hasGenre) _dot()],
+            if (hasCategory)
               Flexible(
-                child: Text(
-                  prog!.category!,
-                  style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.50)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text(prog!.category!, style: metaStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
+            if (hasAge) ...[
+              if (hasYear || hasCategory) _dot(),
+              Text(
+                _ageRatingCached,
+                key: const Key('age-rating'),
+                style: metaStyle.copyWith(color: const Color(0xFFF97316)),
+              ),
+            ],
+            if (hasGenre) ...[
+              SizedBox(width: 6.w),
+              Text(
+                _genreEmojiCached,
+                key: const Key('genre-emoji'),
+                style: TextStyle(fontSize: 13.sp),
+              ),
+            ],
           ],
         ),
       ],
