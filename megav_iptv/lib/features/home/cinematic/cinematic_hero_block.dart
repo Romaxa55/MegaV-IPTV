@@ -106,7 +106,10 @@ class CinematicHeroBlock extends StatelessWidget {
             ),
           ),
 
-          // Layer 4: hero foreground content.
+          // Layer 4: hero foreground content или skeleton placeholder
+          // (home-skeleton-placeholders, Wave 6) — пока featured ещё
+          // грузится. Дешёвый: только серые DecoratedBox блоки, без
+          // shimmer-анимации (на rtd2851a это дорого).
           if (heroItem != null)
             CinematicHeroContent(
               item: heroItem!,
@@ -116,14 +119,85 @@ class CinematicHeroBlock extends StatelessWidget {
               onFavourite: onFavourite,
             )
           else
-            const Positioned(
-              left: 56,
-              right: 56,
-              bottom: 40,
-              child: SizedBox(height: 4, child: LinearProgressIndicator()),
-            ),
+            const _HeroSkeletonContent(),
         ],
       ),
+    );
+  }
+}
+
+/// Skeleton placeholder для hero пока featured ещё не приехал.
+/// Геометрия примерно повторяет реальный `CinematicHeroContent`:
+/// chips-row → title 2-line → meta → action-row. Все блоки — серые
+/// `DecoratedBox` без shimmer-анимации (TV-perf safe).
+class _HeroSkeletonContent extends StatelessWidget {
+  const _HeroSkeletonContent();
+
+  @override
+  Widget build(BuildContext context) {
+    const c = Color(0x22FFFFFF);
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(56, 18, 56, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Chips strip
+            Row(
+              children: [
+                _SkBox(width: 70, height: 24, color: c),
+                SizedBox(width: 10),
+                _SkBox(width: 120, height: 24, color: c),
+                SizedBox(width: 10),
+                _SkBox(width: 90, height: 24, color: c),
+              ],
+            ),
+            SizedBox(height: 10),
+            // Title 2 lines
+            _SkBox(width: 720, height: 44, color: c),
+            SizedBox(height: 6),
+            _SkBox(width: 540, height: 44, color: c),
+            SizedBox(height: 12),
+            // Meta row
+            _SkBox(width: 380, height: 12, color: c),
+            SizedBox(height: 12),
+            // Summary
+            _SkBox(width: 600, height: 14, color: c),
+            SizedBox(height: 6),
+            _SkBox(width: 480, height: 14, color: c),
+            SizedBox(height: 14),
+            // Action row
+            Row(
+              children: [
+                _SkBox(width: 220, height: 40, color: c),
+                SizedBox(width: 14),
+                _SkBox(width: 140, height: 40, color: c),
+                SizedBox(width: 14),
+                _SkBox(width: 160, height: 40, color: c),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SkBox extends StatelessWidget {
+  const _SkBox({required this.width, required this.height, required this.color});
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.all(Radius.circular(6))),
+      child: SizedBox(width: width, height: height),
     );
   }
 }

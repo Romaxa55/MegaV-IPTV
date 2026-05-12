@@ -74,7 +74,10 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   StreamSubscription<PlayerState>? _previewStateSub;
 
   // ── Boot overlay ───────────────────────────────────────────────────────────
-  bool _showBootOverlay = true;
+  // home-skeleton-placeholders: дефолт false. Overlay поднимается ТОЛЬКО
+  // если bootstrap провалился (есть _bootError). Иначе экран сразу
+  // показывает skeleton placeholders, без чёрного fade-in момента.
+  bool _showBootOverlay = false;
   bool _bootFadeOut = false;
   String? _bootError;
   late final TextEditingController _bootUrlController;
@@ -164,44 +167,72 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Bootstrap
+  // Bootstrap (home-skeleton-placeholders spec, Wave 6)
   // ──────────────────────────────────────────────────────────────────────────
+  //
+  // Skeleton-first: убираем eager-await loop по всем категориям и full-screen
+  // boot overlay. Экран рисуется сразу с UnifiedHomeGridScroller и skeleton
+  // placeholders в hero/rows; Riverpod сам триггерит rebuild каждой row
+  // когда её provider возвращает данные.
+  //
+  // boot overlay показывается ТОЛЬКО при наличии ошибки (e.g. неверный
+  // baseUrl). Никакого артификального ожидания "пока всё прогрузится" —
+  // юзер видит UI мгновенно.
 
   Future<void> _runHomeBootstrap() async {
     if (!mounted) return;
-    setState(() => _bootError = null);
+    setState(() {
+      _bootError = null;
+      // Скрываем boot overlay сразу: skeleton placeholders в hero+rows
+      // покажут что данные грузятся. Overlay вернётся (с error UI) только
+      // если categories/featured упадут с exception.
+      _showBootOverlay = false;
+      _bootFadeOut = false;
+    });
+
     try {
-      final categories = await ref.read(cinemaCategoriesProvider.future);
-      final featured = await ref.read(featuredNowPlayingProvider.future);
-      await ref.read(moviesNotifierProvider.notifier).waitForInit();
-      for (final cat in categories) {
-        await ref.read(categoryNotifierProvider(cat.name).notifier).waitForInit();
-      }
+      // Параллельный fetch — categories и featured независимы; неudачa
+      // любого даёт _bootError UI поверх skeleton'ов.
+      final results = await Future.wait([
+        ref.read(cinemaCategoriesProvider.future),
+        ref.read(featuredNowPlayingProvider.future),
+        ref.read(moviesNotifierProvider.notifier).waitForInit(),
+      ]);
       if (!mounted) return;
 
-      const precachePerRow = 28;
-      final allItems = <NowPlayingItem>[...featured];
-      final moviesList = ref.read(moviesNotifierProvider).valueOrNull ?? [];
-      allItems.addAll(moviesList.take(precachePerRow));
+      final categories = results[0] as List;
+      final featured = results[1] as List<NowPlayingItem>;
+
+      // Fire-and-forget per-category init — это позволяет первой row
+      // отрендериться сразу, не дожидаясь хвоста списка категорий.
+      // Riverpod ref.watch внутри CategoryRowWrapper сам зарисует
+      // skeleton до прибытия данных.
       for (final cat in categories) {
-        final row = ref.read(categoryNotifierProvider(cat.name)).valueOrNull ?? [];
-        allItems.addAll(row.take(precachePerRow));
+        unawaited(ref.read(categoryNotifierProvider(cat.name).notifier).waitForInit());
       }
 
-      final futures = <Future<void>>[];
-      for (final item in allItems) {
-        final thumb = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
-        if (thumb != null && thumb.isNotEmpty) {
-          futures.add(precacheImage(NetworkImage(thumb), context).catchError((_) {}));
+      _scheduleHeroWatchFocus();
+      if (featured.isNotEmpty) _restartCarousel(featured);
+
+      // Lazy precache — рендерится из off-frame callback, не блокирует
+      // UI. Берём только первые 8 элементов featured + первой row
+      // чтобы не забить network канал на rtd2851a; остальные precache
+      // подъедут через onItemFocus debounce внутри CategoryRowWrapper.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        for (final item in featured.take(8)) {
+          final thumb = item.thumbnailUrl ?? item.program?.icon ?? item.logoUrl;
+          if (thumb != null && thumb.isNotEmpty) {
+            unawaited(precacheImage(NetworkImage(thumb), context).catchError((_) {}));
+          }
         }
-      }
-      if (futures.isNotEmpty) await Future.wait(futures);
-      if (!mounted) return;
-
-      _restartCarousel(featured);
-      setState(() => _bootFadeOut = true);
+      });
     } catch (e) {
-      if (mounted) setState(() => _bootError = 'Не удалось загрузить данные: $e');
+      if (!mounted) return;
+      setState(() {
+        _bootError = 'Не удалось загрузить данные: $e';
+        _showBootOverlay = true;
+      });
     }
   }
 
@@ -213,6 +244,10 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
     unawaited(_runHomeBootstrap());
   }
 
+  /// Called after the error overlay's AnimatedOpacity fade-out completes
+  /// (юзер нажал retry → bootstrap прошёл успешно → `_bootFadeOut=true`
+  /// → fade animation отыграла → этот callback её снимает с экрана
+  /// и ставит focus на hero).
   void _onBootFadeOutEnded() {
     if (!mounted || !_bootFadeOut) return;
     setState(() {
