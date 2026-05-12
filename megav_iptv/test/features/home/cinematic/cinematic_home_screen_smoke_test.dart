@@ -6,6 +6,8 @@ import 'package:megav_iptv/core/api/api_client.dart';
 import 'package:megav_iptv/core/playlist/models/now_playing.dart';
 import 'package:megav_iptv/core/providers/providers.dart';
 import 'package:megav_iptv/features/home/cinematic/cinematic_home_screen.dart';
+import 'package:megav_iptv/features/home/home_variant_provider.dart' show sharedPreferencesProvider;
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets(
@@ -15,6 +17,12 @@ void main() {
       // off-screen items are reachable via skipOffstage: false.
       await tester.binding.setSurfaceSize(const Size(1920, 1080));
       addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      // onboarding-remote-cheatsheet (Wave 6) — onboardingShownProvider
+      // depends on sharedPreferencesProvider; stub it with mock prefs
+      // (onboarding-shown = true to skip overlay in the smoke test).
+      SharedPreferences.setMockInitialValues({'onboarding-shown': true});
+      final prefs = await SharedPreferences.getInstance();
 
       // Stub providers so no real HTTP is attempted.
       const mockFeatured = <NowPlayingItem>[
@@ -35,6 +43,7 @@ void main() {
               featuredNowPlayingProvider.overrideWith((_) async => mockFeatured),
               cinemaCategoriesProvider.overrideWith((_) async => const <CinemaCategory>[]),
               moviesNotifierProvider.overrideWith((_) => MoviesNotifier(_StubApiClient())),
+              sharedPreferencesProvider.overrideWithValue(prefs),
             ],
             child: ScreenUtilInit(
               designSize: const Size(1920, 1080),

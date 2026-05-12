@@ -13,6 +13,8 @@ import '../../../core/playlist/models/now_playing.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../detail/providers/detail_arguments.dart';
+import '../../onboarding/onboarding_overlay.dart';
+import '../../onboarding/onboarding_provider.dart';
 import '../widgets/_grid_tokens.dart';
 import '../widgets/cinema_row.dart';
 import '../widgets/home_boot_overlay.dart';
@@ -508,6 +510,19 @@ class _CinematicHomeScreenState extends ConsumerState<CinematicHomeScreen> {
                   urlController: _bootUrlController,
                   onRetry: _onBootRetryConnect,
                 ),
+              ),
+            ),
+
+          // ── Onboarding overlay (first-run only) ─────────────────────────
+          // onboarding-remote-cheatsheet spec (Wave 6): показывается ровно
+          // один раз. После dismiss — `markShown()` → persistent в
+          // SharedPreferences → больше не появляется.
+          if (!_showBootOverlay && !ref.watch(onboardingShownProvider))
+            Positioned.fill(
+              child: OnboardingOverlay(
+                onDismiss: () {
+                  ref.read(onboardingShownProvider.notifier).markShown();
+                },
               ),
             ),
         ],
