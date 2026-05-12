@@ -50,8 +50,17 @@ class CinematicHeroBlock extends StatelessWidget {
           // Layer 0: blurred backdrop / preview video.
           if (isPreviewVideoReady && previewPlayer?.activeEngine != null)
             Positioned.fill(child: previewPlayer!.activeEngine!.buildVideoWidget(fit: BoxFit.cover))
+          else if (backdropImage != null)
+            // home-unified-grid-scroll: hero — компактная 400-dp полоса с
+            // чёткой обложкой канала. Прямой Image(fit: BoxFit.cover) без
+            // ImageFilter.blur — это TV-perf safe (нет offscreen blur
+            // round-trip, нет ImageFiltered) и визуально соответствует
+            // user request "хочу картинку, а не размытое пятно".
+            Positioned.fill(
+              child: Image(image: backdropImage!, fit: BoxFit.cover),
+            )
           else
-            SafeBackdrop(imageProvider: backdropImage, fallbackBackground: palette.background, blurSigma: 40),
+            ColoredBox(color: palette.background),
 
           // Layer 1: combined vignette + bottom-shade gradient.
           Positioned.fill(

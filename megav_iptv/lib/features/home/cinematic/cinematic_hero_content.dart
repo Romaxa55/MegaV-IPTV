@@ -36,27 +36,33 @@ class CinematicHeroContent extends StatelessWidget {
     final styles = theme.extension<MegaVTextStyles>();
     final palette = AppColors.activePalette;
 
-    // Title: 110px italic display, lineHeight 0.95, letterSpacing -0.02em.
-    // MegaVTextStyles.displayItalic is 96px; override size to match JSX spec.
+    // Compact hero (home-unified-grid-scroll): hero band is 400 dp.
+    // Title shrunk 110 → 40, line-height 0.95 → 1.05 (so italic
+    // ascenders/descenders aren't clipped), letterSpacing −2.2 → −0.6
+    // (tighter tracking for smaller body). maxLines 3 → 2.
     final titleBase =
         styles?.displayItalic ?? const TextStyle(fontStyle: FontStyle.italic, fontWeight: FontWeight.w600);
     final titleStyle = titleBase.copyWith(
-      fontSize: 110,
-      height: 0.95,
-      letterSpacing: 110 * -0.02,
+      fontSize: 40,
+      height: 1.05,
+      letterSpacing: 40 * -0.015,
       color: palette.text,
       shadows: [
         Shadow(blurRadius: kSafeShadowBlurMax, color: Colors.black.withValues(alpha: 0.55), offset: const Offset(0, 2)),
       ],
     );
 
-    // Meta row: monospace 12px, uppercase, letterSpacing 0.12em.
+    // Meta row: monospace 12px, uppercase. Tighter letterSpacing
+    // (0.08em vs 0.12em) since smaller scale + Wrap spacing 24 already
+    // gives visual gap.
     final metaBase = styles?.metaMono ?? const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w500);
-    final metaStyle = metaBase.copyWith(fontSize: 12, letterSpacing: 12 * 0.12, color: palette.textDim);
+    final metaStyle = metaBase.copyWith(fontSize: 12, letterSpacing: 12 * 0.08, color: palette.textDim);
 
-    // Summary text: 17px lineHeight 1.55.
+    // Summary 17 → 14, height 1.55 → 1.4. Less vertical real estate
+    // means 2 lines instead of 4 (synopsis is teaser, not full
+    // description; user pumps Details screen for full content).
     final summaryBase = styles?.bodyDim ?? const TextStyle();
-    final summaryStyle = summaryBase.copyWith(fontSize: 17, height: 1.55, color: palette.textDim);
+    final summaryStyle = summaryBase.copyWith(fontSize: 14, height: 1.4, color: palette.textDim);
 
     final program = item.program;
     final title = program?.title.isNotEmpty == true ? program!.title : item.channelName;
@@ -72,34 +78,34 @@ class CinematicHeroContent extends StatelessWidget {
       right: 0,
       bottom: 0,
       child: Padding(
-        // JSX: padding "20px 56px 40px" — top/h/bottom
-        padding: const EdgeInsets.fromLTRB(56, 20, 56, 40),
+        // Compact hero (400 dp band): tighter outer padding 56/18/56/18.
+        padding: const EdgeInsets.fromLTRB(56, 18, 56, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Chips row ──────────────────────────────────────────────
             _ChipsRow(genre: genre, channelName: item.channelName),
-            const SizedBox(height: 22),
+            const SizedBox(height: 10),
 
-            // ── Hero title ─────────────────────────────────────────────
+            // ── Hero title — 40sp italic, 2 lines max with ellipsis ───
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Text(title, style: titleStyle, maxLines: 3, overflow: TextOverflow.ellipsis),
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: Text(title, style: titleStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 8),
 
             // ── Meta row ───────────────────────────────────────────────
             _MetaRow(metaStyle: metaStyle, palette: palette, program: program, genre: genre),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
 
-            // ── Summary ────────────────────────────────────────────────
+            // ── Summary — 14sp, 2 lines, ellipsis (teaser) ────────────
             if (synopsis != null && synopsis.isNotEmpty) ...[
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 720),
-                child: Text(synopsis, style: summaryStyle, maxLines: 4, overflow: TextOverflow.ellipsis),
+                child: Text(synopsis, style: summaryStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
             ],
 
             // ── Progress + ticks ───────────────────────────────────────
@@ -115,9 +121,9 @@ class CinematicHeroContent extends StatelessWidget {
                   palette: palette,
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 14),
             ] else
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
 
             // ── Action row ─────────────────────────────────────────────
             _ActionRow(watchFocusNode: watchFocusNode, onWatch: onWatch, onEpg: onEpg, onFavourite: onFavourite),
