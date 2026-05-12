@@ -118,12 +118,34 @@ Cinematic с focus-фиксом стрелок (commit `d626edc`) и переф�
 где hero = row-0 шириной 1×4, фокус намертво в slot (row=2, col=1), всё
 скроллится под ним. Это **новый boundary**, не правка `hero-collapse-tile-morph`.
 
-- [ ] **home-unified-grid-scroll** — Главный экран как единый scroll-grid с
-  vertical pinned slot. Hero = row-0 (1×4 full-bleed). Удаляет
-  `hero_tile_morph.dart`, упрощает `cinematic_home_screen.dart`,
-  расширяет Pinned-Slot Invariant на вертикальную ось. Dependencies:
-  home-grid-stability-pass, home-cinematic-redesign, perf-safe-widgets,
-  design-system-foundation. Supersedes hero-collapse-tile-morph.
+- [x] **home-unified-grid-scroll** — Главный экран как единый scroll-grid с
+  vertical pinned slot. Hero = row-0 (full-bleed 1×4). ✅ implemented (12/12
+  sub-tasks; commit cfa25bc + resize 1b84625 + compact typography d174c90 +
+  height fix a9c7342 + legacy purge). Supersedes hero-collapse-tile-morph.
+  /home redirected to /home-cinematic; legacy HomeScreen + hero_section.dart
+  + hero_top_bar.dart + channel_card.dart + hero_dots.dart + content_row.dart
+  удалены.
+
+### Wave 6 — Post-Cinematic backlog (open briefs)
+
+Briefs созданы по результатам live smoke 2026-05-12. Имплементация —
+отдельными итерациями после явного user approval.
+
+- [ ] **home-skeleton-placeholders** — Убрать full-screen boot overlay
+  и eager precache; показывать skeleton placeholders в hero и rails
+  пока данные грузятся. Sequential bootstrap loop → parallel. Lazy
+  precache по focus/scroll. Dependencies: home-unified-grid-scroll.
+- [ ] **onboarding-remote-cheatsheet** — Перворазовый dismissable
+  overlay tour с инструкциями по D-pad управлению (←/→ навигация,
+  OK = играть, Back = выйти, MENU = поиск/EPG/settings). Persistent
+  flag через SharedPreferences. Dependencies: home-unified-grid-scroll,
+  design-system-atoms.
+- [ ] **player-cinematic-redux** — Стабилизация плеера: умнее retry
+  policy (>3 attempts на DNS/network), exponential backoff, graceful
+  error UI вместо чёрного экрана. Audit `PlayerManager` + reuse
+  session при переключении каналов. Dependencies: player-cinematic-redesign
+  (visual закрыт), player-overlay-state-machine (sealed type read-only).
+  Самый важный, по словам пользователя.
 
 ## Pilot strategy
 

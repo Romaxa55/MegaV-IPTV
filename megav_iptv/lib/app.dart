@@ -14,7 +14,6 @@ import 'features/detail/providers/detail_arguments.dart';
 import 'features/epg/epg_screen.dart';
 import 'features/home/editorial/editorial_home_screen.dart';
 import 'features/home/home_root.dart';
-import 'features/home/home_screen.dart';
 import 'features/player/player_root.dart';
 import 'features/search/search_screen.dart';
 import 'features/settings/settings_screen.dart';
@@ -43,7 +42,10 @@ Future<void> _onRootBackPressed(BuildContext context) async {
 }
 
 final _router = GoRouter(
-  initialLocation: '/home',
+  // home-unified-grid-scroll (Wave 5): Cinematic — основной экран.
+  // Legacy /home остаётся доступен по explicit path для regression
+  // и debug switcher, но новые сессии запускают cinematic.
+  initialLocation: '/home-cinematic',
   routes: [
     ShellRoute(
       builder: (context, state, child) {
@@ -57,8 +59,11 @@ final _router = GoRouter(
         );
       },
       routes: [
-        GoRoute(path: '/', redirect: (context, state) => '/home'),
-        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+        GoRoute(path: '/', redirect: (context, state) => '/home-cinematic'),
+        // Legacy /home → cinematic. HomeScreen widget удалён в Wave 5
+        // (home-unified-grid-scroll). Любая старая ссылка переходит
+        // на новый главный экран.
+        GoRoute(path: '/home', redirect: (context, state) => '/home-cinematic'),
         GoRoute(path: '/home-cinematic', builder: (context, state) => const HomeRootScreen()),
         GoRoute(path: '/home-editorial', builder: (context, state) => const EditorialHomeScreen()),
         GoRoute(
@@ -111,7 +116,6 @@ class _DebugRouteSwitcher extends StatelessWidget {
   const _DebugRouteSwitcher();
 
   static const _routes = <(String, String)>[
-    ('/home', 'Legacy'),
     ('/home-cinematic', 'Cinematic'),
     ('/home-editorial', 'Editorial'),
     ('/epg', 'EPG'),
