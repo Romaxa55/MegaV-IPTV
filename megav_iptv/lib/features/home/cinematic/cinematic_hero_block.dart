@@ -41,9 +41,12 @@ class CinematicHeroBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppColors.activePalette;
 
-    return SizedBox(
+    // home-unified-grid-scroll: hero block заполняет высоту, которую
+    // ему даёт parent (HeroAsRow с heroRowHeightDp=400 в новой
+    // архитектуре, либо legacy mount-точка). Не хардкодим 620 —
+    // иначе inner SizedBox(620) ломает родительский 400-dp slot.
+    return SizedBox.expand(
       key: const Key('cinematic-hero'),
-      height: 620,
       child: Stack(
         fit: StackFit.expand,
         children: [
