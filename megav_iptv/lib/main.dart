@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'features/home/home_variant_provider.dart' show sharedPreferencesProvider;
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -16,9 +18,14 @@ class MyHttpOverrides extends HttpOverrides {
   }
 }
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides();
+
+  // Resolve SharedPreferences once so providers can read it sync via
+  // `sharedPreferencesProvider`. Used by `homeVariantProvider`
+  // (editorial spec) and `onboardingShownProvider` (Wave 6).
+  final prefs = await SharedPreferences.getInstance();
 
   bool initMediaKit = true;
   if (!kIsWeb) {
@@ -41,5 +48,5 @@ void main() {
     DeviceOrientation.portraitUp,
   ]);
 
-  runApp(const ProviderScope(child: MegaVApp()));
+  runApp(ProviderScope(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)], child: const MegaVApp()));
 }
